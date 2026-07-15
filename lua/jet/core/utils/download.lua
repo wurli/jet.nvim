@@ -17,6 +17,11 @@ M.curl = function(args, callback)
 	end)
 end
 
+local mkdir = function(dir)
+	-- tonumber("755", 8) = 493
+	vim.uv.fs_mkdir(dir, 493)
+end
+
 ---@param dir? string
 ---@return { dir: string, bin_path?: string, lib_path?: string }
 M.jet_resource_paths = function(dir)
@@ -129,11 +134,6 @@ local get_jet_download_urls = function(version, callback)
 			callback(urls)
 		end)
 	end)
-end
-
-local mkdir = function(dir)
-	-- tonumber("755", 8) = 493
-	vim.uv.fs_mkdir(dir, 493)
 end
 
 ---@return { bin_url: string, lib_url: string }
