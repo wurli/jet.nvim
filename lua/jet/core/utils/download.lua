@@ -227,12 +227,12 @@ function M.maybe_download_jet(callback, has_done_download)
 	local lib_path = config.jet_library_path or path_defaults.lib_path
 	local bin_path = config.jet_binary_path or path_defaults.bin_path
 
-	local has_jet_bin = bin_path
-		and vim.uv.fs_stat(bin_path)
-		and vim.uv.fs_stat(bin_path).type == "file"
-		and vim.fn.executable(bin_path) == 1
+	local bin_stat = bin_path and vim.uv.fs_stat(bin_path)
+	---@diagnostic disable-next-line: param-type-mismatch
+	local has_jet_bin = bin_stat and bin_stat and bin_stat.type == "file" and vim.fn.executable(bin_path) == 1
 
-	local has_jet_lib = lib_path and vim.uv.fs_stat(lib_path) and vim.uv.fs_stat(lib_path).type == "file"
+	local lib_stat = lib_path and vim.uv.fs_stat(lib_path)
+	local has_jet_lib = lib_stat and lib_stat.type == "file"
 
 	local needs_download = false
 

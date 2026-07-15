@@ -57,13 +57,11 @@ M.options = nil
 
 ---@param options? jet.config
 function M.set(options)
-	if options and options.jet_binary then
-		local bin = vim.fn.expand(options.jet_binary)
+	if options and options.jet_binary_path then
+		local bin = vim.fn.expand(options.jet_binary_path)
 		assert(type(bin) == "string" and vim.fn.executable(bin) == 1, "jet_binary must be an executable")
-		options.jet_binary = bin
+		options.jet_binary_path = bin
 	end
-
-	local download = require("jet.core.utils.download")
 
 	M.options = vim.tbl_deep_extend("force", M.defaults, options or {})
 

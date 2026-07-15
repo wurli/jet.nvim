@@ -18,6 +18,9 @@ Using `vim.pack`:
 
 ``` lua
 vim.pack.add({ "https://github.com/wurli/jet.nvim" })
+
+-- You'll need to call setup() for things to work correctly
+require("jet").setup({})
 ```
 
 Recommended keymaps:
