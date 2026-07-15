@@ -54,6 +54,22 @@ expose kernel-specific functionality.
 | ----                                        | ------                                  | -------- | --------             |
 | [jet.ark](https://github.com/wurli/jet.ark) | [Ark](https://github.com/posit-dev/ark) | R        | LSP server, debugger |
 
+## jet.nvim vs similar plugins
+
+
+* [GCBallesteros/NotebookNavigator.nvim](https://github.com/GCBallesteros/NotebookNavigator.nvim)
+* [Vigemus/iron.nvim](https://github.com/Vigemus/iron.nvim)
+* [cnrrobertson/jupyterm.nvim](https://github.com/cnrrobertson/jupyterm.nvim)
+* [dccsillag/magma-nvim](https://github.com/dccsillag/magma-nvim)
+* [goerz/jupytext.nvim](https://github.com/goerz/jupytext.nvim)
+* [imbue-ai/jupyter_ascending.vim](https://github.com/imbue-ai/jupyter_ascending.vim)
+* [kiyoon/jupynium.nvim](https://github.com/kiyoon/jupynium.nvim)
+* [lkhphuc/jupyter-kernel.nvim](https://github.com/lkhphuc/jupyter-kernel.nvim)
+* [luk400/vim-jukit](https://github.com/luk400/vim-jukit)
+* [matarina/pyrola.nvim](https://github.com/matarina/pyrola.nvim)
+* [sei40kr/jupyter.nvim](https://github.com/sei40kr/jupyter.nvim)
+* [sheng-tse/jupynvim](https://github.com/sheng-tse/jupynvim)
+
 ## FAQ
 
 <details>
