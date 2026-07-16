@@ -1,2 +1,6 @@
 *.log
 deps/*
+.python-version
+pyproject.toml
+uv.lock
+tmp.*
