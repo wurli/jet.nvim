@@ -105,7 +105,7 @@ local get_jet_download_urls = function(version, callback)
 		local release
 		if version == "latest" then
 			table.sort(res, function(a, b)
-				return utils.version_compare(a.name, b.name)
+				return not utils.version_compare(a.tag_name, b.tag_name)
 			end)
 			release = res[1]
 		else
@@ -114,7 +114,7 @@ local get_jet_download_urls = function(version, callback)
 			end
 
 			for _, r in ipairs(res) do
-				if r.name == version then
+				if r.tag_name:gsub("^v", "") == version:gsub("^v", "") then
 					release = r
 					break
 				end
@@ -178,6 +178,8 @@ local download_and_unpack = function(url, dest_dir, callback)
 	local download_path = vim.fn.tempname() .. ".tar.gz"
 
 	M.curl({ url, "-sL", "-o", download_path }, function(res)
+		vim.fs.rm(dest_dir, { recursive = true, force = true })
+		mkdir(dest_dir)
 		vim.system({ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" }, {
 			text = true,
 		}, function(res)
@@ -280,7 +282,7 @@ function M.maybe_download_jet(callback, has_done_download)
 	local stdout = vim.system({ bin_path, "--version" }, { text = true }):wait().stdout
 	local jet_bin_version = vim.trim(stdout):match("^jet (%d+%.%d+%.%d+)$")
 
-	assert(jet_bin_version, "Failed to get Jet binary version from: " .. bin_path)
+	assert(jet_bin_version, "Failed to get Jet binary version from " .. bin_path .. ". Output: " .. stdout)
 
 	local lua_loader = package.loadlib(lib_path, "luaopen_jet")
 	local jet = lua_loader()
