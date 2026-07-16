@@ -5,9 +5,10 @@ local M = {}
 ---range-specific filetype) we could instead return a table of candidate
 ---filetypes and commentstrings, then match these against kernel filetypes
 ---until we find a match. Don't do this until it's clear that it's a real issue.
----@param pos jet.send.Pos
+---@param pos? jet.send.Pos
 ---@return { filetype: string, commentstring: string }
 M.local_lang_info = function(pos)
+	local pos = pos or require("jet.core.send.get_code").curr_pos()
 	local buf_ft = vim.bo[pos.buf].filetype
 	local buf_cs = vim.bo[pos.buf].commentstring
 

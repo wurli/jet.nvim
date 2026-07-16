@@ -20,7 +20,9 @@ M.filter_kernels = function(kernels, opts)
 	opts = opts or {}
 	opts.status = opts.status or { "connecting", "connected", "external", "inactive" }
 	opts.status = type(opts.status) == "string" and { opts.status } or opts.status
-	opts.filetype = opts.filetype == true and vim.bo.filetype or opts.filetype
+	if opts.filetype == true then
+		opts.filetype = require("jet.core.send.utils").local_lang_info().filetype
+	end
 
 	---@param k jet.kernel
 	return vim.tbl_filter(function(k)
