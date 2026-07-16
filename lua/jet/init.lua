@@ -1,4 +1,4 @@
-local config = require("jet.config")
+local config = require("jet.core.config")
 
 local M = {}
 

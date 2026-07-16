@@ -220,7 +220,7 @@ end
 ---@param callback? fun({ bin_path: string, lib_path: string })
 ---@param has_done_download boolean
 function M.maybe_download_jet(callback, has_done_download)
-	local config = require("jet.config").options
+	local config = require("jet.core.config").options
 	local path_defaults = M.jet_resource_paths()
 
 	---------------------------------------------------
@@ -290,7 +290,7 @@ function M.maybe_download_jet(callback, has_done_download)
 
 	assert(jet_lib_version, "Failed to get Jet library version from: " .. lib_path)
 
-	local required = require("jet.config").data.jet_min_version
+	local required = require("jet.core.config").data.jet_min_version
 
 	local bin_outdated = utils.version_compare(jet_bin_version, required)
 	local lib_outdated = utils.version_compare(jet_lib_version, required)

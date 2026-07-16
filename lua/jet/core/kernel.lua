@@ -1,5 +1,5 @@
 local manager = require("jet.core.manager")
-local config = require("jet.config")
+local config = require("jet.core.config")
 local utils = require("jet.core.utils")
 
 local augroup = vim.api.nvim_create_augroup("jet.stop.term", { clear = true })

@@ -5,7 +5,7 @@ local M = {}
 ---@field name? string
 
 M.make_path = function(name)
-	return require("jet.config").data.jet_nvim_data_dir .. "/kernels/" .. name .. "/kernel.json"
+	return require("jet.core.config").data.jet_nvim_data_dir .. "/kernels/" .. name .. "/kernel.json"
 end
 
 ---Install a kernelspec in Jet's Neovim data dir
