@@ -21,6 +21,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_id? string
 ---@field session_info? jet.session_info
 ---@field client_id? string
+---@field lsp_port? integer
 ---@field term? jet.term
 ---@field cmd string[]
 ---@field owned boolean
@@ -288,6 +289,37 @@ function Kernel:handle_stream()
 	end)
 end
 
+function Kernel:register_lsp_client()
+	assert(self.lsp_port, "Kernel has no lsp port")
+	assert(self.client_id, "Kernel has no client id")
+	assert(self.spec and self.spec.display_name, "Kernel has no display name")
+	assert(self.filetype, "Kernel has no filetype")
+
+	local clean_name = self.spec.display_name:gsub("%W", "_"):gsub("_+", "_"):gsub("^_+", ""):gsub("_+$", "")
+	self.lsp_name = "jet_" .. clean_name .. "_" .. self.client_id
+
+	local capabilities = vim.lsp.protocol.make_client_capabilities()
+
+	vim.lsp.config(self.lsp_name, {
+		cmd = vim.lsp.rpc.connect("127.0.0.1", self.lsp_port),
+		root_markers = { ".git" },
+		filetypes = { self.filetype },
+		root_dir = ".",
+		capabilities = {
+			general = capabilities.general,
+			textDocument = {
+				completion = capabilities.textDocument.completion,
+				-- hover = {
+				-- 	dynamicRegistration = true,
+				-- 	contentFormat = { constants.MarkupKind.Markdown, constants.MarkupKind.PlainText },
+				-- },
+			},
+		},
+	})
+
+	vim.lsp.enable(self.lsp_name)
+end
+
 ---@param callback? fun(k: jet.kernel)
 function Kernel:start_lua_client(callback)
 	if self:has_lua_client() then
@@ -323,6 +355,7 @@ function Kernel:start_lua_client(callback)
 			return "exit"
 		end
 		if res.status == "ready" then
+			self.lsp_port = res.lsp_port
 			self.client_id = res.client_id
 			self.kernel_info = res.kernel_info
 			self.stream = res.stream
@@ -343,6 +376,8 @@ function Kernel:start_lua_client(callback)
 			end
 
 			self:handle_stream()
+
+			self:register_lsp_client()
 
 			if callback then
 				callback(self)

@@ -277,18 +277,14 @@ function M.maybe_download_jet(callback, has_done_download)
 	-----------------------------------------------------
 	--        Check that version reqts are met         --
 	-----------------------------------------------------
-	-- The last version of jet before the --version flag was added
-	local default_version = "0.0.1"
-
-	local jet_bin_version = vim.system({ bin_path, "--version" }, { text = true })
-		:wait().stdout
-		:match("$jet (%d+%.%d+%.%d+)$") or default_version
+	local stdout = vim.system({ bin_path, "--version" }, { text = true }):wait().stdout
+	local jet_bin_version = vim.trim(stdout):match("^jet (%d+%.%d+%.%d+)$")
 
 	assert(jet_bin_version, "Failed to get Jet binary version from: " .. bin_path)
 
 	local lua_loader = package.loadlib(lib_path, "luaopen_jet")
 	local jet = lua_loader()
-	local jet_lib_version = jet.version and jet.version() or default_version
+	local jet_lib_version = jet.version and jet.version()
 
 	assert(jet_lib_version, "Failed to get Jet library version from: " .. lib_path)
 

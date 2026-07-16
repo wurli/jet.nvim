@@ -46,7 +46,7 @@ M.defaults = {
 
 ---@class jet.data
 M.data = {
-	jet_min_version = "0.0.1",
+	jet_min_version = "0.0.3",
 	jet_binary_path = nil, ---@type string?
 	jet_library_path = nil, ---@type string?
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",

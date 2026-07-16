@@ -6,9 +6,11 @@ A Jupyter kernel supervisor for Neovim, built on top of
 ## Features
 
 *   A REPL which runs in Neovim's built-in terminal
+*   Integration with Jet's LSP server which surfaces completions from the kernel
+    in your Neovim session
 *   A Lua API which gives fine-grained control over running kernels, down to
     the level of individual Jupyter messages
-*   Connect to kernel sessions running outside of Neovim
+*   Ability to connect to kernel sessions running outside of Neovim
 *   Work alongside your favourite AI agent using Jet
 *   Plug and play - No remote plugin stuff. No python requirements. 
 

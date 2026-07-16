@@ -1,14 +1,5 @@
 local M = {}
 
----@class jet.kernel.spec
----@field argv string[]
----@field display_name string
----@field language string
----@field interrupt_mode? "signal" | "message"
----@field env table<string, string>?
----@field metadata table<string, any>
----@field kernel_protocol_version string?
-
 ---@class jet.kernelspec.install.opts
 ---@field path? string
 ---@field name? string
