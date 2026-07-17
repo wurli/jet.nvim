@@ -49,7 +49,8 @@ end
 M.get_expr = function(pos)
 	pos = pos or M.curr_pos()
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
-	local ft_module = M.filetype[vim.bo.filetype]
+	local ft = require("jet.core.send.utils").local_lang_info(pos).filetype
+	local ft_module = M.filetype[ft]
 	if ft_module and ft_module.get_expr then
 		return ft_module.get_expr(pos)
 	end
