@@ -114,6 +114,11 @@ M.setup = function()
 				k:send_lua(args[2], false)
 			end)
 		end
+
+		if args[1] == "install" then
+			local version = args[2] or "latest"
+			return require("jet.core.utils.download").download_jet(version)
+		end
 	end, {
 		desc = "Jet: work with Jupyter kernels",
 		nargs = "*",
