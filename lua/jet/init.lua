@@ -2,6 +2,17 @@ local config = require("jet.core.config")
 
 local M = {}
 
+local jet_quit_augroup = vim.api.nvim_create_augroup("jet.quit", { clear = true })
+
+vim.api.nvim_create_autocmd({ "VimLeave", "UiLeave" }, {
+	group = jet_quit_augroup,
+	callback = function()
+		for _, kernel in pairs(require("jet.core.manager").kernels) do
+			kernel:close()
+		end
+	end,
+})
+
 -- Jet extensions might want to install custom (nvim specific) kernelspecs.
 -- Prepending ~/.local/share/nvim/jet to JUPYTER_PATH means this dir will be
 -- seached first when running Jet from nvim - but not in other contexts.
