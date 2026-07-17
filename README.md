@@ -42,6 +42,10 @@ end
 
 vim.keymap.set("n", "<leader>jp", open_ft("python"), { desc = "Open Python (Jet)" })
 vim.keymap.set("n", "<leader>jr", open_ft("r"), { desc = "Open R (Jet)" })
+
+vim.keymap.set({ "n", "v" }, "<enter>", function()
+	require("jet.core.send").send_auto()
+end, { desc = "Execute code (Jet)" })
 ```
 
 ## Extending jet.nvim
