@@ -58,7 +58,7 @@ M.options = nil
 ---@param options? jet.config
 function M.set(options)
 	if options and options.jet_binary_path then
-		local bin = vim.fn.expand(options.jet_binary_path)
+		local bin = vim.fs.abspath(options.jet_binary_path)
 		assert(type(bin) == "string" and vim.fn.executable(bin) == 1, "jet_binary must be an executable")
 		options.jet_binary_path = bin
 	end

@@ -15,7 +15,7 @@ end
 M.install = function(k, path)
 	local json = vim.json.encode(k, { indent = "    ", sort_keys = true })
 
-	path = vim.fn.expand(path)
+	path = vim.fs.abspath(path)
 
 	local spec_already_exists, existing_json = pcall(vim.fn.readfile, path)
 	if spec_already_exists and existing_json then
