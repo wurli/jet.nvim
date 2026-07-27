@@ -3,9 +3,7 @@ local M = {}
 local FILTER_ARGSPEC = {
 	session_id = "text",
 	spec_path = function()
-		return vim.tbl_map(function(res)
-			return res.path
-		end, require("jet.core.engine").list_kernels())
+		return vim.tbl_map(function(res) return res.path end, require("jet.core.engine").list_kernels())
 	end,
 	filetype = "text",
 	display_name = "text",
@@ -110,9 +108,7 @@ M.setup = function()
 
 		if args[1] == "send" and args[2] then
 			---@param k jet.kernel
-			return api.get_any({}, {}, function(k)
-				k:send_lua(args[2], false)
-			end)
+			return api.get_any({}, {}, function(k) k:send_lua(args[2], false) end)
 		end
 
 		if args[1] == "install" then

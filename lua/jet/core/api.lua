@@ -144,9 +144,7 @@ M.get_inactive = function(filters, init_opts, callback)
 
 	-- Show user the choices even if only 1 kernel available
 	---@param k jet.kernel
-	select_kernel(kernels, "Select a kernel to start", function(k)
-		callback(k)
-	end)
+	select_kernel(kernels, "Select a kernel to start", function(k) callback(k) end)
 end
 
 ---Run `callback()` on a kernel which is running but not connected to Neovim
@@ -166,9 +164,7 @@ M.get_external = function(filters, init_opts, callback)
 	end
 
 	---@param k jet.kernel
-	select_kernel(external, "Select an external kernel to open", function(k)
-		callback(k)
-	end)
+	select_kernel(external, "Select an external kernel to open", function(k) callback(k) end)
 end
 
 ---Run `callback()` on a kernel which is running and connected to Neovim
@@ -189,9 +185,7 @@ M.get_connected = function(filters, callback, silent)
 		callback(matches[1])
 	else
 		---@param k jet.kernel
-		select_kernel(matches, "Select a running kernel to open", function(k)
-			callback(k)
-		end)
+		select_kernel(matches, "Select a running kernel to open", function(k) callback(k) end)
 	end
 end
 
@@ -225,9 +219,7 @@ M.get_any = function(filters, init_opts, callback)
 		end
 	end
 
-	local get_filters = function(f)
-		return vim.tbl_extend("keep", f, filters)
-	end
+	local get_filters = function(f) return vim.tbl_extend("keep", f, filters) end
 
 	local matches1 = M.list_kernels(get_filters({ status = { "connected", "connecting" } }), init_opts)
 

@@ -134,43 +134,23 @@ end
 ---
 ---@param path string
 ---@return string
-M.path_shorten = function(path)
-	return vim.fn.simplify(vim.fn.fnamemodify(path, ":~:."))
-end
+M.path_shorten = function(path) return vim.fn.simplify(vim.fn.fnamemodify(path, ":~:.")) end
 
-M.path_normalise = function(path)
-	return vim.fs.abspath(vim.fs.normalize(path))
-end
+M.path_normalise = function(path) return vim.fs.abspath(vim.fs.normalize(path)) end
 
 ---@param x string
 ---@param y string
 ---@return boolean
-M.path_eq = function(x, y)
-	return M.path_normalise(x) == M.path_normalise(y)
-end
+M.path_eq = function(x, y) return M.path_normalise(x) == M.path_normalise(y) end
 
 ---@return string[]
-M.get_all_filetypes = function()
-	return vim.fn.getcompletion("", "filetype")
-end
+M.get_all_filetypes = function() return vim.fn.getcompletion("", "filetype") end
 
-M.log_debug = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.DEBUG, {})
-end
-M.log_error = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.ERROR, {})
-end
-M.log_info = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.INFO, {})
-end
-M.log_off = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.OFF, {})
-end
-M.log_trace = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.TRACE, {})
-end
-M.log_warn = function(msg, ...)
-	vim.notify("[jet] " .. msg:format(...), vim.log.levels.WARN, {})
-end
+M.log_debug = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.DEBUG, {}) end
+M.log_error = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.ERROR, {}) end
+M.log_info = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.INFO, {}) end
+M.log_off = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.OFF, {}) end
+M.log_trace = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.TRACE, {}) end
+M.log_warn = function(msg, ...) vim.notify("[jet] " .. msg:format(...), vim.log.levels.WARN, {}) end
 
 return M

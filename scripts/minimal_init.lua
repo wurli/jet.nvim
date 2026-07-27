@@ -11,9 +11,7 @@ if #vim.api.nvim_list_uis() == 0 then
 	vim.opt.runtimepath:prepend("deps/mini.nvim")
 	require("mini.test").setup({
 		collect = {
-			find_files = function()
-				return vim.fn.globpath("tests", "test_*.lua", true, true)
-			end,
+			find_files = function() return vim.fn.globpath("tests", "test_*.lua", true, true) end,
 		},
 		execute = {
 			reporter = require("mini.test").gen_reporter.stdout({ quit_on_finish = true }),

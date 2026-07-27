@@ -11,8 +11,11 @@ M.curl = function(args, callback)
 			error("curl call failed with code " .. res.code .. ":\n  " .. res.stderr)
 		end
 
+		assert(res.stdout, "curl call returned no stdout")
+
 		local ok, json = pcall(vim.json.decode, res.stdout, { luanil = { object = true, array = true } })
 
+		---@diagnostic disable-next-line: param-type-mismatch
 		callback(ok and json or nil, res.stdout)
 	end)
 end
@@ -42,6 +45,7 @@ M.jet_resource_paths = function(dir)
 	local jet_bin_path
 	for file, type in vim.fs.dir(bin_dir) do
 		if type == "file" and file:match("jet") then
+			---@diagnostic disable-next-line: unnecessary-if
 			if jet_bin_path then
 				error("Multiple files found in jet bin directory: " .. bin_dir)
 			else
@@ -53,6 +57,7 @@ M.jet_resource_paths = function(dir)
 	local jet_lib_path
 	for file, type in vim.fs.dir(lib_dir) do
 		if type == "file" and file:match("jet") then
+			---@diagnostic disable-next-line: unnecessary-if
 			if jet_lib_path then
 				error("Multiple files found in jet lib directory: " .. lib_dir)
 			else
@@ -99,14 +104,14 @@ end
 ---@param callback fun(urls: string[])
 local get_jet_download_urls = function(version, callback)
 	M.curl({ "-s", "https://api.github.com/repos/wurli/jet/releases" }, function(res)
+		assert(res, "Failed to get releases from wurli/jet")
+
 		assert(res[1], "No releases found for wurli/jet")
 
 		-- Determine the release to use ----------------
 		local release
 		if version == "latest" then
-			table.sort(res, function(a, b)
-				return not utils.version_compare(a.tag_name, b.tag_name)
-			end)
+			table.sort(res, function(a, b) return not utils.version_compare(a.tag_name, b.tag_name) end)
 			release = res[1]
 		else
 			if not version:match("^v") then
@@ -126,13 +131,9 @@ local get_jet_download_urls = function(version, callback)
 		end
 
 		-- Get the urls for the release ----------------
-		local urls = vim.tbl_map(function(res)
-			return res.browser_download_url
-		end, release.assets)
+		local urls = vim.tbl_map(function(r) return r.browser_download_url end, release.assets)
 
-		vim.schedule(function()
-			callback(urls)
-		end)
+		vim.schedule(function() callback(urls) end)
 	end)
 end
 
@@ -140,17 +141,14 @@ end
 local get_jet_urls_for_system = function(urls)
 	local system_string = M.get_system_string()
 
-	local system_urls = vim.tbl_filter(function(url)
-		return url:find(system_string, 0, true) and url:match("%.tar%.gz$")
-	end, urls)
+	local system_urls = vim.tbl_filter(
+		function(url) return url:find(system_string, 0, true) and url:match("%.tar%.gz$") end,
+		urls
+	)
 
-	local bin_urls = vim.tbl_filter(function(url)
-		return url:match("jet%-")
-	end, system_urls)
+	local bin_urls = vim.tbl_filter(function(url) return url:match("jet%-") end, system_urls)
 
-	local lib_urls = vim.tbl_filter(function(url)
-		return url:match("jet_lua%-")
-	end, system_urls)
+	local lib_urls = vim.tbl_filter(function(url) return url:match("jet_lua%-") end, system_urls)
 
 	if #bin_urls == 0 then
 		error("No download URLs found for binary")
@@ -218,7 +216,7 @@ local download_jet = function(version, dir, callback)
 end
 
 ---@param callback? fun(opts: { bin_path: string, lib_path: string })
----@param has_done_download boolean
+---@param has_done_download? boolean
 function M.maybe_download_jet(callback, has_done_download)
 	local config = require("jet.core.config").options
 	local path_defaults = M.jet_resource_paths()
@@ -265,9 +263,7 @@ function M.maybe_download_jet(callback, has_done_download)
 		utils.input_key("Install jet?", { "y", "n" }, function(choice)
 			if choice == "y" then
 				-- Download and then re-call this function to make sure we all good
-				download_jet("latest", path_defaults.dir, function()
-					M.maybe_download_jet(callback, true)
-				end)
+				download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet is required for this plugin! Use `:Jet install` to download a release.")
@@ -303,9 +299,7 @@ function M.maybe_download_jet(callback, has_done_download)
 		local msg = string.format("Jet binary and/or library is less than required version %s. Update?", required)
 		utils.input_key(msg, { "y", "n" }, function(choice)
 			if choice == "y" then
-				download_jet("latest", path_defaults.dir, function()
-					M.maybe_download_jet(callback, true)
-				end)
+				download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet binary and/or library is outdated. Use `:Jet install` to download a release.")

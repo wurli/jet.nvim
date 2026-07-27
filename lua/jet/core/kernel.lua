@@ -98,9 +98,10 @@ function Kernel:get_win()
 		return nil
 	end
 
-	return vim.tbl_filter(function(w)
-		return vim.api.nvim_win_get_buf(w) == self.term.buf
-	end, vim.api.nvim_tabpage_list_wins(0))[1]
+	return vim.tbl_filter(
+		function(w) return vim.api.nvim_win_get_buf(w) == self.term.buf end,
+		vim.api.nvim_tabpage_list_wins(0)
+	)[1]
 end
 
 function Kernel:toggle_term()
@@ -163,9 +164,7 @@ function Kernel:create_term(callback)
 		vim.api.nvim_create_autocmd("BufWipeout", {
 			buffer = term_buf,
 			group = augroup,
-			callback = function()
-				self:close()
-			end,
+			callback = function() self:close() end,
 		})
 
 		-- buf_call since the buf is not yet attached to a window.
@@ -202,9 +201,7 @@ function Kernel:create_term(callback)
 			vim.api.nvim_create_autocmd("TermEnter", {
 				buffer = self.term.buf,
 				group = augroup,
-				callback = function()
-					self:set_as_filetype_primary()
-				end,
+				callback = function() self:set_as_filetype_primary() end,
 			})
 		end
 
@@ -241,9 +238,7 @@ function Kernel:set_as_filetype_primary()
 end
 
 ---@return boolean
-function Kernel:has_lua_client()
-	return self.client_id ~= nil
-end
+function Kernel:has_lua_client() return self.client_id ~= nil end
 
 function Kernel:handle_stream()
 	---@param msg jet.jupyter.msg

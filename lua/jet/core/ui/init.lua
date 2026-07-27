@@ -39,9 +39,7 @@ end
 ---@generic T
 ---@param data T
 ---@return jet.ui.line<T>
-local function new_line(data)
-	return setmetatable({ data = data }, line)
-end
+local function new_line(data) return setmetatable({ data = data }, line) end
 
 ---@param data jet.kernel
 local active_kernel_line = function(data)
@@ -169,12 +167,8 @@ local list_kernel_groups = function()
 	end)
 
 	for _, running in pairs(out) do
-		table.sort(running.connected, function(a, b)
-			return a.session_id < b.session_id
-		end)
-		table.sort(running.external, function(a, b)
-			return a.session_id < b.session_id
-		end)
+		table.sort(running.connected, function(a, b) return a.session_id < b.session_id end)
+		table.sort(running.external, function(a, b) return a.session_id < b.session_id end)
 	end
 
 	return out
@@ -244,18 +238,14 @@ M.show = function()
 	----------------------------------------------
 	--                  Keymaps                 --
 	----------------------------------------------
-	vim.keymap.set("n", "q", function()
-		vim.api.nvim_win_close(0, true)
-	end)
+	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end)
 
 	----------------------------------------------
 	--               Display Buffer             --
 	----------------------------------------------
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
-	local scale = function(x, y)
-		return math.floor(x * y)
-	end
+	local scale = function(x, y) return math.floor(x * y) end
 	vim.api.nvim_open_win(buf, true, {
 		relative = "editor",
 		width = scale(screen_width, 0.8),

@@ -16,9 +16,7 @@ end
 ---@return jet.kernel[]
 function Manager:get_ft_all(ft)
 	---@param k jet.kernel
-	return vim.tbl_filter(function(k)
-		return k.filetype == ft
-	end, self.kernels)
+	return vim.tbl_filter(function(k) return k.filetype == ft end, self.kernels)
 end
 
 ---@param ft string

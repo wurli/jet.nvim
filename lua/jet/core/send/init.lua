@@ -37,9 +37,10 @@ M.send_auto = function(r, move_cursor)
 		local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
 		local _, commentstring = lang_info.filetype, lang_info.commentstring
 
-		local code_filtered = vim.tbl_filter(function(line)
-			return line:match("%S") ~= nil and not utils.is_comment(line, commentstring)
-		end, text)
+		local code_filtered = vim.tbl_filter(
+			function(line) return line:match("%S") ~= nil and not utils.is_comment(line, commentstring) end,
+			text
+		)
 
 		if #code_filtered == 0 then
 			return
@@ -66,9 +67,7 @@ M.send_auto = function(r, move_cursor)
 end
 
 M.send_motion = function()
-	return require("jet.core.send.get_code").get_motion(function(rng)
-		M.send_auto(rng, false)
-	end)
+	return require("jet.core.send.get_code").get_motion(function(rng) M.send_auto(rng, false) end)
 end
 
 return M
