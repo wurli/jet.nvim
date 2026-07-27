@@ -11,6 +11,8 @@
 -- so this scenario is reached when callers use `jobstart` directly —
 -- exactly what the bug report described. We reproduce it here.
 
+local MiniTest = require("mini.test")
+
 local new_set = MiniTest.new_set
 local expect = MiniTest.expect
 

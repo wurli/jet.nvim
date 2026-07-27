@@ -8,7 +8,8 @@
 	},
 	"workspace": {
 		"library": [
-			"$VIMRUNTIME"
+			"$VIMRUNTIME",
+			"./deps"
 		],
 		"ignoreDir": [ 
 		    "deps"

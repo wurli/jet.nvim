@@ -4,6 +4,7 @@
 -- be evaluated one at a time. The bug: only the first line ever made it
 -- into the REPL because the list lacked a trailing "" to force the final
 -- newline (per the chansend contract).
+local MiniTest = require("mini.test")
 
 local new_set = MiniTest.new_set
 
