@@ -6,7 +6,7 @@ local M = {}
 ---filetypes and commentstrings, then match these against kernel filetypes
 ---until we find a match. Don't do this until it's clear that it's a real issue.
 ---@param pos? jet.send.Pos
----@return { filetype: string, commentstring: string }
+---@return { filetype?: string, commentstring?: string }
 M.local_lang_info = function(pos)
 	local pos = pos or require("jet.core.send.get_code").curr_pos()
 	local buf_ft = vim.bo[pos.buf].filetype

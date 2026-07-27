@@ -217,7 +217,7 @@ local download_jet = function(version, dir, callback)
 	end)
 end
 
----@param callback? fun({ bin_path: string, lib_path: string })
+---@param callback? fun(opts: { bin_path: string, lib_path: string })
 ---@param has_done_download boolean
 function M.maybe_download_jet(callback, has_done_download)
 	local config = require("jet.core.config").options
