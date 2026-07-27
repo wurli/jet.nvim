@@ -72,9 +72,18 @@ M.local_lang_info = function(pos)
 end
 
 ---@param text string
----@param commentstring string
+---@param commentstring? string
 M.is_comment = function(text, commentstring)
+	-- Happens reasonably often, so worth checking here for convenience
+	if not commentstring or commentstring == "" then
+		return false
+	end
+
 	local cs_left, cs_right = commentstring:match("^(.-)%s*%%s%s*(.-)$")
+
+	if not (cs_left and cs_right) then
+		return false
+	end
 
 	local startswith = function(s, prefix)
 		if #prefix == 0 then
@@ -97,6 +106,10 @@ end
 ---@return integer? 1-indexed line number
 M.next_significant_line = function(pos)
 	local lang_info = M.local_lang_info(pos)
+	if not lang_info.commentstring then
+		return nil
+	end
+
 	local cur_line = pos.row
 
 	while true do

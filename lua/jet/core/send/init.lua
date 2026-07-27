@@ -16,35 +16,35 @@ end
 ---@param r jet.send.Range?
 ---@param move_cursor boolean?
 M.send_auto = function(r, move_cursor)
-	move_cursor = move_cursor == nil and true or false
+	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
+		move_cursor = move_cursor == nil and true or false
 
-	if not r then
-		local curr_row = vim.fn.line(".") - 1
-		local expr_row = utils.next_significant_line({ buf = 0, row = curr_row - 1, col = 0 }) or curr_row
-		r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
 		if not r then
+			local curr_row = vim.fn.line(".") - 1
+			local expr_row = utils.next_significant_line({ buf = 0, row = curr_row - 1, col = 0 }) or curr_row
+			r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
+			if not r then
+				return
+			end
+		end
+
+		local text = vim.api.nvim_buf_get_text(r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
+
+		if #text == 0 then
 			return
 		end
-	end
 
-	local text = vim.api.nvim_buf_get_text(r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
+		local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
+		local _, commentstring = lang_info.filetype, lang_info.commentstring
 
-	if #text == 0 then
-		return
-	end
+		local code_filtered = vim.tbl_filter(function(line)
+			return line:match("%S") ~= nil and not utils.is_comment(line, commentstring)
+		end, text)
 
-	local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
-	local ft, commentstring = lang_info.filetype, lang_info.commentstring
+		if #code_filtered == 0 then
+			return
+		end
 
-	local code_filtered = vim.tbl_filter(function(line)
-		return line:match("%S") ~= nil and not utils.is_comment(line, commentstring)
-	end, text)
-
-	if #code_filtered == 0 then
-		return
-	end
-
-	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
 		table.insert(code_filtered, "")
 		k:send_repl(code_filtered)
 
@@ -62,7 +62,7 @@ M.send_auto = function(r, move_cursor)
 			local esc_termcode = "\27"
 			vim.api.nvim_feedkeys(esc_termcode, "n", false)
 		end
-	end)
+	end, true)
 end
 
 M.send_motion = function()

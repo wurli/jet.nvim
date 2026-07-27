@@ -175,14 +175,16 @@ end
 ---
 ---@param filters? jet.api.list_kernels.filters
 ---@param callback fun(k: jet.kernel)
-M.get_connected = function(filters, callback)
+M.get_connected = function(filters, callback, silent)
 	filters = filters or {}
 	filters.status = { "connected" }
 
 	local matches = M.list_kernels(filters)
 
 	if #matches == 0 then
-		vim.notify("No running kernels to attach to", vim.log.levels.WARN)
+		if not silent then
+			vim.notify("No running kernels to attach to", vim.log.levels.WARN)
+		end
 	elseif #matches == 1 then
 		callback(matches[1])
 	else
