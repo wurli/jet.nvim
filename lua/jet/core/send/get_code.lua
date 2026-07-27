@@ -51,6 +51,7 @@ M.get_expr = function(pos)
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
 	local ft = require("jet.core.send.utils").local_lang_info(pos).filetype
 	local ft_module = M.filetype[ft]
+	---@diagnostic disable-next-line: unnecessary-if
 	if ft_module and ft_module.get_expr then
 		return ft_module.get_expr(pos)
 	end

@@ -73,6 +73,7 @@ M.poll = function(callback, handler, opts)
 				return
 			elseif action == "wait" then
 				return vim.defer_fn(run, opts.interval or 50)
+			---@diagnostic disable-next-line: unnecessary-if
 			elseif action ~= "continue" then
 				-- If we've got a valid result, process it and then and then
 				-- immediately (i.e. with no delay) poll again.

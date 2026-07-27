@@ -8,7 +8,7 @@ local M = {}
 ---@param pos? jet.send.Pos
 ---@return { filetype?: string, commentstring?: string }
 M.local_lang_info = function(pos)
-	local pos = pos or require("jet.core.send.get_code").curr_pos()
+	pos = pos or require("jet.core.send.get_code").curr_pos()
 	local buf_ft = vim.bo[pos.buf].filetype
 	local buf_cs = vim.bo[pos.buf].commentstring
 

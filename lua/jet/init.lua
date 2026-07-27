@@ -4,7 +4,7 @@ local M = {}
 
 local jet_quit_augroup = vim.api.nvim_create_augroup("jet.quit", { clear = true })
 
-vim.api.nvim_create_autocmd({ "VimLeave", "UiLeave" }, {
+vim.api.nvim_create_autocmd({ "VimLeave", "UILeave" }, {
 	group = jet_quit_augroup,
 	callback = function()
 		for _, kernel in pairs(require("jet.core.manager").kernels) do

@@ -1,3 +1,4 @@
+---@diagnostic disable-next-line: missing-fields
 ---@type jet.getcode
 local M = {}
 
