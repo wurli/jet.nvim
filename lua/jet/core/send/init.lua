@@ -16,37 +16,38 @@ end
 ---@param r jet.send.Range?
 ---@param move_cursor boolean?
 M.send_auto = function(r, move_cursor)
-	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
-		move_cursor = move_cursor == nil and true or false
+	move_cursor = move_cursor == nil and true or false
 
+	if not r then
+		local curr_row = vim.fn.line(".") - 1
+		local expr_row = utils.next_significant_line({ buf = 0, row = curr_row - 1, col = 0 }) or curr_row
+		r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
 		if not r then
-			local curr_row = vim.fn.line(".") - 1
-			local expr_row = utils.next_significant_line({ buf = 0, row = curr_row - 1, col = 0 }) or curr_row
-			r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
-			if not r then
-				return
-			end
-		end
-
-		local text = vim.api.nvim_buf_get_text(r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
-
-		if #text == 0 then
 			return
 		end
+	end
 
-		local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
-		local _, commentstring = lang_info.filetype, lang_info.commentstring
+	local text = vim.api.nvim_buf_get_text(r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
 
-		local code_filtered = vim.tbl_filter(
-			function(line) return line:match("%S") ~= nil and not utils.is_comment(line, commentstring) end,
-			text
-		)
+	if #text == 0 then
+		return
+	end
 
-		if #code_filtered == 0 then
-			return
-		end
+	local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
+	local ft, commentstring = lang_info.filetype, lang_info.commentstring
 
-		table.insert(code_filtered, "")
+	local code_filtered = vim.tbl_filter(
+		function(line) return line:match("%S") ~= nil and not utils.is_comment(line, commentstring) end,
+		text
+	)
+
+	if #code_filtered == 0 then
+		return
+	end
+
+	table.insert(code_filtered, "")
+
+	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
 		k:send_repl(code_filtered)
 
 		if move_cursor then
