@@ -175,27 +175,29 @@ local download_and_unpack = function(url, dest_dir, callback)
 
 	local download_path = vim.fn.tempname() .. ".tar.gz"
 
-	M.curl({ url, "-sL", "-o", download_path }, function(res)
+	M.curl({ url, "-sL", "-o", download_path }, function()
 		vim.fs.rm(dest_dir, { recursive = true, force = true })
 		mkdir(dest_dir)
-		vim.system({ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" }, {
-			text = true,
-		}, function(res)
-			if res.code ~= 0 then
-				error("Failed to unpack tarball: " .. res.stderr)
+		vim.system(
+			{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
+			{ text = true },
+			function(res)
+				if res.code ~= 0 then
+					error("Failed to unpack tarball: " .. res.stderr)
+				end
+				if callback then
+					callback()
+				end
 			end
-			if callback then
-				callback()
-			end
-		end)
+		)
 	end)
 end
 
 ---@param version string either `"latest"` or a version like `"v0.0.1"`
 ---@param dir? string
 ---@param callback? fun()
-local download_jet = function(version, dir, callback)
-	local urls = get_jet_download_urls(version, function(urls)
+M.download_jet = function(version, dir, callback)
+	get_jet_download_urls(version, function(urls)
 		local system_urls = get_jet_urls_for_system(urls)
 		local dests = M.jet_resource_paths(dir)
 
@@ -210,8 +212,8 @@ local download_jet = function(version, dir, callback)
 			end
 		end)
 
-		download_and_unpack(system_urls.bin_url, dests.bin_dir, on_done)
-		download_and_unpack(system_urls.lib_url, dests.lib_dir, on_done)
+		download_and_unpack(system_urls.bin_url, dests.dir .. "/bin", on_done)
+		download_and_unpack(system_urls.lib_url, dests.dir .. "/lib", on_done)
 	end)
 end
 
@@ -263,7 +265,7 @@ function M.maybe_download_jet(callback, has_done_download)
 		utils.input_key("Install jet?", { "y", "n" }, function(choice)
 			if choice == "y" then
 				-- Download and then re-call this function to make sure we all good
-				download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
+				M.download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet is required for this plugin! Use `:Jet install` to download a release.")
@@ -275,12 +277,18 @@ function M.maybe_download_jet(callback, has_done_download)
 	-----------------------------------------------------
 	--        Check that version reqts are met         --
 	-----------------------------------------------------
+	assert(bin_path, "Could not resolve Jet binary path")
+	assert(lib_path, "Could not resolve Jet library path")
+
 	local stdout = vim.system({ bin_path, "--version" }, { text = true }):wait().stdout
+	assert(stdout, "Failed to get Jet binary version from " .. bin_path)
+
 	local jet_bin_version = vim.trim(stdout):match("^jet (%d+%.%d+%.%d+)$")
 
 	assert(jet_bin_version, "Failed to get Jet binary version from " .. bin_path .. ". Output: " .. stdout)
 
 	local lua_loader = package.loadlib(lib_path, "luaopen_jet")
+	assert(lua_loader, "Failed to load Jet library at " .. lib_path)
 	local jet = lua_loader()
 	local jet_lib_version = jet.version and jet.version()
 
@@ -299,7 +307,7 @@ function M.maybe_download_jet(callback, has_done_download)
 		local msg = string.format("Jet binary and/or library is less than required version %s. Update?", required)
 		utils.input_key(msg, { "y", "n" }, function(choice)
 			if choice == "y" then
-				download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
+				M.download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet binary and/or library is outdated. Use `:Jet install` to download a release.")
@@ -308,7 +316,9 @@ function M.maybe_download_jet(callback, has_done_download)
 		return
 	end
 
-	callback({ bin_path = bin_path, lib_path = lib_path })
+	if callback then
+		callback({ bin_path = bin_path, lib_path = lib_path })
+	end
 end
 
 -- download_jet("latest", "/Users/JACOB.SCOTT1/Repos/jet/tmp/")

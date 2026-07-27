@@ -287,6 +287,7 @@ end
 function Kernel:register_lsp_client()
 	assert(self.lsp_port, "Kernel has no lsp port")
 	assert(self.client_id, "Kernel has no client id")
+	---@diagnostic disable-next-line: unnecessary-assert
 	assert(self.spec and self.spec.display_name, "Kernel has no display name")
 	assert(self.filetype, "Kernel has no filetype")
 
@@ -303,7 +304,7 @@ function Kernel:register_lsp_client()
 		capabilities = {
 			general = capabilities.general,
 			textDocument = {
-				completion = capabilities.textDocument.completion,
+				completion = (capabilities.textDocument or {}).completion,
 				-- hover = {
 				-- 	dynamicRegistration = true,
 				-- 	contentFormat = { constants.MarkupKind.Markdown, constants.MarkupKind.PlainText },
