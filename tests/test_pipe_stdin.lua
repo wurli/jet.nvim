@@ -16,9 +16,6 @@ local MiniTest = require("mini.test")
 local new_set = MiniTest.new_set
 local expect = MiniTest.expect
 
-local KERNEL_JSON = os.getenv("JET_KERNEL_JSON")
-assert(KERNEL_JSON, "JET_KERNEL_JSON env var must be set to a kernel.json path")
-
 local child = MiniTest.new_child_neovim()
 
 local T = new_set({
@@ -32,8 +29,7 @@ T["chansend over plain pipe stdin delivers every line"] = function()
 	-- jobstart's on_stdout/on_stderr callbacks are functions, which can't
 	-- cross the RPC boundary — they have to be created inside the child.
 	-- Everything else (chansend, polling _G.output) goes through redirectors.
-	child.lua(
-		[[
+	child.lua([[
 			_G.output = {}
 			local function collect(_, data, _)
 				for _, l in ipairs(data) do table.insert(_G.output, l) end
@@ -42,9 +38,7 @@ T["chansend over plain pipe stdin delivers every line"] = function()
 				on_stdout = collect,
 				on_stderr = collect,
 			})
-		]],
-		{ KERNEL_JSON }
-	)
+		]])
 
 	local job_id = child.lua_get("_G.job_id")
 	expect.no_equality(job_id, 0)

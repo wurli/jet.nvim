@@ -8,9 +8,6 @@ local MiniTest = require("mini.test")
 
 local new_set = MiniTest.new_set
 
-local KERNEL_JSON = os.getenv("JET_KERNEL_JSON")
-assert(KERNEL_JSON, "JET_KERNEL_JSON env var must be set to a kernel.json path")
-
 local child = MiniTest.new_child_neovim()
 
 local T = new_set({
@@ -24,17 +21,14 @@ local T = new_set({
 })
 
 local run_send = function()
-	child.lua(
-		[[
+	child.lua([[
 			local Kernel = require("jet.core.kernel")
 			_G.kernel = Kernel.init_owned({ spec_path = ..., session_name = "minitest" })
 			_G.kernel:open_term(function()
 				vim.uv.sleep(500)
 				_G.kernel:send_repl({ "print('first line')", "print('second line')" })
 			end)
-		]],
-		{ KERNEL_JSON }
-	)
+		]])
 
 	local TERM_TEXT = [[
 		_G.kernel and _G.kernel.term
@@ -63,12 +57,12 @@ local run_send = function()
 end
 
 T["send_repl with send_by_expr=false delivers every line"] = function()
-	child.lua([[ require("jet.config").options.send.send_by_expr = false ]])
+	child.lua([[ require("jet.core.config").options.send.send_by_expr = false ]])
 	run_send()
 end
 
 T["send_repl with send_by_expr=true delivers every line"] = function()
-	child.lua([[ require("jet.config").options.send.send_by_expr = true ]])
+	child.lua([[ require("jet.core.config").options.send.send_by_expr = true ]])
 	run_send()
 end
 
