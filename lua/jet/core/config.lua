@@ -55,7 +55,7 @@ M.data = {
 ---@type jet.config
 M.options = nil
 
----@param options? jet.config
+---@param options? Partial<jet.config>
 function M.set(options)
 	if options and options.jet_binary_path then
 		local bin = vim.fs.abspath(options.jet_binary_path)
