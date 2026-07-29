@@ -59,8 +59,9 @@ end
 ---	- handler: function(result) - called with the result of the callback, should return
 ---	    either "exit", "continue", or "wait" to control the polling behavior
 ---
----@param callback fun(): any
----@param handler fun(result): nil | "wait" | "continue" | "exit"
+---@generic T
+---@param callback fun(): T
+---@param handler fun(res: T): nil | "wait" | "continue" | "exit"
 ---@param opts? { interval?: integer }
 M.poll = function(callback, handler, opts)
 	opts = opts or {}
