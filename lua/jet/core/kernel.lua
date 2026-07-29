@@ -177,6 +177,7 @@ function Kernel:create_term(callback)
 				"--banner",
 				"--session-name",
 				"nvim",
+				"--no-graphics",
 				config.options.send.send_by_expr and "--no-indent" or nil,
 			}, {
 				term = true,
@@ -268,7 +269,6 @@ function Kernel:handle_stream()
 		end
 	end
 
-	---@param res jet.kernel.response
 	utils.poll(self.stream, function(res)
 		if not res then
 			return "exit"
