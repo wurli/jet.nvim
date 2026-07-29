@@ -4,7 +4,7 @@
 
 ---@class jet.getcode
 local M = {
-	---@type table<string, jet.getcode>
+	---@type table<string, Partial<jet.getcode>>
 	filetype = {
 		markdown = require("jet.core.send.markdown"),
 	},
@@ -44,10 +44,9 @@ M.get_auto = function(pos)
 	return M.get_expr(pos)
 end
 
----@param pos jet.send.Pos?
+---@param pos jet.send.Pos
 ---@return jet.send.Range?
 M.get_expr = function(pos)
-	pos = pos or M.curr_pos()
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
 	local ft = require("jet.core.send.utils").local_lang_info(pos).filetype
 	local ft_module = M.filetype[ft]
@@ -59,10 +58,9 @@ M.get_expr = function(pos)
 	return M.get_line(pos)
 end
 
----@param pos jet.send.Pos?
+---@param pos jet.send.Pos
 ---@return jet.send.Range?
 M.get_line = function(pos)
-	pos = pos or M.curr_pos()
 	local line = vim.api.nvim_buf_get_lines(pos.buf, pos.row, pos.row + 1, false)[1]
 	if not line then
 		return
