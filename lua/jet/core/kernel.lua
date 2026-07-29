@@ -444,17 +444,32 @@ function Kernel:close()
 	self:delete_term_buffer()
 
 	if self.owned and config.options.stop_on_buf_wipeout then
-		local ok, err = pcall(require("jet.core.engine").stop, self.session_id)
-		if ok then
-			utils.log_info("Stopped kernel '%s'", self.spec.display_name)
-		else
-			utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, vim.inspect(err))
+		self:stop(function(success, failure_msg)
+			if success then
+				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			else
+				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
+			end
+		end)
+		for _, hook in ipairs(config.options.hooks.on_kernel_close) do
+			hook(self)
 		end
 	end
+end
 
-	for _, hook in ipairs(config.options.hooks.on_kernel_close) do
-		hook(self)
-	end
+---@param callback fun(success: boolean, failure_msg?: string)
+function Kernel:stop(callback)
+	assert(self.session_id, "Kernel has no session id")
+
+	utils.poll(require("jet.core.engine").stop(self.session_id), function(res)
+		if not res then
+			return "exit"
+		elseif res.status == "pending" then
+			return "wait"
+		else
+			callback(res.success, res.failure_msg)
+		end
+	end)
 end
 
 ---@class jet.kernel.comm_open.opts
