@@ -120,13 +120,13 @@ end
 local keymaps_line = function()
 	local out = new_line(nil)
 	out.parts = {
-		{ "[<Enter>] Open (auto)", "OkMsg" },
+		{ " Open (<cr>) ", "JetButton" },
 		{ "  " },
-		{ "[n] New session", "OkMsg" },
+		{ " New session (n) ", "JetButton" },
 		{ "  " },
-		{ "[x] Shut down", "OkMsg" },
+		{ " Shut down (x) ", "JetButton" },
 		{ "  " },
-		{ "[q] Quit", "OkMsg" },
+		{ " Quit (q) ", "JetButton" },
 	}
 	return out
 end
@@ -219,7 +219,26 @@ local kernel_lines = function()
 	return lines
 end
 
+---``` lua
+---for s, e in gfind("Hello, world!", "He(ll)o") do
+---  vim.print({ s, e }) -- prints 5 5 and then 8 8
+---end
+---```
+local gfind = function(string, pattern)
+	local start = 1
+	---@return integer?, integer?
+	return function()
+		local s, e = string:find(pattern, start)
+		if s then
+			start = e + 1
+			return s, e
+		end
+	end
+end
+
 M.show = function()
+	require("jet.core.ui.colours").setup()
+
 	----------------------------------------------
 	--               Write lines                --
 	----------------------------------------------
@@ -235,12 +254,12 @@ M.show = function()
 		table.insert(lines, l)
 	end
 
+	local buf = vim.api.nvim_create_buf(false, true)
+
 	for _, l in ipairs(lines) do
 		l:refresh()
 		table.insert(l.parts, 1, { "    " })
 	end
-
-	local buf = vim.api.nvim_create_buf(false, true)
 
 	local text = {} ---@type string[]
 	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
@@ -255,6 +274,13 @@ M.show = function()
 		for _, mark in ipairs(marks) do
 			vim.api.nvim_buf_set_extmark(buf, ns, lnum - 1, mark[1], mark[2])
 		end
+	end
+
+	for match_start, match_end in gfind(text[4], "%(.-%)") do
+		vim.api.nvim_buf_set_extmark(buf, ns, 3, match_start - 1, {
+			end_col = match_end,
+			hl_group = "JetSpecial",
+		})
 	end
 
 	----------------------------------------------
