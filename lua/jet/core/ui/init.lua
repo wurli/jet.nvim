@@ -27,13 +27,36 @@ local ns = vim.api.nvim_create_namespace("jet.ui")
 ---@generic T
 ---@class jet.ui.line<T>
 ---@field data T
----@field parts { [1]: string, [2]: string? }[]
----@field refresh fun(self)
+---@field parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
 local line = {}
 line.__index = line
 
 function line.refresh()
 	-- Default implementation does nothing
+end
+
+function line:resolve()
+	local text = ""
+	---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[]
+	local marks = {}
+	for _, part in ipairs(self.parts) do
+		local start_col = #text
+		text = text .. part[1]
+		if part[2] then
+			---@type vim.api.keyset.set_extmark
+			local opts = { end_col = #text }
+
+			if type(part[2]) == "string" then
+				opts.hl_group = part[2]
+			elseif type(part[2]) == "table" then
+				opts = vim.tbl_extend("force", opts, part[2])
+			end
+
+			table.insert(marks, { start_col, opts })
+		end
+	end
+
+	return text, marks
 end
 
 ---@generic T
@@ -174,20 +197,10 @@ local list_kernel_groups = function()
 	return out
 end
 
-M.show = function()
+---@return jet.ui.line<jet.kernel>[]
+local kernel_lines = function()
 	local groups = list_kernel_groups()
-
-	----------------------------------------------
-	--               Write lines                --
-	----------------------------------------------
-	local lines = {
-		header_line(),
-		url_line(),
-		blank_line(),
-		keymaps_line(),
-		blank_line(),
-	}
-
+	local lines = {}
 	for _, group in ipairs(groups) do
 		table.insert(lines, kernel_info_line(group))
 		local any_connected = false
@@ -203,36 +216,45 @@ M.show = function()
 			table.insert(lines, blank_line())
 		end
 	end
+	return lines
+end
+
+M.show = function()
+	----------------------------------------------
+	--               Write lines                --
+	----------------------------------------------
+	local lines = {
+		header_line(),
+		url_line(),
+		blank_line(),
+		keymaps_line(),
+		blank_line(),
+	}
+
+	for _, l in ipairs(kernel_lines()) do
+		table.insert(lines, l)
+	end
+
+	for _, l in ipairs(lines) do
+		l:refresh()
+		table.insert(l.parts, 1, { "    " })
+	end
 
 	local buf = vim.api.nvim_create_buf(false, true)
 
-	---@type { lnum: integer, start_col: integer, end_col: integer, hl: string }[]
-	local extmarks = {}
-	---@type string[]
-	local text = {}
-	for lnum, l in ipairs(lines) do
-		l:refresh()
-		local line_text = "    "
-		for _, part in ipairs(l.parts) do
-			line_text = line_text .. part[1]
-			if part[2] then
-				table.insert(extmarks, {
-					lnum = lnum,
-					end_col = #line_text,
-					start_col = #line_text - #part[1],
-					hl = part[2],
-				})
-			end
-		end
+	local text = {} ---@type string[]
+	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
+	for _, l in ipairs(lines) do
+		local line_text, line_extmarks = l:resolve()
 		table.insert(text, line_text)
+		table.insert(extmarks, line_extmarks)
 	end
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, text)
-	for _, mark in ipairs(extmarks) do
-		vim.api.nvim_buf_set_extmark(buf, ns, mark.lnum - 1, mark.start_col, {
-			end_col = mark.end_col,
-			hl_group = mark.hl,
-		})
+	for lnum, marks in ipairs(extmarks) do
+		for _, mark in ipairs(marks) do
+			vim.api.nvim_buf_set_extmark(buf, ns, lnum - 1, mark[1], mark[2])
+		end
 	end
 
 	----------------------------------------------
