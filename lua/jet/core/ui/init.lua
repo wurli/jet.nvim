@@ -27,6 +27,7 @@ local ns = vim.api.nvim_create_namespace("jet.ui")
 ---@generic T
 ---@class jet.ui.line<T>
 ---@field data T
+---@field indent integer
 ---@field parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
 local line = {}
 line.__index = line
@@ -36,9 +37,10 @@ function line.refresh()
 end
 
 function line:resolve()
-	local text = ""
+	local text = string.rep(" ", self.indent)
 	---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[]
 	local marks = {}
+
 	for _, part in ipairs(self.parts) do
 		local start_col = #text
 		text = text .. part[1]
@@ -61,13 +63,15 @@ end
 
 ---@generic T
 ---@param data T
+---@param indent? integer
 ---@return jet.ui.line<T>
-local function new_line(data) return setmetatable({ data = data }, line) end
+local function new_line(data, indent) return setmetatable({ data = data, indent = (indent or 1) * 2 }, line) end
 
 ---@param data jet.kernel
-local active_kernel_line = function(data)
+---@param indent integer?
+local active_kernel_line = function(data, indent)
 	assert(data.session_id, "Kernel must have a session_id")
-	local out = new_line(data)
+	local out = new_line(data, indent)
 
 	function out:refresh()
 		local status, status_icon = self.data:status()
@@ -82,22 +86,21 @@ local active_kernel_line = function(data)
 	return out
 end
 
+---@param name string
+---@param indent integer?
+local kernel_group_line = function(name, indent)
+	local out = new_line(nil, indent)
+	out.parts = { { name, "JetH2" } }
+	return out
+end
+
 ---@param data jet.ui.kernel_group
-local kernel_info_line = function(data)
-	local out = new_line(data)
+---@param indent integer?
+local kernel_info_line = function(data, indent)
+	local out = new_line(data, indent)
 
 	function out:refresh()
 		self.parts = { { self.data.kernel.spec.display_name } }
-
-		local n_running = #self.data.connected + #self.data.external
-		if n_running > 0 then
-			table.insert(self.parts, { "  " })
-			table.insert(self.parts, {
-				string.format("(%s running instance%s)", n_running, n_running > 1 and "s" or ""),
-				"Comment",
-			})
-		end
-
 		table.insert(self.parts, { "    " })
 		table.insert(self.parts, { utils.path_shorten(self.data.kernel.spec_path), "Directory" })
 	end
@@ -105,20 +108,23 @@ local kernel_info_line = function(data)
 	return out
 end
 
-local header_line = function()
-	local out = new_line(nil)
+---@param indent integer?
+local header_line = function(indent)
+	local out = new_line(nil, indent)
 	out.parts = { { "Jet ", "Title" }, { " ", "OkMsg" } }
 	return out
 end
 
-local url_line = function()
-	local out = new_line(nil)
+---@param indent integer?
+local url_line = function(indent)
+	local out = new_line(nil, indent)
 	out.parts = { { "https://github.com/wurli/jet", "Comment" } }
 	return out
 end
 
-local keymaps_line = function()
-	local out = new_line(nil)
+---@param indent integer?
+local keymaps_line = function(indent)
+	local out = new_line(nil, indent)
 	out.parts = {
 		{ " Open (<cr>) ", "JetButton" },
 		{ "  " },
@@ -132,7 +138,7 @@ local keymaps_line = function()
 end
 
 local blank_line = function()
-	local out = new_line(nil)
+	local out = new_line(nil, 0)
 	out.parts = { { "" } }
 	return out
 end
@@ -201,15 +207,24 @@ end
 local kernel_lines = function()
 	local groups = list_kernel_groups()
 	local lines = {}
+
+	local group_name = ""
+
 	for _, group in ipairs(groups) do
-		table.insert(lines, kernel_info_line(group))
+		local last_group = group_name
+		group_name = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
+		if group_name ~= last_group then
+			table.insert(lines, kernel_group_line(group_name))
+		end
+
+		table.insert(lines, kernel_info_line(group, 2))
 		local any_connected = false
 		for _, k in ipairs(group.connected) do
-			table.insert(lines, active_kernel_line(k))
+			table.insert(lines, active_kernel_line(k, 2))
 			any_connected = true
 		end
 		for _, k in ipairs(group.external) do
-			table.insert(lines, active_kernel_line(k))
+			table.insert(lines, active_kernel_line(k, 2))
 			any_connected = true
 		end
 		if any_connected then
@@ -256,14 +271,10 @@ M.show = function()
 
 	local buf = vim.api.nvim_create_buf(false, true)
 
-	for _, l in ipairs(lines) do
-		l:refresh()
-		table.insert(l.parts, 1, { "    " })
-	end
-
 	local text = {} ---@type string[]
 	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
 	for _, l in ipairs(lines) do
+		l:refresh()
 		local line_text, line_extmarks = l:resolve()
 		table.insert(text, line_text)
 		table.insert(extmarks, line_extmarks)
