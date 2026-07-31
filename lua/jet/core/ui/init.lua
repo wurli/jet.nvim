@@ -27,13 +27,30 @@ local ns = vim.api.nvim_create_namespace("jet.ui")
 ---@generic T
 ---@class jet.ui.line<T>
 ---@field data T
+---@field timer? uv.uv_timer_t
 ---@field indent integer
+---@field interval? integer
 ---@field parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
 local line = {}
 line.__index = line
 
 function line.refresh()
 	-- Default implementation does nothing
+end
+
+---@param callback fun(text: string, marks: { [1]: integer, [2]: vim.api.keyset.set_extmark }[])
+function line:watch(callback)
+	if not self.interval then
+		return
+	end
+	self.timer = vim.uv.new_timer()
+	if not self.timer then
+		return
+	end
+	self.timer:start(self.interval, self.interval, function()
+		self:refresh()
+		callback(self:resolve())
+	end)
 end
 
 function line:resolve()
@@ -64,14 +81,21 @@ end
 ---@generic T
 ---@param data T
 ---@param indent? integer
+---@param interval? integer
 ---@return jet.ui.line<T>
-local function new_line(data, indent) return setmetatable({ data = data, indent = (indent or 1) * 2 }, line) end
+local function new_line(data, indent, interval)
+	return setmetatable({
+		data = data,
+		indent = (indent or 1) * 2,
+		interval = interval,
+	}, line)
+end
 
 ---@param data jet.kernel
 ---@param indent integer?
 local active_kernel_line = function(data, indent)
 	assert(data.session_id, "Kernel must have a session_id")
-	local out = new_line(data, indent)
+	local out = new_line(data, indent, 200)
 
 	function out:refresh()
 		local status, status_icon = self.data:status()
@@ -98,13 +122,9 @@ end
 ---@param indent integer?
 local kernel_info_line = function(data, indent)
 	local out = new_line(data, indent)
-
-	function out:refresh()
-		self.parts = { { self.data.kernel.spec.display_name } }
-		table.insert(self.parts, { "    " })
-		table.insert(self.parts, { utils.path_shorten(self.data.kernel.spec_path), "Directory" })
-	end
-
+	out.parts = { { out.data.kernel.spec.display_name } }
+	table.insert(out.parts, { "    " })
+	table.insert(out.parts, { utils.path_shorten(out.data.kernel.spec_path), "Directory" })
 	return out
 end
 
@@ -118,7 +138,7 @@ end
 ---@param indent integer?
 local url_line = function(indent)
 	local out = new_line(nil, indent)
-	out.parts = { { "https://github.com/wurli/jet", "Comment" } }
+	out.parts = { { "https://github.com/wurli/jet", "JetUrl" } }
 	return out
 end
 
@@ -251,8 +271,14 @@ local gfind = function(string, pattern)
 	end
 end
 
+-- 1. Global refresh (sets all lines)
+-- 2. Line refresh (sets only one line)
+--  - Triggered by the ui or the line object itself
+--	- Needs the current line no - or could take a callback?
+
 M.show = function()
 	require("jet.core.ui.colours").setup()
+	local buf = vim.api.nvim_create_buf(false, true)
 
 	----------------------------------------------
 	--               Write lines                --
@@ -269,8 +295,6 @@ M.show = function()
 		table.insert(lines, l)
 	end
 
-	local buf = vim.api.nvim_create_buf(false, true)
-
 	local text = {} ---@type string[]
 	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
 	for _, l in ipairs(lines) do
@@ -279,7 +303,6 @@ M.show = function()
 		table.insert(text, line_text)
 		table.insert(extmarks, line_extmarks)
 	end
-
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, text)
 	for lnum, marks in ipairs(extmarks) do
 		for _, mark in ipairs(marks) do
@@ -295,6 +318,21 @@ M.show = function()
 	end
 
 	----------------------------------------------
+	--                  Refresh                 --
+	----------------------------------------------
+	for lnum, l in ipairs(lines) do
+		l:watch(function(line_text, marks)
+			vim.schedule(function()
+				vim.api.nvim_buf_set_lines(buf, lnum - 1, lnum, false, { line_text })
+				vim.api.nvim_buf_clear_namespace(buf, ns, lnum - 1, lnum)
+				for _, mark in ipairs(marks) do
+					vim.api.nvim_buf_set_extmark(buf, ns, lnum - 1, mark[1], mark[2])
+				end
+			end)
+		end)
+	end
+
+	----------------------------------------------
 	--                  Keymaps                 --
 	----------------------------------------------
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end)
@@ -302,6 +340,8 @@ M.show = function()
 	----------------------------------------------
 	--               Display Buffer             --
 	----------------------------------------------
+	-- vim.bo[buf].modifiable = false
+
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
 	local scale = function(x, y) return math.floor(x * y) end
