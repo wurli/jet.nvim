@@ -258,12 +258,13 @@ M.show = function()
 		border = "rounded",
 	})
 
-	vim.api.nvim_create_autocmd("WinClosed", {
-		pattern = tostring(vim.fn.win_getid(win)),
-		once = true,
+	vim.api.nvim_create_autocmd({ "WinClosed", "WinLeave" }, {
 		callback = function()
-			ui:close()
-			hooks.on_status_changed.update_ui = nil
+			if vim.api.nvim_get_current_win() == win then
+				ui:close()
+				hooks.on_status_changed.update_ui = nil
+				return true
+			end
 		end,
 	})
 end
