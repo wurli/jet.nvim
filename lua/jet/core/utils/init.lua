@@ -131,6 +131,23 @@ M.parse_timestamp = function(t)
 	return os_epoch + offset
 end
 
+---``` lua
+---for s, e in gfind("Hello, world!", "He(ll)o") do
+---  vim.print({ s, e }) -- prints 5 5 and then 8 8
+---end
+---```
+M.gfind = function(text, pattern)
+	local start = 1
+	---@return integer?, integer?
+	return function()
+		local s, e = text:find(pattern, start)
+		if s then
+			start = e + 1
+			return s, e
+		end
+	end
+end
+
 ---Attempts to shorten a path by either using `~` for the home directory
 ---or `.` for the current working directory.
 ---

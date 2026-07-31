@@ -1,0 +1,88 @@
+---@class jet.ui.page
+---@field buf integer
+---@field ns integer
+---@field lines jet.ui.line<any>[]
+---@field text string[]
+---@field on_refresh? fun(self: jet.ui.page)
+---@field update_lines fun(self: jet.ui.page)
+local Page = {}
+Page.__index = Page
+
+---@class jet.ui.page.new.opts
+---@field get_lines fun(): jet.ui.line<any>[]
+---@field on_refresh? fun(self: jet.ui.page)
+---@field buf integer
+---@field ns integer
+
+---@param opts jet.ui.page.new.opts
+---@return jet.ui.page
+Page.new = function(opts)
+	local out = setmetatable(opts, Page)
+	vim.bo[out.buf].buftype = "nofile"
+	vim.bo[out.buf].modifiable = false
+	out.update_lines = function(self) self.lines = opts.get_lines() end
+	out:refresh()
+	return out
+end
+
+function Page:refresh()
+	self:update_lines()
+
+	local text = {} ---@type string[]
+	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
+
+	for _, l in ipairs(self.lines) do
+		if l.refresh then
+			l:refresh()
+		end
+		local line_text, line_extmarks = l:resolve()
+		table.insert(text, line_text)
+		table.insert(extmarks, line_extmarks)
+	end
+
+	self.text = text
+	self:set_lines(text)
+
+	self:clear_marks()
+	for lnum, marks in ipairs(extmarks) do
+		self:set_marks(lnum, marks)
+	end
+
+	if self.on_refresh then
+		self:on_refresh()
+	end
+
+	self:watch_lines()
+end
+
+function Page:watch_lines()
+	for lnum, l in ipairs(self.lines) do
+		l:watch(function(line_text, marks)
+			vim.schedule(function()
+				self:set_line(lnum, line_text)
+				self:clear_marks(lnum - 1, lnum)
+				self:set_marks(lnum, marks)
+			end)
+		end)
+	end
+end
+
+function Page:set_line(lnum, text) self:set_lines({ text }, lnum - 1, lnum) end
+
+function Page:set_lines(lines, start_lnum, end_lnum)
+	vim.bo[self.buf].modifiable = true
+	vim.api.nvim_buf_set_lines(self.buf, start_lnum or 0, end_lnum or -1, false, lines)
+	vim.bo[self.buf].modifiable = false
+end
+
+function Page:clear_marks(line_start, line_end)
+	vim.api.nvim_buf_clear_namespace(self.buf, self.ns, (line_start or 1), line_end or -1)
+end
+
+function Page:set_marks(lnum, marks)
+	for _, mark in ipairs(marks) do
+		vim.api.nvim_buf_set_extmark(self.buf, self.ns, lnum - 1, mark[1], mark[2])
+	end
+end
+
+return Page
