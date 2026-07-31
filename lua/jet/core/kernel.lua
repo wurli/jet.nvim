@@ -354,8 +354,20 @@ function Kernel:start_lua_client(callback)
 	self.augroup = vim.api.nvim_create_augroup("jet-" .. self.session_id, { clear = true })
 
 	--TODO: stop poll on kernel close
-	---@param res jet.init.response?
-	utils.poll(cb, function(res)
+	utils.poll(function()
+		local ok, res = pcall(cb)
+		if not ok then
+			utils.log_error(
+				"Failed to start kernel '%s': %s",
+				self.spec.display_name,
+				vim.split(tostring(res), "\n")[1]
+			)
+			self:close(true)
+			return nil
+		else
+			return res --[[@as jet.init.response?]]
+		end
+	end, function(res)
 		if not res then
 			return "exit"
 		end
@@ -442,7 +454,8 @@ function Kernel:delete_term_buffer()
 	end)
 end
 
-function Kernel:close()
+---@param quiet? boolean
+function Kernel:close(quiet)
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
@@ -463,7 +476,9 @@ function Kernel:close()
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
 				return
 			end
-			utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			if not quiet then
+				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			end
 			for _, hook in pairs(config.options.hooks.on_kernel_close) do
 				hook(self)
 			end
