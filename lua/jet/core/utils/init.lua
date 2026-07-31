@@ -1,5 +1,11 @@
 local M = {}
 
+M.time = function(f, name)
+	local time = vim.uv.hrtime()
+	f()
+	print((name or "function") .. " took " .. (vim.uv.hrtime() - time) / 1e9 .. " seconds")
+end
+
 local on_key_ns = vim.api.nvim_create_namespace("jet_prompt_yn")
 ---@param msg string
 ---@param opts string[]

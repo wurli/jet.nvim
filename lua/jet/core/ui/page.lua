@@ -3,19 +3,19 @@
 ---@field ns integer
 ---@field lines jet.ui.line<any>[]
 ---@field text string[]
----@field get_lines fun(): jet.ui.line<any>[]
+---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
 ---@field on_refresh? fun(self: jet.ui.page)
 local Page = {}
 Page.__index = Page
 
 ---@class jet.ui.page.new.opts
----@field get_lines fun(): jet.ui.line<any>[]
+---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
 ---@field on_refresh? fun(self: jet.ui.page)
 ---@field buf integer
 ---@field ns integer
 
 ---@param opts jet.ui.page.new.opts
----@return jet.ui.page
+---nreturn jet.ui.page
 Page.new = function(opts)
 	local out = setmetatable(opts, Page)
 	out.lines = {}
@@ -36,41 +36,45 @@ function Page:close()
 	end)
 end
 
-function Page:update_lines()
+---@param callback fun()
+function Page:update_lines(callback)
 	for _, l in ipairs(self.lines) do
 		l:unwatch()
 	end
-	self.lines = self.get_lines()
+	self.get_lines(function(lines)
+		self.lines = lines
+		callback()
+	end)
 end
 
 function Page:refresh()
-	self:update_lines()
+	self:update_lines(function()
+		local text = {} ---@type string[]
+		local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
 
-	local text = {} ---@type string[]
-	local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
-
-	for _, l in ipairs(self.lines) do
-		if l.refresh then
-			l:refresh()
+		for _, l in ipairs(self.lines) do
+			if l.refresh then
+				l:refresh()
+			end
+			local line_text, line_extmarks = l:resolve()
+			table.insert(text, line_text)
+			table.insert(extmarks, line_extmarks)
 		end
-		local line_text, line_extmarks = l:resolve()
-		table.insert(text, line_text)
-		table.insert(extmarks, line_extmarks)
-	end
 
-	self.text = text
-	self:set_lines(text)
+		self.text = text
+		self:set_lines(text)
 
-	self:clear_marks()
-	for lnum, marks in ipairs(extmarks) do
-		self:set_marks(lnum, marks)
-	end
+		self:clear_marks()
+		for lnum, marks in ipairs(extmarks) do
+			self:set_marks(lnum, marks)
+		end
 
-	if self.on_refresh then
-		self:on_refresh()
-	end
+		if self.on_refresh then
+			self:on_refresh()
+		end
 
-	self:watch_lines()
+		self:watch_lines()
+	end)
 end
 
 function Page:watch_lines()
