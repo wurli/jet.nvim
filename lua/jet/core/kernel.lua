@@ -55,7 +55,7 @@ function Kernel.init_owned(opts)
 	local out = setmetatable(obj, Kernel)
 	Kernel.try_resolve_filetype(out)
 
-	for _, hook in ipairs(config.options.hooks.on_kernel_init) do
+	for _, hook in pairs(config.options.hooks.on_kernel_init) do
 		hook(out)
 	end
 
@@ -84,7 +84,7 @@ function Kernel.init_external(opts)
 
 	Kernel.try_resolve_filetype(out)
 
-	for _, hook in ipairs(config.options.hooks.on_kernel_init) do
+	for _, hook in pairs(config.options.hooks.on_kernel_init) do
 		hook(out)
 	end
 
@@ -367,7 +367,7 @@ function Kernel:start_lua_client(callback)
 				self:set_as_filetype_primary()
 			end
 
-			for _, hook in ipairs(config.options.hooks.on_lua_client_start) do
+			for _, hook in pairs(config.options.hooks.on_lua_client_start) do
 				hook(self)
 			end
 
@@ -451,7 +451,7 @@ function Kernel:close()
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
 			end
 		end)
-		for _, hook in ipairs(config.options.hooks.on_kernel_close) do
+		for _, hook in pairs(config.options.hooks.on_kernel_close) do
 			hook(self)
 		end
 	end
@@ -553,7 +553,7 @@ function Kernel:send_repl(code)
 	-- at the end of statements which end on an indented line in order to be
 	-- actually sent to the kernel (otherwise you get the continuation prompt
 	-- '+ ...').
-	for _, hook in ipairs(config.options.hooks.on_send_pre) do
+	for _, hook in pairs(config.options.hooks.on_send_pre) do
 		hook(self, code)
 	end
 
