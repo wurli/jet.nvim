@@ -188,8 +188,14 @@ end
 -- 2. Line refresh (sets only one line)
 --  - Triggered by the ui or the line object itself
 --	- Needs the current line no - or could take a callback?
+local ui_win = -99
 
 M.show = function()
+	if vim.api.nvim_win_is_valid(ui_win) then
+		vim.api.nvim_set_current_win(ui_win)
+		return
+	end
+
 	require("jet.core.ui.colours").setup()
 
 	local ui = page.new({
@@ -248,7 +254,7 @@ M.show = function()
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
 	local scale = function(x, y) return math.floor(x * y) end
-	local win = vim.api.nvim_open_win(ui.buf, true, {
+	ui_win = vim.api.nvim_open_win(ui.buf, true, {
 		relative = "editor",
 		width = scale(screen_width, 0.8),
 		height = scale(screen_height, 0.8),
@@ -260,7 +266,7 @@ M.show = function()
 
 	vim.api.nvim_create_autocmd({ "WinClosed", "WinLeave" }, {
 		callback = function()
-			if vim.api.nvim_get_current_win() == win then
+			if vim.api.nvim_get_current_win() == ui_win then
 				ui:close()
 				hooks.on_status_changed.update_ui = nil
 				return true
