@@ -31,7 +31,7 @@ local active_kernel_line = function(k, indent)
 		self.parts = {
 			{ icon .. "  ", status == "external" and "@variable.builtin" or "@string.regexp" },
 			{ "(" .. utils.time_since(self.data.kernel.session_info.created_at) .. ") ", "Comment" },
-			{ self.data.kernel.session_id .. " " },
+			{ (self.data.kernel.session_id or "") .. " " },
 		}
 	end
 
