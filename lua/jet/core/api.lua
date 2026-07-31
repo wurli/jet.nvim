@@ -84,7 +84,7 @@ M.list_kernels = function(filters, init_opts)
 	---@type jet.kernel[]
 	local kernels = {}
 
-	if vim.tbl_contains(filters.status, "connected") then
+	if vim.tbl_contains(filters.status, "connected") or vim.tbl_contains(filters.status, "connecting") then
 		for _, k in pairs(manager.kernels) do
 			table.insert(kernels, k)
 		end

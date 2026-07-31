@@ -107,6 +107,7 @@ local list_kernel_groups = function()
 	end
 
 	-- Makes sorting possible
+	---@type jet.ui.kernel_group[]
 	local out = vim.tbl_values(kernels_grouped)
 
 	table.sort(out, function(a, b)

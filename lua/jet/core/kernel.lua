@@ -2,8 +2,6 @@ local manager = require("jet.core.manager")
 local config = require("jet.core.config")
 local utils = require("jet.core.utils")
 
-local augroup = vim.api.nvim_create_augroup("jet.stop.term", { clear = true })
-
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
 ---@class jet.term
@@ -29,6 +27,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field execution_state? jet.kernel.execution_state
 ---@field curr_execution_start_time? integer
 ---@field comms table<string, string> comm_name -> id
+---@field augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel
 
@@ -82,6 +81,7 @@ function Kernel.init_external(opts)
 		comms = {},
 	}, Kernel)
 
+	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
 
 	for _, hook in pairs(config.options.hooks.on_kernel_init) do
@@ -162,10 +162,10 @@ function Kernel:create_term(callback)
 		vim.b[term_buf].jet = { session_id = self.session_id }
 
 		---@diagnostic disable-next-line: unnecessary-if
-		if config.options.stop_on_buf_wipeout then
+		if config.options.stop_on_buf_wipeout and self.augroup then
 			vim.api.nvim_create_autocmd("BufWipeout", {
 				buffer = term_buf,
-				group = augroup,
+				group = self.augroup,
 				callback = function() self:close() end,
 			})
 		end
@@ -201,10 +201,10 @@ function Kernel:create_term(callback)
 
 		-- On TermEnter, record this kernel as the last used
 		-- TODO: configure whether or not this should automatically happen
-		if config.options.auto_set_primary and self.term then
+		if config.options.auto_set_primary and self.term and self.augroup then
 			vim.api.nvim_create_autocmd("TermEnter", {
 				buffer = self.term.buf,
-				group = augroup,
+				group = self.augroup,
 				callback = function() self:set_as_filetype_primary() end,
 			})
 		end
@@ -336,6 +336,7 @@ function Kernel:start_lua_client(callback)
 
 		assert(self.session_info, "Kernel did not return session info")
 		self.session_id = self.session_info.session_id
+		manager:insert(self)
 
 		self.client_id = STARTING_KERNEL_SENTINEL
 
@@ -350,7 +351,7 @@ function Kernel:start_lua_client(callback)
 		cb, self.session_info = require("jet.core.engine").attach(self.session_id, nil)
 	end
 
-	manager:insert(self)
+	self.augroup = vim.api.nvim_create_augroup("jet-" .. self.session_id, { clear = true })
 
 	--TODO: stop poll on kernel close
 	---@param res jet.init.response?
@@ -451,20 +452,23 @@ function Kernel:close()
 		end
 	end
 
+	if self.augroup then
+		vim.api.nvim_del_augroup_by_id(self.augroup)
+	end
 	self:delete_term_buffer()
 
 	if self.owned then
 		self:stop(function(success, failure_msg)
-			if success then
-				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
-				for _, hook in pairs(config.options.hooks.on_kernel_close) do
-					hook(self)
-				end
-				for _, hook in pairs(config.options.hooks.on_status_changed) do
-					hook(self)
-				end
-			else
+			if not success then
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
+				return
+			end
+			utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			for _, hook in pairs(config.options.hooks.on_kernel_close) do
+				hook(self)
+			end
+			for _, hook in pairs(config.options.hooks.on_status_changed) do
+				hook(self)
 			end
 		end)
 		return
@@ -485,6 +489,8 @@ function Kernel:stop(callback)
 		elseif res.status == "pending" then
 			return "wait"
 		else
+			self.client_id = nil
+			self.session_id = nil
 			callback(res.success, res.failure_msg)
 		end
 	end)
