@@ -161,11 +161,14 @@ function Kernel:create_term(callback)
 		--TODO: document this
 		vim.b[term_buf].jet = { session_id = self.session_id }
 
-		vim.api.nvim_create_autocmd("BufWipeout", {
-			buffer = term_buf,
-			group = augroup,
-			callback = function() self:close() end,
-		})
+		---@diagnostic disable-next-line: unnecessary-if
+		if config.options.stop_on_buf_wipeout then
+			vim.api.nvim_create_autocmd("BufWipeout", {
+				buffer = term_buf,
+				group = augroup,
+				callback = function() self:close() end,
+			})
+		end
 
 		-- buf_call since the buf is not yet attached to a window.
 		vim.api.nvim_buf_call(term_buf, function()
@@ -335,6 +338,11 @@ function Kernel:start_lua_client(callback)
 		self.session_id = self.session_info.session_id
 
 		self.client_id = STARTING_KERNEL_SENTINEL
+
+		for _, hook in pairs(config.options.hooks.on_status_changed) do
+			hook(self)
+		end
+
 		---@diagnostic disable-next-line: unnecessary-assert
 		assert(self.session_id, "Kernel did not return a session id")
 	else
@@ -368,6 +376,9 @@ function Kernel:start_lua_client(callback)
 			end
 
 			for _, hook in pairs(config.options.hooks.on_lua_client_start) do
+				hook(self)
+			end
+			for _, hook in pairs(config.options.hooks.on_status_changed) do
 				hook(self)
 			end
 
@@ -434,7 +445,6 @@ function Kernel:close()
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
-
 	for ft, session_id in pairs(manager.filetype_primary) do
 		if session_id == self.session_id then
 			manager.filetype_primary[ft] = nil
@@ -443,17 +453,25 @@ function Kernel:close()
 
 	self:delete_term_buffer()
 
-	if self.owned and config.options.stop_on_buf_wipeout then
+	if self.owned then
 		self:stop(function(success, failure_msg)
 			if success then
 				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+				for _, hook in pairs(config.options.hooks.on_kernel_close) do
+					hook(self)
+				end
+				for _, hook in pairs(config.options.hooks.on_status_changed) do
+					hook(self)
+				end
 			else
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
 			end
 		end)
-		for _, hook in pairs(config.options.hooks.on_kernel_close) do
-			hook(self)
-		end
+		return
+	end
+
+	for _, hook in pairs(config.options.hooks.on_status_changed) do
+		hook(self)
 	end
 end
 

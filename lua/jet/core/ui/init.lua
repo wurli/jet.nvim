@@ -4,19 +4,19 @@ local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
 local page = require("jet.core.ui.page")
 
----@param data jet.kernel
+---@param k jet.kernel
 ---@param indent integer?
-local active_kernel_line = function(data, indent)
-	assert(data.session_id, "Kernel must have a session_id")
-	local out = line.new(data, indent, 200)
+local active_kernel_line = function(k, indent)
+	assert(k.session_id, "Kernel must have a session_id")
+	local out = line.new({ kernel = k }, indent, 200)
 
 	function out:refresh()
-		local status, status_icon = self.data:status()
-		assert(self.data.session_info, "Kernel must have session info")
+		local status, status_icon = self.data.kernel:status()
+		assert(self.data.kernel.session_info, "Kernel must have session info")
 		self.parts = {
 			{ status_icon .. "  ", status == "external" and "@variable.builtin" or "@string.regexp" },
-			{ "(" .. utils.time_since(self.data.session_info.created_at) .. ") ", "Comment" },
-			{ self.data.session_id .. " " },
+			{ "(" .. utils.time_since(self.data.kernel.session_info.created_at) .. ") ", "Comment" },
+			{ self.data.kernel.session_id .. " " },
 		}
 	end
 
@@ -31,10 +31,10 @@ local kernel_group_line = function(name, indent)
 	return out
 end
 
----@param data jet.ui.kernel_group
+---@param k jet.kernel
 ---@param indent integer?
-local kernel_info_line = function(data, indent)
-	local out = line.new(data, indent)
+local kernel_info_line = function(k, indent)
+	local out = line.new({ kernel = k }, indent)
 	out.parts = { { out.data.kernel.spec.display_name } }
 	table.insert(out.parts, { "    " })
 	table.insert(out.parts, { utils.path_shorten(out.data.kernel.spec_path), "Directory" })
@@ -59,11 +59,11 @@ end
 local keymaps_line = function(indent)
 	local out = line.new(nil, indent)
 	out.parts = {
-		{ " Open (<cr>) ", "JetButton" },
+		{ " Open (o) ", "JetButton" },
 		{ "  " },
 		{ " New session (n) ", "JetButton" },
 		{ "  " },
-		{ " Shut down (x) ", "JetButton" },
+		{ " Stop (x) ", "JetButton" },
 		{ "  " },
 		{ " Quit (q) ", "JetButton" },
 	}
@@ -150,7 +150,7 @@ local kernel_lines = function()
 			table.insert(lines, kernel_group_line(group_name))
 		end
 
-		table.insert(lines, kernel_info_line(group, 2))
+		table.insert(lines, kernel_info_line(group.kernel, 2))
 		local any_connected = false
 		for _, k in ipairs(group.connected) do
 			table.insert(lines, active_kernel_line(k, 2))
@@ -194,7 +194,7 @@ M.show = function()
 		-- Our abstractions only allow setting one layer of highlights, so just
 		-- set additional highlights in a second pass by pattern matching.
 		on_refresh = function(self)
-			for match_start, match_end in utils.gfind(self.text[4], "%(.-%)") do
+			for match_start, match_end in utils.gfind(self.text[4], "%(.%)") do
 				vim.api.nvim_buf_set_extmark(self.buf, self.ns, 3, match_start - 1, {
 					end_col = match_end,
 					hl_group = "JetSpecial",
@@ -203,12 +203,33 @@ M.show = function()
 		end,
 	})
 
-	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end)
+	local hooks = require("jet.core.config").options.hooks
+	hooks.on_status_changed.update_ui = function() ui:refresh() end
+
+	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
+
+	vim.keymap.set("n", "o", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel then
+			---@type jet.kernel
+			local k = l.data.kernel
+			k:open_term()
+		end
+	end, { buf = ui.buf })
+
+	vim.keymap.set("n", "x", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel then
+			---@type jet.kernel
+			local k = l.data.kernel
+			k:close()
+		end
+	end, { buf = ui.buf })
 
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
 	local scale = function(x, y) return math.floor(x * y) end
-	vim.api.nvim_open_win(ui.buf, true, {
+	local win = vim.api.nvim_open_win(ui.buf, true, {
 		relative = "editor",
 		width = scale(screen_width, 0.8),
 		height = scale(screen_height, 0.8),
@@ -216,6 +237,15 @@ M.show = function()
 		col = scale(screen_width, 0.2 / 2),
 		style = "minimal",
 		border = "rounded",
+	})
+
+	vim.api.nvim_create_autocmd("WinClosed", {
+		pattern = tostring(vim.fn.win_getid(win)),
+		once = true,
+		callback = function()
+			ui:close()
+			hooks.on_status_changed.update_ui = nil
+		end,
 	})
 end
 

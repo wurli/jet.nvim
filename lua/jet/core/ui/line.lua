@@ -38,6 +38,14 @@ function Line:watch(callback)
 	end)
 end
 
+function Line:unwatch()
+	if self.timer then
+		self.timer:stop()
+		self.timer:close()
+		self.timer = nil
+	end
+end
+
 ---@return string, { [1]: integer, [2]: vim.api.keyset.set_extmark }[]
 function Line:resolve()
 	local text = string.rep(" ", self.indent)

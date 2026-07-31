@@ -17,6 +17,7 @@ M.defaults = {
 		on_kernel_close = {}, ---@type table<string | integer, fun(k: jet.kernel)>
 		on_send_pre = {}, ---@type table<string | integer, fun(k: jet.kernel, code: string[])>
 		on_message_received = {}, ---@type table<string | integer, fun(k: jet.kernel, msg: jet.jupyter.msg)>
+		on_status_changed = {}, ---@type table<string | integer, fun(k: jet.kernel)>
 		on_execution_state_changed = {}, ---@type table<string | integer, fun(k: jet.kernel, state: jet.kernel.execution_state)>
 	},
 	send = {

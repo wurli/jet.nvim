@@ -3,8 +3,8 @@
 ---@field ns integer
 ---@field lines jet.ui.line<any>[]
 ---@field text string[]
+---@field get_lines fun(): jet.ui.line<any>[]
 ---@field on_refresh? fun(self: jet.ui.page)
----@field update_lines fun(self: jet.ui.page)
 local Page = {}
 Page.__index = Page
 
@@ -18,11 +18,29 @@ Page.__index = Page
 ---@return jet.ui.page
 Page.new = function(opts)
 	local out = setmetatable(opts, Page)
+	out.lines = {}
 	vim.bo[out.buf].buftype = "nofile"
 	vim.bo[out.buf].modifiable = false
-	out.update_lines = function(self) self.lines = opts.get_lines() end
 	out:refresh()
 	return out
+end
+
+function Page:close()
+	for _, l in ipairs(self.lines) do
+		l:unwatch()
+	end
+	vim.schedule(function()
+		if vim.api.nvim_buf_is_valid(self.buf) then
+			vim.api.nvim_buf_delete(self.buf, { force = true })
+		end
+	end)
+end
+
+function Page:update_lines()
+	for _, l in ipairs(self.lines) do
+		l:unwatch()
+	end
+	self.lines = self.get_lines()
 end
 
 function Page:refresh()
@@ -70,18 +88,24 @@ end
 function Page:set_line(lnum, text) self:set_lines({ text }, lnum - 1, lnum) end
 
 function Page:set_lines(lines, start_lnum, end_lnum)
-	vim.bo[self.buf].modifiable = true
-	vim.api.nvim_buf_set_lines(self.buf, start_lnum or 0, end_lnum or -1, false, lines)
-	vim.bo[self.buf].modifiable = false
+	if vim.api.nvim_buf_is_valid(self.buf) then
+		vim.bo[self.buf].modifiable = true
+		vim.api.nvim_buf_set_lines(self.buf, start_lnum or 0, end_lnum or -1, false, lines)
+		vim.bo[self.buf].modifiable = false
+	end
 end
 
 function Page:clear_marks(line_start, line_end)
-	vim.api.nvim_buf_clear_namespace(self.buf, self.ns, (line_start or 1), line_end or -1)
+	if vim.api.nvim_buf_is_valid(self.buf) then
+		vim.api.nvim_buf_clear_namespace(self.buf, self.ns, (line_start or 1), line_end or -1)
+	end
 end
 
 function Page:set_marks(lnum, marks)
-	for _, mark in ipairs(marks) do
-		vim.api.nvim_buf_set_extmark(self.buf, self.ns, lnum - 1, mark[1], mark[2])
+	if vim.api.nvim_buf_is_valid(self.buf) then
+		for _, mark in ipairs(marks) do
+			vim.api.nvim_buf_set_extmark(self.buf, self.ns, lnum - 1, mark[1], mark[2])
+		end
 	end
 end
 
