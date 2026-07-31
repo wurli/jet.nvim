@@ -264,7 +264,7 @@ function Kernel:handle_stream()
 			vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 		end
 
-		for _, hook in pairs(config.options.hooks.on_execution_state) do
+		for _, hook in pairs(config.options.hooks.on_execution_state_changed) do
 			hook(self, new_state)
 		end
 	end
@@ -274,7 +274,7 @@ function Kernel:handle_stream()
 			return "exit"
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
-			for _, hook in pairs(config.options.hooks.on_message) do
+			for _, hook in pairs(config.options.hooks.on_message_received) do
 				hook(self, res.msg)
 			end
 			return "continue"
