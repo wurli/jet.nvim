@@ -8,13 +8,28 @@ local page = require("jet.core.ui.page")
 ---@param indent integer?
 local active_kernel_line = function(k, indent)
 	assert(k.session_id, "Kernel must have a session_id")
-	local out = line.new({ kernel = k }, indent, 200)
+	local out = line.new({ kernel = k }, indent, 100)
+
+	local connecting_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
+	-- These look rubbish unfortunately
+	-- { "󰪞 ", "󰪟 ", "󰪠 ", "󰪡 ", "󰪢 ", "󰪣 ", "󰪤 ", "󰪥 " }
+
+	local connecting_icon_index = 1
 
 	function out:refresh()
 		local status, status_icon = self.data.kernel:status()
+		local icon
+
+		if status == "connecting" then
+			icon = connecting_icons[(connecting_icon_index % #connecting_icons) + 1]
+			connecting_icon_index = connecting_icon_index + 1
+		else
+			icon = status_icon
+		end
+
 		assert(self.data.kernel.session_info, "Kernel must have session info")
 		self.parts = {
-			{ status_icon .. "  ", status == "external" and "@variable.builtin" or "@string.regexp" },
+			{ icon .. "  ", status == "external" and "@variable.builtin" or "@string.regexp" },
 			{ "(" .. utils.time_since(self.data.kernel.session_info.created_at) .. ") ", "Comment" },
 			{ self.data.kernel.session_id .. " " },
 		}
