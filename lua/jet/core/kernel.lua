@@ -503,7 +503,9 @@ end
 
 ---@param callback fun(success: boolean, failure_msg?: string)
 function Kernel:stop(callback)
-	assert(self.session_id, "Kernel has no session id")
+	if not self.session_id then
+		return
+	end
 
 	utils.poll(require("jet.core.engine").stop(self.session_id), function(res)
 		if not res then
