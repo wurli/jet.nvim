@@ -21,7 +21,7 @@ local active_kernel_line = function(k, indent)
 		local icon
 
 		if status == "connecting" then
-			icon = connecting_icons[(connecting_icon_index % #connecting_icons) + 1]
+			icon = connecting_icons[(connecting_icon_index % #connecting_icons) + 1] .. " "
 			connecting_icon_index = connecting_icon_index + 1
 		else
 			icon = status_icon
@@ -239,6 +239,15 @@ M.show = function()
 			---@type jet.kernel
 			local k = l.data.kernel
 			k:open_term()
+		end
+	end, { buf = ui.buf })
+
+	vim.keymap.set("n", "n", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel then
+			---@type jet.kernel
+			local k = l.data.kernel
+			require("jet.core.kernel").init_owned({ spec_path = k.spec_path }):open_term()
 		end
 	end, { buf = ui.buf })
 

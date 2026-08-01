@@ -7,6 +7,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@class jet.term
 ---@field job_id integer
 ---@field buf integer
+---@field buf_name string
 
 ---@alias jet.kernel.paritalspec { display_name: string, language: string }
 ---@alias jet.kernel.execution_state "busy" | "idle" | "starting"
@@ -192,12 +193,18 @@ function Kernel:create_term(callback)
 					self:delete_term_buffer()
 				end,
 			})
-			self.term = { job_id = term_job_id, buf = term_buf }
-		end)
 
-		-- It seems that jobstart() also sets the buf name, so this has to be
-		-- done afterwards.
-		vim.api.nvim_buf_set_name(term_buf, self.spec.display_name)
+			-- It seems that jobstart() also sets the buf name, so this has to be
+			-- done afterwards.
+			local session_hash = (self.session_id or ""):match("_([^_]+)$")
+			local buf_name = self.spec.display_name
+			if session_hash then
+				buf_name = buf_name .. " (" .. session_hash .. ")"
+			end
+			vim.api.nvim_buf_set_name(term_buf, buf_name)
+
+			self.term = { job_id = term_job_id, buf = term_buf, buf_name = buf_name }
+		end)
 
 		-- On TermEnter, record this kernel as the last used
 		-- TODO: configure whether or not this should automatically happen
