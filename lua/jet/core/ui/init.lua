@@ -238,7 +238,11 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.kernel
 			local k = l.data.kernel
-			k:open_term()
+			k:open_term(function(_, focus_gained)
+				if focus_gained then
+					ui:close()
+				end
+			end)
 		end
 	end, { buf = ui.buf })
 
@@ -271,16 +275,6 @@ M.show = function()
 		col = scale(screen_width, 0.2 / 2),
 		style = "minimal",
 		border = "rounded",
-	})
-
-	vim.api.nvim_create_autocmd({ "WinClosed", "WinLeave" }, {
-		callback = function()
-			if vim.api.nvim_get_current_win() == ui_win then
-				ui:close()
-				hooks.on_status_changed.update_ui = nil
-				return true
-			end
-		end,
 	})
 end
 

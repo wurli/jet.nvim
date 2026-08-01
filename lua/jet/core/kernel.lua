@@ -115,7 +115,7 @@ function Kernel:toggle_term()
 	end
 end
 
----@param callback? fun(k: jet.kernel)
+---@param callback? fun(k: jet.kernel, focus_gained: boolean)
 ---@param win_config? vim.api.keyset.win_config
 function Kernel:open_term(callback, win_config)
 	local open = function()
@@ -123,9 +123,12 @@ function Kernel:open_term(callback, win_config)
 
 		local term_win = self:get_win()
 
+		local focus_gained = false
+
 		if term_win then
 			vim.api.nvim_set_current_win(term_win)
 			vim.cmd.startinsert()
+			focus_gained = true
 		else
 			local opts = vim.tbl_extend("keep", win_config or config.options.repl_win_opts or {}, {
 				split = "right",
@@ -143,7 +146,7 @@ function Kernel:open_term(callback, win_config)
 		vim.wo[term_win].relativenumber = false
 
 		if callback then
-			callback(self)
+			callback(self, focus_gained)
 		end
 	end
 
