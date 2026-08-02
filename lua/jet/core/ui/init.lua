@@ -152,6 +152,34 @@ local list_kernel_groups = function(callback)
 	end)
 end
 
+---@param k jet.kernel
+---@return jet.ui.line<any>[]
+local kernel_info_lines = function(k)
+	---@type jet.ui.line<any>[]
+	local out = {}
+
+	local bullet = { "• ", "Special" }
+
+	if k.spec.argv and vim.tbl_count(k.spec.argv) > 0 then
+		local cmd_line = line.new(nil, 3)
+		cmd_line.parts = { bullet, { table.concat(k.spec.argv or {}, " ") } }
+		table.insert(out, cmd_line)
+	end
+
+	if k.spec.env and vim.tbl_count(k.spec.env) > 0 then
+		local env_line = line.new(nil, 3)
+		local envs = {}
+		for name, val in pairs(k.spec.env) do
+			table.insert(envs, name .. ": " .. val)
+		end
+		table.sort(envs)
+		env_line.parts = { bullet, { table.concat(envs, ", ") } }
+		table.insert(out, env_line)
+	end
+
+	return out
+end
+
 ---@param callback fun(lines: jet.ui.line<jet.kernel>[])
 local kernel_lines = function(callback)
 	list_kernel_groups(function(groups)
@@ -170,10 +198,20 @@ local kernel_lines = function(callback)
 			local any_connected = false
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k, 2))
+				if k.ui_expand then
+					for _, l in ipairs(kernel_info_lines(k)) do
+						table.insert(lines, l)
+					end
+				end
 				any_connected = true
 			end
 			for _, k in ipairs(group.external) do
 				table.insert(lines, active_kernel_line(k, 2))
+				if k.ui_expand then
+					for _, l in ipairs(kernel_info_lines(k)) do
+						table.insert(lines, l)
+					end
+				end
 				any_connected = true
 			end
 			if any_connected then
@@ -261,6 +299,16 @@ M.show = function()
 			---@type jet.kernel
 			local k = l.data.kernel
 			k:close()
+		end
+	end, { buf = ui.buf })
+
+	vim.keymap.set("n", "<cr>", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel then
+			---@type jet.kernel
+			local k = l.data.kernel
+			k.ui_expand = not k.ui_expand
+			ui:refresh()
 		end
 	end, { buf = ui.buf })
 
