@@ -27,6 +27,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field filetype? string
 ---@field execution_state? jet.kernel.execution_state
 ---@field curr_execution_start_time? integer
+---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
 local Kernel = {}
@@ -37,6 +38,12 @@ Kernel.__index = Kernel
 ---@field session_name? string
 ---@field spec? jet.kernel.spec | jet.kernel.paritalspec
 
+local init_defaults = {
+	on_msg_hooks = false,
+	comms = {},
+	ui_expand = false,
+}
+
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
 ---
@@ -46,14 +53,8 @@ function Kernel.init_owned(opts)
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
 	end
 
-	local obj = vim.tbl_extend("force", opts, {
-		owned = true,
-		on_msg_hooks = {},
-		comms = {},
-	})
-
-	local out = setmetatable(obj, Kernel)
-	Kernel.try_resolve_filetype(out)
+	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults, { owned = true }), Kernel)
+	out:try_resolve_filetype()
 
 	for _, hook in pairs(config.options.hooks.on_kernel_init) do
 		hook(out)
@@ -72,15 +73,13 @@ function Kernel.init_external(opts)
 	assert(opts.session_id, "Kernel session ID is not set")
 	local view = require("jet.core.engine").show_session(opts.session_id)
 
-	local out = setmetatable({
+	local out = setmetatable(vim.tbl_extend("force", init_defaults, {
 		session_id = opts.session_id,
 		spec = view.spec,
 		spec_path = view.session.kernelspec_path,
 		session_info = view.session,
 		owned = false,
-		on_msg_hooks = {},
-		comms = {},
-	}, Kernel)
+	}, Kernel))
 
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
