@@ -30,6 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
+---@field iopub_stream { name: string, text: string }[] Only last 3 messages
 local Kernel = {}
 Kernel.__index = Kernel
 
@@ -42,6 +43,7 @@ local init_defaults = {
 	on_msg_hooks = false,
 	comms = {},
 	ui_expand = false,
+	iopub_stream = {},
 }
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
@@ -286,6 +288,12 @@ function Kernel:handle_stream()
 			return "exit"
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
+			if res.msg.channel == "iopub" and res.msg.header.msg_type == "stream" then
+				self.iopub_stream[1] = self.iopub_stream[2]
+				self.iopub_stream[2] = self.iopub_stream[3]
+				self.iopub_stream[3] = self.iopub_stream[4]
+				self.iopub_stream[4] = res.msg.content
+			end
 			for _, hook in pairs(config.options.hooks.on_message_received) do
 				hook(self, res.msg)
 			end

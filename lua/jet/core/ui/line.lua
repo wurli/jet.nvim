@@ -19,6 +19,7 @@ Line.new = function(data, indent, interval)
 		data = data,
 		indent = (indent or 1) * 2,
 		interval = interval,
+		parts = {},
 	}, Line)
 end
 
