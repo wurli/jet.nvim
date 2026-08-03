@@ -27,9 +27,9 @@ M.send_auto = function(r, move_cursor)
 		end
 	end
 
-	local text = vim.api.nvim_buf_get_text(r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
+	local ok, text = pcall(vim.api.nvim_buf_get_text, r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
 
-	if #text == 0 then
+	if (not ok) or #text == 0 or (#text == 1 and text[1] == "") then
 		return
 	end
 
@@ -57,7 +57,7 @@ M.send_auto = function(r, move_cursor)
 				row = next_line,
 				col = 0,
 			}) or (next_line + 1)
-			vim.fn.cursor(next_significant_line + 1, 0)
+			vim.schedule(function() vim.fn.cursor(next_significant_line + 1, 0) end)
 		end
 
 		if vim.fn.mode():lower() == "v" then
