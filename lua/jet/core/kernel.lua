@@ -30,7 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_last_line { text: string, next_text: string, is_nl: boolean }
+---@field iopub_last_line { text: string, next_text: string, next_done: boolean }
 ---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
 local Kernel = {}
 Kernel.__index = Kernel
@@ -44,7 +44,7 @@ local init_defaults = function()
 	return {
 		comms = {},
 		ui_expand = false,
-		iopub_last_line = { text = "", next_text = "", is_nl = true },
+		iopub_last_line = { text = "", next_text = "", next_done = true },
 		on_message_received = {},
 	}
 end
@@ -258,6 +258,53 @@ function Kernel:set_as_filetype_primary()
 	manager.filetype_primary[self.filetype] = self.session_id
 end
 
+---@param s string
+---@return string
+local strip_escapes = function(s)
+	local res = s:gsub("\x1b%[[0-9;]*m", "")
+	return res
+end
+
+---@param msg jet.jupyter.msg
+function Kernel:set_iopub_last_line(msg)
+	if not msg.channel == "iopub" then
+		return
+	end
+	if msg.header.msg_type == "stream" and msg.content.text then
+		-- The stream may include 0 lines, a partial line, or several
+		-- lines, one or more of which may be partial. So these
+		-- gymnastics are about making sure iopub_last_line.text is
+		-- always the last complete line received from the kernel.
+		for i, line_part in ipairs(vim.split(msg.content.text, "[\n\r]", { plain = false })) do
+			line_part = strip_escapes(line_part)
+			if line_part == "" then
+				if self.iopub_last_line.next_text ~= "" then
+					self.iopub_last_line.text = self.iopub_last_line.next_text
+					self.iopub_last_line.next_text = line_part
+				end
+				self.iopub_last_line.next_done = true
+			elseif i == 1 and not self.iopub_last_line.next_done then
+				self.iopub_last_line.next_text = self.iopub_last_line.next_text .. line_part
+				self.iopub_last_line.next_done = false
+			else
+				if self.iopub_last_line.next_text ~= "" then
+					self.iopub_last_line.text = self.iopub_last_line.next_text
+				end
+				self.iopub_last_line.next_text = line_part
+				self.iopub_last_line.next_done = false
+			end
+		end
+	elseif msg.header.msg_type == "execute_result" and msg.content.data["text/plain"] then
+		local text = vim.split(msg.content.data["text/plain"], "[\r\n]", { plain = false, trimempty = true })
+		local last_line = strip_escapes(text[#text] or "")
+		if last_line and last_line ~= "" then
+			self.iopub_last_line.text = last_line
+			self.iopub_last_line.next_text = ""
+			self.iopub_last_line.next_done = false
+		end
+	end
+end
+
 ---@return boolean
 function Kernel:has_lua_client() return self.client_id ~= nil end
 
@@ -294,30 +341,7 @@ function Kernel:handle_stream()
 			return "exit"
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
-			if res.msg.channel == "iopub" and res.msg.header.msg_type == "stream" and res.msg.content.text then
-				-- The stream may include 0 lines, a partial line, or several
-				-- lines, one or more of which may be partial. So these
-				-- gymnastics are about making sure iopub_last_line.text is
-				-- always the last complete line received from the kernel.
-				for i, line_part in ipairs(vim.split(res.msg.content.text, "[\n\r]", { plain = false })) do
-					if line_part == "" then
-						if self.iopub_last_line.next_text ~= "" then
-							self.iopub_last_line.text = self.iopub_last_line.next_text
-							self.iopub_last_line.next_text = line_part
-						end
-						self.iopub_last_line.is_nl = true
-					elseif i == 1 and not self.iopub_last_line.is_nl then
-						self.iopub_last_line.next_text = self.iopub_last_line.next_text .. line_part
-						self.iopub_last_line.is_nl = false
-					else
-						if self.iopub_last_line.next_text ~= "" then
-							self.iopub_last_line.text = self.iopub_last_line.next_text
-						end
-						self.iopub_last_line.next_text = line_part
-						self.iopub_last_line.is_nl = false
-					end
-				end
-			end
+			self:set_iopub_last_line(res.msg)
 			for _, hook in pairs(config.options.hooks.on_message_received) do
 				hook(self, res.msg)
 			end
