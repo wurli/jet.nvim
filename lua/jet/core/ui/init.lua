@@ -160,31 +160,36 @@ local kernel_info_lines = function(k)
 
 	local bullet = { "• ", "Special" }
 
-	if k.spec.argv then
-		local arg_line = line.new(nil, 3)
-		arg_line.parts = { bullet, { "Command: ", "JetBold" } }
-		for i, arg in ipairs(k.spec.argv) do
-			local prev_arg = k.spec.argv[i - 1]
-			local next_arg = k.spec.argv[i + 1]
-
-			if not prev_arg then
-				table.insert(arg_line.parts, { arg })
-			elseif prev_arg:find("^%-") and not arg:find("^%-") then
-				table.insert(arg_line.parts, { " " })
-				table.insert(arg_line.parts, { arg })
-			else
-				if next_arg then
-					table.insert(arg_line.parts, { " \\", "Operator" })
-				end
-				table.insert(out, arg_line)
-				arg_line = line.new(nil, 5)
-				arg_line.parts = { { arg, "Special" } }
-			end
-			if not next_arg then
-				table.insert(out, arg_line)
-			end
-		end
+	if k.spec.argv and k.spec.argv[1] then
+		local bin_line = line.new(nil, 3)
+		bin_line.parts = { bullet, { "Binary: ", "JetBold" }, { k.spec.argv[1], "JetSpecial" } }
+		table.insert(out, bin_line)
 	end
+
+	-- if k.spec.argv then
+	-- 	local arg_line = line.new(nil, 3)
+	-- 	arg_line.parts = { bullet, { "Command: ", "JetBold" } }
+	-- 	for i, arg in ipairs(k.spec.argv) do
+	-- 		local prev_arg = k.spec.argv[i - 1]
+	-- 		local next_arg = k.spec.argv[i + 1]
+	-- 		if not prev_arg then
+	-- 			table.insert(arg_line.parts, { arg })
+	-- 		elseif prev_arg:find("^%-") and not arg:find("^%-") then
+	-- 			table.insert(arg_line.parts, { " " })
+	-- 			table.insert(arg_line.parts, { arg })
+	-- 		else
+	-- 			if next_arg then
+	-- 				table.insert(arg_line.parts, { " \\", "Operator" })
+	-- 			end
+	-- 			table.insert(out, arg_line)
+	-- 			arg_line = line.new(nil, 5)
+	-- 			arg_line.parts = { { arg, "Special" } }
+	-- 		end
+	-- 		if not next_arg then
+	-- 			table.insert(out, arg_line)
+	-- 		end
+	-- 	end
+	-- end
 
 	if k.spec.env and vim.tbl_count(k.spec.env) > 0 then
 		local env_line = line.new(nil, 3)
@@ -197,29 +202,13 @@ local kernel_info_lines = function(k)
 		table.insert(out, env_line)
 	end
 
-	table.insert(out, blank_line())
-
-	local any_stream = false
-	if k.iopub_stream[1] then
-		any_stream = true
-		local dots_line = line.new(nil, 5)
-		dots_line.parts = { { "..." } }
-		table.insert(out, dots_line)
-	end
-	for i = 2, 4 do
-		if k.iopub_stream[i] then
-			any_stream = true
-			local stream_line = line.new({ kernel = k }, 5, 30)
-			function stream_line:refresh()
-				local text = ((self.data.kernel.iopub_stream[i] or {}).text or ""):gsub("\n", "\\n"):gsub("\r", "")
-				self.parts = { { text } }
-			end
-			table.insert(out, stream_line)
+	if k.iopub_last_line.text ~= "" then
+		local stream_line = line.new({ kernel = k }, 3, 30)
+		function stream_line:refresh()
+			---@diagnostic disable-next-line: assign-type-mismatch
+			self.parts = { bullet, { "Stream: ", "JetBold" }, { self.data.kernel.iopub_last_line.text, "JetCode" } }
 		end
-	end
-
-	if any_stream then
-		table.insert(out, blank_line())
+		table.insert(out, stream_line)
 	end
 
 	return out

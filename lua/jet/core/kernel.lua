@@ -30,7 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_stream { name: string, text: string }[] Only last 3 messages
+---@field iopub_last_line { text: string, is_nl: boolean }
 local Kernel = {}
 Kernel.__index = Kernel
 
@@ -44,7 +44,7 @@ local init_defaults = function()
 		on_msg_hooks = false,
 		comms = {},
 		ui_expand = false,
-		iopub_stream = {},
+		iopub_last_line = { text = "", is_nl = true },
 	}
 end
 
@@ -294,10 +294,20 @@ function Kernel:handle_stream()
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
 			if res.msg.channel == "iopub" and res.msg.header.msg_type == "stream" then
-				self.iopub_stream[1] = self.iopub_stream[2]
-				self.iopub_stream[2] = self.iopub_stream[3]
-				self.iopub_stream[3] = self.iopub_stream[4]
-				self.iopub_stream[4] = res.msg.content
+				local text = res.msg.content.text
+				if text then
+					for i, line_part in ipairs(vim.split(text, "[\n\r]", { plain = false })) do
+						if line_part == "" then
+							self.iopub_last_line.is_nl = true
+						elseif self.iopub_last_line.is_nl or i > 1 then
+							self.iopub_last_line.text = line_part
+							self.iopub_last_line.is_nl = false
+						else
+							self.iopub_last_line.text = self.iopub_last_line.text .. line_part
+							self.iopub_last_line.is_nl = false
+						end
+					end
+				end
 			end
 			for _, hook in pairs(config.options.hooks.on_message_received) do
 				hook(self, res.msg)

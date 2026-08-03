@@ -10,6 +10,7 @@ M.colours = {
 	Url = { link = "@markup.link" },
 	Bold = { bold = true },
 	Italic = { italic = true },
+	Code = { link = "@markup.raw" },
 }
 
 M.set_highlights = function()
