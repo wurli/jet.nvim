@@ -6,6 +6,7 @@ M.colours = {
 	Button = { link = "CursorLine" },
 	Special = { link = "@punctuation.special" },
 	Comment = { link = "Comment" },
+	Id = { link = "Operator" },
 	Url = { link = "@markup.link" },
 	Bold = { bold = true },
 	Italic = { italic = true },
