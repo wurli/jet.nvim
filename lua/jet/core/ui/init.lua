@@ -62,26 +62,23 @@ local kernel_info_line = function(k)
 	})
 end
 
----@param indent integer?
-local header_line = function(indent)
+local header_line = function()
 	return line.new({
-		indent = indent,
+		indent = 1,
 		make_parts = function() return { { "Jet ", "Title" }, { " ", "OkMsg" } } end,
 	})
 end
 
----@param indent integer?
-local url_line = function(indent)
+local url_line = function()
 	return line.new({
-		indent = indent,
+		indent = 1,
 		make_parts = function() return { { "https://github.com/wurli/jet", "JetUrl" } } end,
 	})
 end
 
----@param indent integer?
-local keymaps_line = function(indent)
+local keymaps_line = function()
 	return line.new({
-		indent = indent,
+		indent = 1,
 		make_parts = function()
 			return {
 				{ " Open (o) ", "JetButton" },
