@@ -75,13 +75,16 @@ function Kernel.init_external(opts)
 	assert(opts.session_id, "Kernel session ID is not set")
 	local view = require("jet.core.engine").show_session(opts.session_id)
 
-	local out = setmetatable(vim.tbl_extend("force", init_defaults, {
-		session_id = opts.session_id,
-		spec = view.spec,
-		spec_path = view.session.kernelspec_path,
-		session_info = view.session,
-		owned = false,
-	}, Kernel))
+	local out = setmetatable(
+		vim.tbl_extend("force", init_defaults, {
+			session_id = opts.session_id,
+			spec = view.spec,
+			spec_path = view.session.kernelspec_path,
+			session_info = view.session,
+			owned = false,
+		}),
+		Kernel
+	)
 
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
