@@ -169,16 +169,16 @@ local kernel_info_lines = function(k)
 
 			if not prev_arg then
 				table.insert(arg_line.parts, { arg })
-			elseif prev_arg and prev_arg:find("^%-") and not arg:find("^%-") then
+			elseif prev_arg:find("^%-") and not arg:find("^%-") then
 				table.insert(arg_line.parts, { " " })
 				table.insert(arg_line.parts, { arg })
 			else
 				if next_arg then
-					table.insert(arg_line.parts, { " \\" })
+					table.insert(arg_line.parts, { " \\", "Operator" })
 				end
 				table.insert(out, arg_line)
 				arg_line = line.new(nil, 5)
-				arg_line.parts = { { arg } }
+				arg_line.parts = { { arg, "Special" } }
 			end
 			if not next_arg then
 				table.insert(out, arg_line)
