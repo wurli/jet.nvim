@@ -9,6 +9,7 @@
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field text string
 ---@field marks vim.api.keyset.set_extmark[]
+---@field on_unwatch? fun(self: jet.ui.line)
 ---@field data table<string, any>
 local Line = {}
 Line.__index = Line
@@ -18,6 +19,7 @@ Line.__index = Line
 ---@field interval? integer
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field data? table<string, any>
+---@field on_unwatch? fun(self: jet.ui.line)
 
 ---@param opts jet.ui.line.new.opts
 Line.new = function(opts)
@@ -26,6 +28,7 @@ Line.new = function(opts)
 		interval = opts.interval,
 		parts = {},
 		make_parts = opts.make_parts,
+		on_unwatch = opts.on_unwatch,
 		data = opts.data or {},
 	}, Line)
 
@@ -56,6 +59,9 @@ function Line:unwatch()
 		self.timer:stop()
 		self.timer:close()
 		self.timer = nil
+	end
+	if self.on_unwatch then
+		self:on_unwatch()
 	end
 end
 
