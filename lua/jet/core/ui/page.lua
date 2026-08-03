@@ -52,13 +52,18 @@ function Page:refresh()
 		local text = {} ---@type string[]
 		local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
 
-		for _, l in ipairs(self.lines) do
-			if l.refresh then
-				l:refresh()
+		for lnum, l in ipairs(self.lines) do
+			l:refresh()
+			table.insert(text, l.text)
+			table.insert(extmarks, l.marks)
+
+			l.on_refresh = function(line)
+				vim.schedule(function()
+					self:set_line(lnum, line.text)
+					self:clear_marks(lnum - 1, lnum)
+					self:set_marks(lnum, line.marks)
+				end)
 			end
-			local line_text, line_extmarks = l:resolve()
-			table.insert(text, line_text)
-			table.insert(extmarks, line_extmarks)
 		end
 
 		self.text = text
@@ -78,14 +83,8 @@ function Page:refresh()
 end
 
 function Page:watch_lines()
-	for lnum, l in ipairs(self.lines) do
-		l:watch(function(line_text, marks)
-			vim.schedule(function()
-				self:set_line(lnum, line_text)
-				self:clear_marks(lnum - 1, lnum)
-				self:set_marks(lnum, marks)
-			end)
-		end)
+	for _, l in ipairs(self.lines) do
+		l:watch()
 	end
 end
 

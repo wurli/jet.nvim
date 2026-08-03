@@ -1,42 +1,54 @@
----@generic T
----@class jet.ui.line<T>
----@field data T
+---@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
+
+---@class jet.ui.line
 ---@field timer? uv.uv_timer_t
 ---@field indent integer
 ---@field interval? integer
----@field refresh? fun(self: jet.ui.line<T>) Reset `parts`
----@field parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
+---@field on_refresh? fun(self: jet.ui.line) Called after `refresh` is called
+---@field parts jet.ui.line.parts
+---@field make_parts fun(): jet.ui.line.parts Reset `parts`
+---@field text string
+---@field marks vim.api.keyset.set_extmark[]
+---@field data table<string, any>
 local Line = {}
 Line.__index = Line
 
----@generic T
----@param data T
----@param indent? integer
----@param interval? integer
----@return jet.ui.line<T>
-Line.new = function(data, indent, interval)
-	return setmetatable({
-		data = data,
-		indent = (indent or 1) * 2,
-		interval = interval,
+---@class jet.ui.line.new.opts
+---@field indent? integer
+---@field interval? integer
+---@field make_parts fun(): jet.ui.line.parts Reset `parts`
+---@field data? table<string, any>
+
+---@param opts jet.ui.line.new.opts
+Line.new = function(opts)
+	local out = setmetatable({
+		indent = (opts.indent or 0) * 2,
+		interval = opts.interval,
 		parts = {},
+		make_parts = opts.make_parts,
+		data = opts.data or {},
 	}, Line)
+
+	return out
 end
 
----@param callback fun(text: string, marks: { [1]: integer, [2]: vim.api.keyset.set_extmark }[])
-function Line:watch(callback)
-	if not (self.interval and self.refresh) then
+function Line:refresh()
+	self.parts = self.make_parts()
+	self.text, self.marks = self:resolve()
+	if self.on_refresh then
+		self:on_refresh()
+	end
+end
+
+function Line:watch()
+	if not self.interval then
 		return
 	end
 	self.timer = vim.uv.new_timer()
 	if not self.timer then
 		return
 	end
-	self.timer:start(self.interval, self.interval, function()
-		---@diagnostic disable-next-line: param-type-mismatch
-		self:refresh()
-		callback(self:resolve())
-	end)
+	self.timer:start(self.interval, self.interval, function() self:refresh() end)
 end
 
 function Line:unwatch()
