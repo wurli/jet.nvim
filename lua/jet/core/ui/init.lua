@@ -30,9 +30,9 @@ local active_kernel_line = function(k)
 			assert(k.session_info, "Kernel must have session info")
 
 			return {
-				{ icon .. "  ", status == "external" and "@variable.builtin" or "@string.regexp" },
-				{ "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" },
+				{ icon .. " ", status == "external" and "@variable.builtin" or "@string.regexp" },
 				{ (k.session_id or "") .. " ", "JetId" },
+				{ "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" },
 			}
 		end,
 	})
@@ -210,9 +210,10 @@ local kernel_info_lines = function(k)
 					{ k.iopub_last_line.text, "JetCode" },
 				}
 			end,
+			on_unwatch = function() k.on_message_received.update_ui = nil end,
 		})
 		k.on_message_received.update_ui = function(_, msg)
-			if msg.header.msg_type == "stream" then
+			if msg.channel == "iopub" then
 				stream_line:refresh()
 			end
 		end
