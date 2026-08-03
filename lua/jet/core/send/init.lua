@@ -16,7 +16,9 @@ end
 ---@param r jet.send.Range?
 ---@param move_cursor boolean?
 M.send_auto = function(r, move_cursor)
-	move_cursor = move_cursor == nil and true or false
+	if move_cursor == nil then
+		move_cursor = vim.fn.mode():lower() ~= "v"
+	end
 
 	if not r then
 		local curr_row = vim.fn.line(".") - 1
