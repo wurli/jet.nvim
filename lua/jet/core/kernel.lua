@@ -655,23 +655,6 @@ function Kernel:comm_open(name, data, opts)
 	return comm_id
 end
 
--- NOTE: we might need this one day but not now, so commenting until a clear
--- use case arises.
---
--- ---@class jet.kernel.listen.opts : jet.listen.opts
--- ---This function can return:
--- --- - `"wait"`: The listener will be called again after the `interval`
--- --- - `"continue"`: The listener will be called again immediately
--- --- - `"exit"`: Stop listening
--- ---@field listener fun(res: jet.kernel.response): "wait" | "continue" | "exit"
--- ---@field interval? number In milliseconds, default 50ms
---
--- ---@param opts jet.kernel.listen.opts
--- function Kernel:listen(opts)
--- 	local listener = require("jet.core.engine").listen(self.client_id, opts or {})
--- 	utils.poll(listener, opts.listener, { interval = opts.interval })
--- end
-
 ---@param comm_id string
 ---@param data table
 function Kernel:comm_send(comm_id, data)
