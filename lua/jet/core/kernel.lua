@@ -39,12 +39,14 @@ Kernel.__index = Kernel
 ---@field session_name? string
 ---@field spec? jet.kernel.spec | jet.kernel.paritalspec
 
-local init_defaults = {
-	on_msg_hooks = false,
-	comms = {},
-	ui_expand = false,
-	iopub_stream = {},
-}
+local init_defaults = function()
+	return {
+		on_msg_hooks = false,
+		comms = {},
+		ui_expand = false,
+		iopub_stream = {},
+	}
+end
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
@@ -55,7 +57,7 @@ function Kernel.init_owned(opts)
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
 	end
 
-	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults, { owned = true }), Kernel)
+	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
 	out:try_resolve_filetype()
 
 	for _, hook in pairs(config.options.hooks.on_kernel_init) do
@@ -76,7 +78,7 @@ function Kernel.init_external(opts)
 	local view = require("jet.core.engine").show_session(opts.session_id)
 
 	local out = setmetatable(
-		vim.tbl_extend("force", init_defaults, {
+		vim.tbl_extend("force", init_defaults(), {
 			session_id = opts.session_id,
 			spec = view.spec,
 			spec_path = view.session.kernelspec_path,
