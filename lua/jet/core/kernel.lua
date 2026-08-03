@@ -265,11 +265,28 @@ local strip_escapes = function(s)
 	return res
 end
 
+---@param s string
+---@return string
+first_non_blank_line = function(s)
+	return vim.split(s, "[\n\r]", {
+		plain = false,
+		trimempty = true,
+	})[1] or ""
+end
+
+---@param s string
+---@return string
+last_non_blank_line = function(s)
+	local split = vim.split(s, "[\n\r]", { plain = false, trimempty = true })
+	return split[#split] or ""
+end
+
 ---@param msg jet.jupyter.msg
 function Kernel:set_iopub_last_line(msg)
-	if not msg.channel == "iopub" then
+	if msg.channel ~= "iopub" then
 		return
 	end
+
 	if msg.header.msg_type == "stream" and msg.content.text then
 		-- The stream may include 0 lines, a partial line, or several
 		-- lines, one or more of which may be partial. So these
@@ -294,14 +311,35 @@ function Kernel:set_iopub_last_line(msg)
 				self.iopub_last_line.next_done = false
 			end
 		end
-	elseif msg.header.msg_type == "execute_result" and msg.content.data["text/plain"] then
-		local text = vim.split(msg.content.data["text/plain"], "[\r\n]", { plain = false, trimempty = true })
-		local last_line = strip_escapes(text[#text] or "")
-		if last_line and last_line ~= "" then
-			self.iopub_last_line.text = last_line
-			self.iopub_last_line.next_text = ""
-			self.iopub_last_line.next_done = false
+		return
+	end
+
+	local text = ""
+	if msg.header.msg_type == "execute_result" then
+		text = last_non_blank_line(msg.content.data["text/plain"])
+	elseif msg.header.msg_type == "error" then
+		if msg.content.traceback and #msg.content.traceback > 0 then
+			text = first_non_blank_line(msg.content.traceback[1])
+		else
+			if msg.content.ename and msg.content.ename ~= "" then
+				text = first_non_blank_line(msg.content.ename)
+				if msg.content.evalue then
+					text = text .. ": "
+				end
+			end
+			if msg.content.evalue then
+				text = text .. first_non_blank_line(msg.content.evalue)
+			end
 		end
+	else
+		return
+	end
+
+	local line = strip_escapes(text)
+	if line ~= "" then
+		self.iopub_last_line.text = line
+		self.iopub_last_line.next_text = ""
+		self.iopub_last_line.next_done = false
 	end
 end
 
