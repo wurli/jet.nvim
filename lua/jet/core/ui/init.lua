@@ -201,20 +201,22 @@ local kernel_info_lines = function(k)
 	end
 
 	if k.iopub_last_line.text ~= "" then
-		table.insert(
-			out,
-			line.new({
-				indent = 3,
-				interval = 30,
-				make_parts = function()
-					return {
-						bullet,
-						{ "Stream: ", "JetBold" },
-						{ k.iopub_last_line.text, "JetCode" },
-					}
-				end,
-			})
-		)
+		local stream_line = line.new({
+			indent = 3,
+			make_parts = function()
+				return {
+					bullet,
+					{ "Stream: ", "JetBold" },
+					{ k.iopub_last_line.text, "JetCode" },
+				}
+			end,
+		})
+		k.on_message_received.update_ui = function(_, msg)
+			if msg.header.msg_type == "stream" then
+				stream_line:refresh()
+			end
+		end
+		table.insert(out, stream_line)
 	end
 
 	return out

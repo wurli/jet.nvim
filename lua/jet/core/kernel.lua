@@ -30,7 +30,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_last_line { text: string, is_nl: boolean }
+---@field iopub_last_line { text: string, next_text: string, is_nl: boolean }
+---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
 local Kernel = {}
 Kernel.__index = Kernel
 
@@ -41,10 +42,10 @@ Kernel.__index = Kernel
 
 local init_defaults = function()
 	return {
-		on_msg_hooks = false,
 		comms = {},
 		ui_expand = false,
-		iopub_last_line = { text = "", is_nl = true },
+		iopub_last_line = { text = "", next_text = "", is_nl = true },
+		on_message_received = {},
 	}
 end
 
@@ -293,23 +294,34 @@ function Kernel:handle_stream()
 			return "exit"
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
-			if res.msg.channel == "iopub" and res.msg.header.msg_type == "stream" then
-				local text = res.msg.content.text
-				if text then
-					for i, line_part in ipairs(vim.split(text, "[\n\r]", { plain = false })) do
-						if line_part == "" then
-							self.iopub_last_line.is_nl = true
-						elseif self.iopub_last_line.is_nl or i > 1 then
-							self.iopub_last_line.text = line_part
-							self.iopub_last_line.is_nl = false
-						else
-							self.iopub_last_line.text = self.iopub_last_line.text .. line_part
-							self.iopub_last_line.is_nl = false
+			if res.msg.channel == "iopub" and res.msg.header.msg_type == "stream" and res.msg.content.text then
+				-- The stream may include 0 lines, a partial line, or several
+				-- lines, one or more of which may be partial. So these
+				-- gymnastics are about making sure iopub_last_line.text is
+				-- always the last complete line received from the kernel.
+				for i, line_part in ipairs(vim.split(res.msg.content.text, "[\n\r]", { plain = false })) do
+					if line_part == "" then
+						if self.iopub_last_line.next_text ~= "" then
+							self.iopub_last_line.text = self.iopub_last_line.next_text
+							self.iopub_last_line.next_text = line_part
 						end
+						self.iopub_last_line.is_nl = true
+					elseif i == 1 and not self.iopub_last_line.is_nl then
+						self.iopub_last_line.next_text = self.iopub_last_line.next_text .. line_part
+						self.iopub_last_line.is_nl = false
+					else
+						if self.iopub_last_line.next_text ~= "" then
+							self.iopub_last_line.text = self.iopub_last_line.next_text
+						end
+						self.iopub_last_line.next_text = line_part
+						self.iopub_last_line.is_nl = false
 					end
 				end
 			end
 			for _, hook in pairs(config.options.hooks.on_message_received) do
+				hook(self, res.msg)
+			end
+			for _, hook in pairs(self.on_message_received) do
 				hook(self, res.msg)
 			end
 			return "continue"
