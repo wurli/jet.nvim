@@ -367,6 +367,11 @@ M.show = function()
 		style = "minimal",
 		border = "rounded",
 	})
+
+	vim.api.nvim_create_autocmd("WinClosed", {
+		pattern = tostring(ui_win),
+		callback = function() ui:close() end,
+	})
 end
 
 return M
