@@ -74,8 +74,10 @@ M.open_polls = {}
 ---@param opts? { interval?: integer, alias?: string }
 M.poll = function(callback, handler, opts)
 	opts = opts or {}
+	opts.interval = opts.interval or 50
 
 	if opts.alias then
+		opts.alias = opts.alias .. " (every " .. opts.interval .. "ms)"
 		M.open_polls[opts.alias] = true
 	end
 

@@ -36,7 +36,7 @@ Line.new = function(opts)
 		interval = opts.interval,
 		parts = {},
 		make_parts = opts.make_parts,
-		alias = opts.alias and (id .. "_" .. opts.alias) or nil,
+		alias = opts.alias and (id .. " " .. opts.alias .. " (every " .. opts.interval .. "ms)") or nil,
 		on_unwatch = opts.on_unwatch,
 		data = opts.data or {},
 	}, Line)
