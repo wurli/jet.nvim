@@ -217,41 +217,90 @@ M.download_jet = function(version, dir, callback)
 	end)
 end
 
----@param callback? fun(opts: { bin_path: string, lib_path: string })
----@param has_done_download? boolean
-function M.maybe_download_jet(callback, has_done_download)
+M.get_jet_paths = function()
 	local config = require("jet.core.config").options
 	local path_defaults = M.jet_resource_paths()
 
-	---------------------------------------------------
-	--    Check that Jet library and binary exist    --
-	---------------------------------------------------
-	local lib_path = config.jet_library_path or path_defaults.lib_path
-	local bin_path = config.jet_binary_path or path_defaults.bin_path
+	local bin_path_final = config.jet_binary_path or path_defaults.bin_path
+	local lib_path_final = config.jet_library_path or path_defaults.lib_path
 
-	local bin_stat = bin_path and vim.uv.fs_stat(bin_path)
+	local bin_stat = bin_path_final and vim.uv.fs_stat(bin_path_final)
 	---@diagnostic disable-next-line: param-type-mismatch
-	local has_jet_bin = bin_stat and bin_stat and bin_stat.type == "file" and vim.fn.executable(bin_path) == 1
+	local has_jet_bin = bin_stat and bin_stat and bin_stat.type == "file" and vim.fn.executable(bin_path_final) == 1
 
-	local lib_stat = lib_path and vim.uv.fs_stat(lib_path)
+	local lib_stat = lib_path_final and vim.uv.fs_stat(lib_path_final)
 	local has_jet_lib = lib_stat and lib_stat.type == "file"
+
+	bin_path_final = has_jet_bin and bin_path_final or nil
+	lib_path_final = has_jet_lib and lib_path_final or nil
+
+	return {
+		bin = bin_path_final,
+		lib = lib_path_final,
+		bin_user = config.jet_binary_path,
+		lib_user = config.jet_library_path,
+		bin_default = path_defaults.bin_path,
+		lib_default = path_defaults.lib_path,
+		default_dir = path_defaults.dir,
+	}
+end
+
+M.check_bin_outdated = function(path)
+	assert(path, "Binary path is required")
+
+	local required = require("jet.core.config").data.jet_min_version
+
+	local stdout = vim.system({ path, "--version" }, { text = true }):wait().stdout
+	assert(stdout, "Failed to get Jet binary version from " .. path)
+
+	local jet_bin_version = vim.trim(stdout):match("^jet (%d+%.%d+%.%d+)$")
+	assert(jet_bin_version, "Failed to get Jet binary version from " .. path .. ". Output: " .. stdout)
+
+	return {
+		current = jet_bin_version,
+		required = required,
+		is_outdated = utils.version_compare(jet_bin_version, required),
+	}
+end
+
+M.check_lib_outdated = function(path)
+	local required = require("jet.core.config").data.jet_min_version
+
+	local lua_loader = package.loadlib(path, "luaopen_jet")
+	assert(lua_loader, "Failed to load Jet library at " .. path)
+	local jet = lua_loader()
+	local jet_lib_version = jet.version and jet.version()
+
+	assert(jet_lib_version, "Failed to get Jet library version from: " .. path)
+
+	return {
+		current = jet_lib_version,
+		required = required,
+		is_outdated = utils.version_compare(jet_lib_version, required),
+	}
+end
+
+---@param callback? fun(opts: { bin_path: string, lib_path: string })
+---@param has_done_download? boolean
+function M.maybe_download_jet(callback, has_done_download)
+	local paths = M.get_jet_paths()
 
 	local needs_download = false
 
 	---------------------------------------------------
 	--        Maybe download library and binary      --
 	---------------------------------------------------
-	if not has_jet_bin then
-		if config.jet_binary_path then
-			error("Jet binary not found at custom path: " .. config.jet_binary_path)
+	if not paths.bin then
+		if paths.bin_user then
+			error("Jet binary not found at custom path: " .. paths.bin_user)
 		else
 			needs_download = true
 		end
 	end
 
-	if not has_jet_lib then
-		if config.jet_library_path then
-			error("Jet Lua library not found at custom path: " .. config.jet_library_path)
+	if not paths.lib then
+		if paths.lib_user then
+			error("Jet Lua library not found at custom path: " .. paths.lib_user)
 		else
 			needs_download = true
 		end
@@ -265,7 +314,7 @@ function M.maybe_download_jet(callback, has_done_download)
 		utils.input_key("Install jet?", { "y", "n" }, function(choice)
 			if choice == "y" then
 				-- Download and then re-call this function to make sure we all good
-				M.download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
+				M.download_jet("latest", paths.default_dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet is required for this plugin! Use `:Jet install` to download a release.")
@@ -277,37 +326,19 @@ function M.maybe_download_jet(callback, has_done_download)
 	-----------------------------------------------------
 	--        Check that version reqts are met         --
 	-----------------------------------------------------
-	assert(bin_path, "Could not resolve Jet binary path")
-	assert(lib_path, "Could not resolve Jet library path")
 
-	local stdout = vim.system({ bin_path, "--version" }, { text = true }):wait().stdout
-	assert(stdout, "Failed to get Jet binary version from " .. bin_path)
-
-	local jet_bin_version = vim.trim(stdout):match("^jet (%d+%.%d+%.%d+)$")
-
-	assert(jet_bin_version, "Failed to get Jet binary version from " .. bin_path .. ". Output: " .. stdout)
-
-	local lua_loader = package.loadlib(lib_path, "luaopen_jet")
-	assert(lua_loader, "Failed to load Jet library at " .. lib_path)
-	local jet = lua_loader()
-	local jet_lib_version = jet.version and jet.version()
-
-	assert(jet_lib_version, "Failed to get Jet library version from: " .. lib_path)
-
-	local required = require("jet.core.config").data.jet_min_version
-
-	local bin_outdated = utils.version_compare(jet_bin_version, required)
-	local lib_outdated = utils.version_compare(jet_lib_version, required)
-
-	if bin_outdated or lib_outdated then
+	if M.check_bin_outdated(paths.bin).is_outdated or M.check_lib_outdated(paths.lib).is_outdated then
 		if has_done_download then
 			utils.log_error("Jet binary and/or library is outdated after download!")
 			return
 		end
-		local msg = string.format("Jet binary and/or library is less than required version %s. Update?", required)
+		local msg = string.format(
+			"Jet binary and/or library is less than required version %s. Update?",
+			require("jet.core.config").data.jet_min_version
+		)
 		utils.input_key(msg, { "y", "n" }, function(choice)
 			if choice == "y" then
-				M.download_jet("latest", path_defaults.dir, function() M.maybe_download_jet(callback, true) end)
+				M.download_jet("latest", paths.default_dir, function() M.maybe_download_jet(callback, true) end)
 				return
 			else
 				error("Jet binary and/or library is outdated. Use `:Jet install` to download a release.")
@@ -317,7 +348,8 @@ function M.maybe_download_jet(callback, has_done_download)
 	end
 
 	if callback then
-		callback({ bin_path = bin_path, lib_path = lib_path })
+		---@diagnostic disable-next-line: assign-type-mismatch
+		callback({ bin_path = paths.bin, lib_path = paths.lib })
 	end
 end
 
