@@ -317,13 +317,27 @@ function Kernel:set_iopub_last_line(msg)
 				self.iopub_last_line.next_done = false
 			end
 		end
-		return
 	end
 
-	local text = ""
+	if msg.header.msg_type == "status" and msg.content.execution_state == "idle" then
+		if self.iopub_last_line.next_text ~= "" then
+			self.iopub_last_line.text = self.iopub_last_line.next_text
+			self.iopub_last_line.next_text = ""
+			self.iopub_last_line.next_done = false
+		end
+	end
+
 	if msg.header.msg_type == "execute_result" then
-		text = last_non_blank_line(msg.content.data["text/plain"])
-	elseif msg.header.msg_type == "error" then
+		local line = strip_escapes(last_non_blank_line(msg.content.data["text/plain"]))
+		if line ~= "" then
+			self.iopub_last_line.text = line
+			self.iopub_last_line.next_text = ""
+			self.iopub_last_line.next_done = false
+		end
+	end
+
+	if msg.header.msg_type == "error" then
+		local text = ""
 		if msg.content.traceback and #msg.content.traceback > 0 then
 			text = first_non_blank_line(msg.content.traceback[1])
 		else
@@ -337,15 +351,13 @@ function Kernel:set_iopub_last_line(msg)
 				text = text .. first_non_blank_line(msg.content.evalue)
 			end
 		end
-	else
-		return
-	end
 
-	local line = strip_escapes(text)
-	if line ~= "" then
-		self.iopub_last_line.text = line
-		self.iopub_last_line.next_text = ""
-		self.iopub_last_line.next_done = false
+		local line = strip_escapes(text)
+		if line ~= "" then
+			self.iopub_last_line.text = line
+			self.iopub_last_line.next_text = ""
+			self.iopub_last_line.next_done = false
+		end
 	end
 end
 
