@@ -58,6 +58,9 @@ M.version_compare = function(a, b)
 	end
 end
 
+-- Purely for diagnostic purposes
+M.open_polls = {}
+
 ---Repeatedly run a callback until a particular result is returned
 ---
 ---Opts:
@@ -68,15 +71,23 @@ end
 ---@generic T
 ---@param callback fun(): T
 ---@param handler fun(res: T): nil | "wait" | "continue" | "exit"
----@param opts? { interval?: integer }
+---@param opts? { interval?: integer, alias?: string }
 M.poll = function(callback, handler, opts)
 	opts = opts or {}
+
+	if opts.alias then
+		M.open_polls[opts.alias] = true
+	end
+
 	local function run()
 		while true do
 			local result = callback()
 			local action = handler(result) or "wait"
 
 			if action == "exit" then
+				if opts.alias then
+					M.open_polls[opts.alias] = nil
+				end
 				return
 			elseif action == "wait" then
 				return vim.defer_fn(run, opts.interval or 50)

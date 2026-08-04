@@ -390,7 +390,7 @@ function Kernel:handle_stream()
 		else
 			return "wait"
 		end
-	end)
+	end, { alias = "Watch for kernel stream messages " .. self.session_id })
 end
 
 function Kernel:register_lsp_client()
@@ -512,7 +512,7 @@ function Kernel:start_lua_client(callback)
 		else
 			return "wait"
 		end
-	end, { interval = 30 })
+	end, { interval = 30, alias = "Wait for kernel startup reply " .. self.session_id })
 end
 
 --- Can only be done after the kernel is connected and we have the kernel info,
@@ -616,7 +616,7 @@ function Kernel:stop(callback)
 			self.session_id = nil
 			callback(res.success, res.failure_msg)
 		end
-	end)
+	end, { alias = "Waiting for kernel stop response " .. self.session_id })
 end
 
 ---@class jet.kernel.comm_open.opts
@@ -649,7 +649,7 @@ function Kernel:comm_open(name, data, opts)
 			else
 				return "wait"
 			end
-		end, { interval = opts.listener_interval })
+		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
 	end
 
 	return comm_id
@@ -735,7 +735,7 @@ function Kernel:send_lua(code, silent, callback)
 		else
 			return "wait"
 		end
-	end, { interval = 30 })
+	end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
 end
 
 -- ---@param code string | string[]

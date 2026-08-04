@@ -113,7 +113,7 @@ M.list_kernels = function(filters, init_opts, callback)
 				end
 				callback(M.filter_kernels(kernels, filters))
 			end
-		end, { interval = 20 })
+		end, { interval = 20, alias = "Waiting for list_sessions output" })
 		return
 	end
 
