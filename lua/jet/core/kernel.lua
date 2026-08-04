@@ -30,7 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_last_line { text: string, next_text: string, next_done: boolean }
+---@field iopub_last_line { text: string, next_text: string, }
 ---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
 local Kernel = {}
 Kernel.__index = Kernel
@@ -44,7 +44,7 @@ local init_defaults = function()
 	return {
 		comms = {},
 		ui_expand = false,
-		iopub_last_line = { text = "", next_text = "", next_done = true },
+		iopub_last_line = { text = "", next_text = "" },
 		on_message_received = {},
 	}
 end
@@ -274,10 +274,8 @@ end
 ---@param s string
 ---@return string
 first_non_blank_line = function(s)
-	return vim.split(s, "[\n\r]", {
-		plain = false,
-		trimempty = true,
-	})[1] or ""
+	local split = vim.split(s, "[\n\r]", { plain = false, trimempty = true })
+	return split[1] or ""
 end
 
 ---@param s string
@@ -293,47 +291,35 @@ function Kernel:set_iopub_last_line(msg)
 		return
 	end
 
+	local flush = function()
+		if self.iopub_last_line.next_text ~= "" then
+			self.iopub_last_line.text = self.iopub_last_line.next_text
+			self.iopub_last_line.next_text = ""
+		end
+	end
+
+	---@param text string
+	local append = function(text) self.iopub_last_line.next_text = self.iopub_last_line.next_text .. strip_escapes(text) end
+
 	if msg.header.msg_type == "stream" and msg.content.text then
-		-- The stream may include 0 lines, a partial line, or several
-		-- lines, one or more of which may be partial. So these
-		-- gymnastics are about making sure iopub_last_line.text is
-		-- always the last complete line received from the kernel.
 		for i, line_part in ipairs(vim.split(msg.content.text, "[\n\r]", { plain = false })) do
-			line_part = strip_escapes(line_part)
-			if line_part == "" then
-				if self.iopub_last_line.next_text ~= "" then
-					self.iopub_last_line.text = self.iopub_last_line.next_text
-					self.iopub_last_line.next_text = line_part
-				end
-				self.iopub_last_line.next_done = true
-			elseif i == 1 and not self.iopub_last_line.next_done then
-				self.iopub_last_line.next_text = self.iopub_last_line.next_text .. line_part
-				self.iopub_last_line.next_done = false
-			else
-				if self.iopub_last_line.next_text ~= "" then
-					self.iopub_last_line.text = self.iopub_last_line.next_text
-				end
-				self.iopub_last_line.next_text = line_part
-				self.iopub_last_line.next_done = false
+			-- The first item may be a continuation of a previous partial line. Subsequent parts
+			-- always begin new lines (but don't necessarily finish them)
+			if i > 1 then
+				flush()
 			end
+			append(line_part)
 		end
 	end
 
 	if msg.header.msg_type == "status" and msg.content.execution_state == "idle" then
-		if self.iopub_last_line.next_text ~= "" then
-			self.iopub_last_line.text = self.iopub_last_line.next_text
-			self.iopub_last_line.next_text = ""
-			self.iopub_last_line.next_done = false
-		end
+		flush()
 	end
 
 	if msg.header.msg_type == "execute_result" then
-		local line = strip_escapes(last_non_blank_line(msg.content.data["text/plain"]))
-		if line ~= "" then
-			self.iopub_last_line.text = line
-			self.iopub_last_line.next_text = ""
-			self.iopub_last_line.next_done = false
-		end
+		flush()
+		append(last_non_blank_line(msg.content.data["text/plain"]))
+		flush()
 	end
 
 	if msg.header.msg_type == "error" then
@@ -352,12 +338,9 @@ function Kernel:set_iopub_last_line(msg)
 			end
 		end
 
-		local line = strip_escapes(text)
-		if line ~= "" then
-			self.iopub_last_line.text = line
-			self.iopub_last_line.next_text = ""
-			self.iopub_last_line.next_done = false
-		end
+		flush()
+		append(text)
+		flush()
 	end
 end
 
