@@ -125,6 +125,8 @@ end
 ---@param callback? fun(k: jet.kernel, focus_gained: boolean)
 ---@param win_config? vim.api.keyset.win_config
 function Kernel:open_term(callback, win_config)
+	local curr_win = vim.api.nvim_get_current_win()
+
 	local open = function()
 		assert(self.term, "kernel.term is nil")
 
@@ -142,10 +144,14 @@ function Kernel:open_term(callback, win_config)
 				style = "minimal",
 			})
 
-			term_win = vim.api.nvim_open_win(self.term.buf, false, opts)
+			vim.api.nvim_win_call(
+				vim.api.nvim_win_is_valid(curr_win) and curr_win or vim.api.nvim_get_current_win(),
+				function() term_win = vim.api.nvim_open_win(self.term.buf, false, opts) end
+			)
 
 			-- When the cursor is at the bottom of the REPL you get aut-scroll when
 			-- new lines appear. This is a good state to start in.
+			---@diagnostic disable-next-line: param-type-mismatch
 			vim.api.nvim_win_set_cursor(term_win, { vim.api.nvim_buf_line_count(self.term.buf), 0 })
 		end
 
