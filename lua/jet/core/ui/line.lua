@@ -9,6 +9,7 @@
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field text string
 ---@field marks vim.api.keyset.set_extmark[]
+---@field alias? string For debugging
 ---@field on_unwatch? fun(self: jet.ui.line)
 ---@field data table<string, any>
 local Line = {}
@@ -20,17 +21,29 @@ Line.__index = Line
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field data? table<string, any>
 ---@field on_unwatch? fun(self: jet.ui.line)
+---@field alias? string For debugging
+
+local id = 0
 
 ---@param opts jet.ui.line.new.opts
 Line.new = function(opts)
+	if opts.interval and not opts.alias then
+		error("jet.ui.line.new: interval requires alias")
+	end
+
 	local out = setmetatable({
 		indent = (opts.indent or 0) * 2,
 		interval = opts.interval,
 		parts = {},
 		make_parts = opts.make_parts,
+		alias = opts.alias and (id .. "_" .. opts.alias) or nil,
 		on_unwatch = opts.on_unwatch,
 		data = opts.data or {},
 	}, Line)
+
+	if opts.alias then
+		id = id + 1
+	end
 
 	return out
 end
@@ -43,6 +56,9 @@ function Line:refresh()
 	end
 end
 
+-- for debugging
+Line.open_timers = {}
+
 function Line:watch()
 	if not self.interval then
 		return
@@ -50,6 +66,9 @@ function Line:watch()
 	self.timer = vim.uv.new_timer()
 	if not self.timer then
 		return
+	end
+	if self.alias then
+		Line.open_timers[self.alias] = self.timer
 	end
 	self.timer:start(self.interval, self.interval, function() self:refresh() end)
 end
@@ -59,6 +78,9 @@ function Line:unwatch()
 		self.timer:stop()
 		self.timer:close()
 		self.timer = nil
+		if self.alias then
+			Line.open_timers[self.alias] = nil
+		end
 	end
 	if self.on_unwatch then
 		self:on_unwatch()

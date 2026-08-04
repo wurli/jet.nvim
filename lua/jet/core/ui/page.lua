@@ -67,6 +67,11 @@ function Page:refresh()
 		end
 
 		self.text = text
+
+		if not vim.api.nvim_buf_is_valid(self.buf) then
+			return
+		end
+
 		self:set_lines(text)
 
 		self:clear_marks()

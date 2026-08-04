@@ -15,6 +15,7 @@ local active_kernel_line = function(k)
 	return line.new({
 		indent = 2,
 		interval = 100,
+		alias = "Active kernel line " .. k.session_id,
 		data = { kernel = k },
 		make_parts = function()
 			local status, status_icon = k:status()
@@ -94,7 +95,9 @@ local keymaps_line = function()
 end
 
 local blank_line = function()
-	return line.new({ make_parts = function() return { { "" } } end })
+	return line.new({
+		make_parts = function() return { { "" } } end,
+	})
 end
 
 ---@class jet.ui.kernel_group
