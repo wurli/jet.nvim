@@ -25,8 +25,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
+---@field last_execution? { start_time: integer, end_time?: integer, code: string? }
 ---@field execution_state? jet.kernel.execution_state
----@field curr_execution_start_time? integer
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
@@ -348,24 +348,44 @@ end
 function Kernel:has_lua_client() return self.client_id ~= nil end
 
 function Kernel:handle_stream()
+	local last_busy_id = ""
+
 	---@param msg jet.jupyter.msg
 	local update_execution_state = function(msg)
-		local new_state = msg.content and msg.content.execution_state
-		if not new_state then
+		-- Execution is only officially started once we receive "busy" status,
+		-- so for now just save the executed code so we can include it when do
+		-- get the "busy" status.
+		if
+			self.last_execution
+			and msg.header.msg_type == "execute_input"
+			and (msg.parent_header or {}).msg_id == last_busy_id
+		then
+			self.last_execution.code = msg.content.code
 			return
 		end
+
+		if msg.header.msg_type ~= "status" then
+			return
+		end
+		local new_state = msg.content and msg.content.execution_state
 		if not vim.tbl_contains({ "idle", "busy", "starting" }, new_state) then
 			utils.log_warn("Kernel '%s' sent unknown execution state: %s", self.spec.display_name, new_state)
 			return
 		end
 
 		self.execution_state = new_state
-		self.curr_execution_start_time = new_state == "busy" and os.time() or nil
+
+		if new_state == "busy" then
+			last_busy_id = (msg.parent_header or {}).msg_id or last_busy_id
+			self.last_execution = { start_time = os.time() }
+		elseif new_state == "idle" and self.last_execution then
+			self.last_execution.end_time = os.time()
+		end
 
 		if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
 			local jet_b = vim.b[self.term.buf].jet or {}
 			jet_b.execution_state = self.execution_state
-			jet_b.curr_execution_start_time = self.curr_execution_start_time
+			jet_b.last_execution = self.last_execution
 			vim.b[self.term.buf].jet = jet_b
 			vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 		end
