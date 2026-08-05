@@ -4,31 +4,41 @@ local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
 local page = require("jet.core.ui.page")
 
+local progress_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
+-- These look rubbish unfortunately
+-- { "󰪞 ", "󰪟 ", "󰪠 ", "󰪡 ", "󰪢 ", "󰪣 ", "󰪤 ", "󰪥 " }
+
+local make_progress_spinner = function()
+	local index = 1
+	return function()
+		index = (index % #progress_icons) + 1
+		---@diagnostic disable-next-line: undefined-field
+		return progress_icons[index]
+	end
+end
+
 ---@param k jet.kernel
 local active_kernel_line = function(k)
 	assert(k.session_id, "Kernel must have a session_id")
-	local connecting_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
-	-- These look rubbish unfortunately
-	-- { "󰪞 ", "󰪟 ", "󰪠 ", "󰪡 ", "󰪢 ", "󰪣 ", "󰪤 ", "󰪥 " }
 
-	local connecting_icon_index = 1
+	local next_progress_spinner = make_progress_spinner()
+
 	return line.new({
 		indent = 2,
 		interval = 100,
 		alias = "Active kernel line " .. k.session_id,
 		data = { kernel = k },
 		make_parts = function()
+			assert(k.session_info, "Kernel must have session info")
+
 			local status, status_icon = k:status()
 			local icon
 
 			if status == "connecting" then
-				icon = connecting_icons[(connecting_icon_index % #connecting_icons) + 1] .. " "
-				connecting_icon_index = connecting_icon_index + 1
+				icon = next_progress_spinner() .. " "
 			else
 				icon = status_icon
 			end
-
-			assert(k.session_info, "Kernel must have session info")
 
 			return {
 				{ icon .. " ", status == "external" and "@variable.builtin" or "@string.regexp" },
@@ -200,6 +210,35 @@ local kernel_info_lines = function(k)
 		)
 	end
 
+	if k.last_execution then
+		local next_progress_spinner = make_progress_spinner()
+		table.insert(
+			out,
+			line.new({
+				indent = 3,
+				interval = 100,
+				alias = "Last execution " .. k.session_id,
+				make_parts = function()
+					local icon = k.last_execution.is_error and " "
+						or k.last_execution.end_time and " "
+						or (next_progress_spinner() .. " ")
+
+					local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
+
+					local code = k.last_execution.code and k.last_execution.code:gsub("\n", "   ") or nil
+
+					return {
+						bullet,
+						{ "Last execution: ", "JetBold" },
+						{ "(" .. icon .. elapsed .. ")", "Comment" },
+						code and { " " },
+						code and { code, "JetCode" },
+					}
+				end,
+			})
+		)
+	end
+
 	if k.iopub_last_line.text ~= "" then
 		local stream_line = line.new({
 			indent = 3,
@@ -314,6 +353,7 @@ M.show = function()
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
+	hooks.on_execution_state_changed.update_ui = function() ui:refresh() end
 
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
 
@@ -373,7 +413,11 @@ M.show = function()
 
 	vim.api.nvim_create_autocmd("WinClosed", {
 		pattern = tostring(ui_win),
-		callback = function() ui:close() end,
+		callback = function()
+			ui:close()
+			hooks.on_status_changed.update_ui = nil
+			hooks.on_execution_state_changed.update_ui = nil
+		end,
 	})
 end
 

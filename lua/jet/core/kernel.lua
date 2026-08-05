@@ -25,7 +25,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
----@field last_execution? { start_time: integer, end_time?: integer, code: string? }
+---@field last_execution? { start_time: integer, end_time?: integer, code: string?, is_error?: boolean }
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
@@ -348,23 +348,27 @@ end
 function Kernel:has_lua_client() return self.client_id ~= nil end
 
 function Kernel:handle_stream()
-	local last_busy_id = ""
+	local last_execute_id = ""
 
 	---@param msg jet.jupyter.msg
 	local update_execution_state = function(msg)
+		local header = msg.header
+		local parent = msg.parent_header or {}
+
 		-- Execution is only officially started once we receive "busy" status,
 		-- so for now just save the executed code so we can include it when do
 		-- get the "busy" status.
-		if
-			self.last_execution
-			and msg.header.msg_type == "execute_input"
-			and (msg.parent_header or {}).msg_id == last_busy_id
-		then
+		if header.msg_type == "execute_input" and parent.msg_id == last_execute_id and self.last_execution then
 			self.last_execution.code = msg.content.code
 			return
 		end
 
-		if msg.header.msg_type ~= "status" then
+		if header.msg_type == "error" and parent.msg_id == last_execute_id and self.last_execution then
+			self.last_execution.is_error = true
+			return
+		end
+
+		if header.msg_type ~= "status" then
 			return
 		end
 		local new_state = msg.content and msg.content.execution_state
@@ -375,10 +379,10 @@ function Kernel:handle_stream()
 
 		self.execution_state = new_state
 
-		if new_state == "busy" then
-			last_busy_id = (msg.parent_header or {}).msg_id or last_busy_id
+		if new_state == "busy" and parent.msg_type == "execute_request" then
+			last_execute_id = parent.msg_id or last_execute_id
 			self.last_execution = { start_time = os.time() }
-		elseif new_state == "idle" and self.last_execution then
+		elseif new_state == "idle" and parent.msg_id == last_execute_id and self.last_execution then
 			self.last_execution.end_time = os.time()
 		end
 

@@ -110,14 +110,20 @@ end
 -- end, {})
 
 ---Get the elapsed time since `t` as a nicely formatted string
----@param t number | string
+---@param t integer | string
+---@param finish? integer | string
 ---@return string
-M.time_since = function(t)
+M.time_since = function(t, finish)
 	if type(t) == "string" then
 		t = M.parse_timestamp(t)
 	end
 
-	local seconds = math.floor(os.difftime(os.time(), t))
+	finish = finish or os.time()
+	if type(finish) == "string" then
+		finish = M.parse_timestamp(finish)
+	end
+
+	local seconds = math.floor(os.difftime(finish, t))
 
 	return string.format(
 		"%02.f:%02.f:%02.f",
@@ -145,7 +151,7 @@ M.parse_timestamp = function(t)
 	-- os_epoch uses the OS timezone, so we need to adjust it to UTC.
 	local utc = os.date("!*t", os_epoch)
 	utc.isdst = false -- Ensure that daylight saving time is not applied
-	local offset = os.difftime(os_epoch, os.time(utc))
+	local offset = os.difftime(os_epoch, os.time(utc)) --[[@as integer]]
 
 	return os_epoch + offset
 end
