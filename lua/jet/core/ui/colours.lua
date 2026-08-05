@@ -10,7 +10,7 @@ M.colours = {
 	Url = { link = "@markup.link" },
 	Bold = { bold = true },
 	Italic = { italic = true },
-	Dim = { link = "Directory" },
+	Dim = { link = "ComplHint" },
 	Code = { link = "@markup.raw" },
 }
 
