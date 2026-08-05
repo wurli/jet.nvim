@@ -4,6 +4,39 @@ local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
 local page = require("jet.core.ui.page")
 
+local line_max_length = 80
+
+--- ``` lua
+--- vim.print(truncate({ { "foofoo" }, { "barbar" }, { "bazbaz" } }, 10))
+--- -- { { "foofoo" }, { "b" }, { "...", "JetDim" } }
+--- ```
+---@param l { [1]: string, [2]: string? }[]
+---@param max_len? integer
+---@return { [1]: string, [2]: string? }[]
+local truncate = function(l, max_len)
+	local l_len = 0
+	max_len = max_len or line_max_length
+	for _, part in ipairs(l) do
+		l_len = l_len + #part[1]
+	end
+	if l_len <= max_len then
+		return l
+	end
+	for i = #l, 1, -1 do
+		local i_len = #l[i][1]
+		if l_len - i_len + 3 > max_len then
+			table.remove(l, i)
+			l_len = l_len - i_len
+		else
+			local extra = max_len - l_len + i_len - 3
+			l[i][1] = l[i][1]:sub(1, extra)
+			table.insert(l, { "...", "JetDim" })
+			return l
+		end
+	end
+	return l
+end
+
 local progress_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
 -- These look rubbish unfortunately
 -- { "󰪞 ", "󰪟 ", "󰪠 ", "󰪡 ", "󰪢 ", "󰪣 ", "󰪤 ", "󰪥 " }
@@ -225,15 +258,25 @@ local kernel_expand_lines = function(k)
 
 					local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
 
-					local code = k.last_execution.code and k.last_execution.code:gsub("\n", "   ") or nil
+					local code = k.last_execution.code
 
-					return {
+					local parts = {
 						bullet,
 						{ "Last execution ", "JetBold" },
 						{ "(" .. icon .. elapsed .. ")", "JetDim" },
-						{ ": ", "JetBold" },
-						code and { code, "JetCode" },
 					}
+
+					if code then
+						table.insert(parts, { ": ", "JetBold" })
+						for i, code_line in ipairs(vim.split(code, "\n")) do
+							if i > 1 then
+								table.insert(parts, { " ↪ ", "JetDim" })
+							end
+							table.insert(parts, { vim.trim(code_line), "JetCode" })
+						end
+					end
+
+					return truncate(parts)
 				end,
 			})
 		)
@@ -243,11 +286,11 @@ local kernel_expand_lines = function(k)
 		local stream_line = line.new({
 			indent = 3,
 			make_parts = function()
-				return {
+				return truncate({
 					bullet,
 					{ "Stream: ", "JetBold" },
 					{ k.iopub_last_line.text, "JetCode" },
-				}
+				})
 			end,
 			on_unwatch = function() k.on_message_received.update_ui = nil end,
 		})
@@ -401,9 +444,13 @@ M.show = function()
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
 	local scale = function(x, y) return math.floor(x * y) end
+
+	local win_width = scale(screen_width, 0.8)
+	line_max_length = math.max(win_width - 10, 40)
+
 	ui_win = vim.api.nvim_open_win(ui.buf, true, {
 		relative = "editor",
-		width = scale(screen_width, 0.8),
+		width = win_width,
 		height = scale(screen_height, 0.8),
 		row = scale(screen_height, 0.2 / 2),
 		col = scale(screen_width, 0.2 / 2),

@@ -93,7 +93,9 @@ M.poll = function(callback, handler, opts)
 					M.open_polls[opts.alias] = nil
 				end
 				timer:stop()
-				timer:close()
+				if not timer:is_closing() then
+					timer:close()
+				end
 				return
 			elseif action == "wait" then
 				return
@@ -109,7 +111,13 @@ M.poll = function(callback, handler, opts)
 	timer:start(0, opts.interval, vim.schedule_wrap(timer_callback))
 end
 
-local fmt_time_hhmmss = function(hh, mm, ss) return string.format("%02.f:%02.f:%02.f", hh, mm, ss) end
+local fmt_time_hhmmss = function(hh, mm, ss)
+	if hh == 0 then
+		return string.format("%02.f:%02.f", mm, ss)
+	else
+		return string.format("%02.f:%02.f:%02.f", hh, mm, ss)
+	end
+end
 
 ---Get the elapsed time since `t` as a nicely formatted string
 ---@param t integer | string
