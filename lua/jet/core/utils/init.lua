@@ -105,9 +105,17 @@ M.poll = function(callback, handler, opts)
 	run()
 end
 
--- vim.keymap.set("n", "<cr>", function()
--- 	vim.print(M.get_filetype(0, { vim.fn.line("."), vim.fn.col(".") }))
--- end, {})
+local fmt_time_hhmmss = function(hh, mm, ss) return string.format("%02.f:%02.f:%02.f", hh, mm, ss) end
+
+-- local fmt_time_biggest = function(hh, mm, ss)
+-- 	if hh > 0 then
+-- 		return string.format("%.1fh", (hh * 60 * 60 + mm * 60 + ss) / (60 * 60))
+-- 	elseif mm > 0 then
+-- 		return string.format("%.1fm", (mm * 60 + ss) / 60)
+-- 	else
+-- 		return string.format("%ds", ss)
+-- 	end
+-- end
 
 ---Get the elapsed time since `t` as a nicely formatted string
 ---@param t integer | string
@@ -124,13 +132,11 @@ M.time_since = function(t, finish)
 	end
 
 	local seconds = math.floor(os.difftime(finish, t))
+	local hh, mm, ss = math.floor(seconds / 3600), math.floor((seconds % 3600) / 60), seconds % 60
 
-	return string.format(
-		"%02.f:%02.f:%02.f",
-		math.floor(seconds / 3600),
-		math.floor((seconds % 3600) / 60),
-		seconds % 60
-	)
+	local fmt = require("jet.core.config").options.time_formatter or fmt_time_hhmmss
+
+	return fmt(hh, mm, ss)
 end
 
 ---@param t string E.g. 2026-07-07T20:11:08Z

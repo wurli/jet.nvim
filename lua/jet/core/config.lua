@@ -11,6 +11,22 @@ M.defaults = {
 	---@type table<string, string | fun(): string?>
 	default_kernels = {},
 	repl_win_opts = {}, ---@type vim.api.keyset.win_config
+	--- Control how Jet displays how long stuff is taking:
+	--- ``` lua
+	--- -- E.g. to display as hours, minutes, or seconds depending on the duration:
+	--- require("jet").setup({
+	---     time_formatter = function(hh, mm, ss)
+	---         if hh > 0 then
+	---             return string.format("%.1fh", hh + mm/60 + ss/(60 * 60))
+	---         elseif mm > 0 then
+	---             return string.format("%.1fm", mm + ss/60)
+	---         else
+	---             return string.format("%ds", ss)
+	---         end
+	---     end
+	--- })
+	--- ```
+	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
 	hooks = {
 		on_kernel_init = {}, ---@type table<string | integer, fun(k: jet.kernel)>
 		on_lua_client_start = {}, ---@type table<string | integer, fun(k: jet.kernel)>
