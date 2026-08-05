@@ -12,6 +12,7 @@ M.colours = {
 	Italic = { italic = true },
 	Dim = { link = "ComplHint" },
 	Code = { link = "@markup.raw" },
+	Label = { link = "@label" },
 }
 
 M.set_highlights = function()
