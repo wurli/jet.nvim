@@ -42,18 +42,18 @@ local check_jet_version = function()
 	end
 end
 
-local check_polls_and_timers = function()
-	vim.health.start("Open polls/timers")
+local check_timers = function()
+	vim.health.start("Open timers")
 
 	local any_open = false
-	for poller, _ in pairs(require("jet.core.utils").open_polls) do
+	for timer, _ in pairs(require("jet.core.utils").open_polls) do
 		any_open = true
-		vim.health.info("Open poll: '" .. poller .. "'")
+		vim.health.info(timer)
 	end
 
 	for timer, _ in pairs(require("jet.core.ui.line").open_timers) do
 		any_open = true
-		vim.health.info("Open timer: '" .. timer .. "'")
+		vim.health.info(timer)
 	end
 
 	if not any_open then
@@ -63,7 +63,7 @@ end
 
 M.check = function()
 	check_jet_version()
-	check_polls_and_timers()
+	check_timers()
 end
 
 return M

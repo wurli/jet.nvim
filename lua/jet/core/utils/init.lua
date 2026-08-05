@@ -81,19 +81,23 @@ M.poll = function(callback, handler, opts)
 		M.open_polls[opts.alias] = true
 	end
 
-	local function run()
+	local timer = vim.uv.new_timer()
+	assert(timer, "Failed to create timer")
+
+	local timer_callback = function()
 		while true do
-			local result = callback()
-			local action = handler(result) or "wait"
+			local action = handler(callback()) or "wait"
 
 			if action == "exit" then
 				if opts.alias then
 					M.open_polls[opts.alias] = nil
 				end
+				timer:stop()
+				timer:close()
 				return
 			elseif action == "wait" then
-				return vim.defer_fn(run, opts.interval or 50)
-			---@diagnostic disable-next-line: unnecessary-if
+				return
+				---@diagnostic disable-next-line: unnecessary-if
 			elseif action ~= "continue" then
 				-- If we've got a valid result, process it and then and then
 				-- immediately (i.e. with no delay) poll again.
@@ -102,7 +106,7 @@ M.poll = function(callback, handler, opts)
 		end
 	end
 
-	run()
+	timer:start(0, opts.interval, vim.schedule_wrap(timer_callback))
 end
 
 local fmt_time_hhmmss = function(hh, mm, ss) return string.format("%02.f:%02.f:%02.f", hh, mm, ss) end
