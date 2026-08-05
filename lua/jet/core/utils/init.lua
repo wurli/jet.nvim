@@ -107,16 +107,6 @@ end
 
 local fmt_time_hhmmss = function(hh, mm, ss) return string.format("%02.f:%02.f:%02.f", hh, mm, ss) end
 
--- local fmt_time_biggest = function(hh, mm, ss)
--- 	if hh > 0 then
--- 		return string.format("%.1fh", (hh * 60 * 60 + mm * 60 + ss) / (60 * 60))
--- 	elseif mm > 0 then
--- 		return string.format("%.1fm", (mm * 60 + ss) / 60)
--- 	else
--- 		return string.format("%ds", ss)
--- 	end
--- end
-
 ---Get the elapsed time since `t` as a nicely formatted string
 ---@param t integer | string
 ---@param finish? integer | string

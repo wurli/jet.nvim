@@ -67,7 +67,7 @@ local kernel_info_line = function(k)
 			return {
 				{ k.spec.display_name },
 				{ "    " },
-				{ utils.path_shorten(k.spec_path), "Directory" },
+				{ utils.path_shorten(k.spec_path), "JetDim" },
 			}
 		end,
 	})
@@ -229,9 +229,9 @@ local kernel_expand_lines = function(k)
 
 					return {
 						bullet,
-						{ "Last execution: ", "JetBold" },
-						{ "(" .. icon .. elapsed .. ")", "Comment" },
-						code and { " " },
+						{ "Last execution ", "JetBold" },
+						{ "(" .. icon .. elapsed .. ")", "JetDim" },
+						{ ": ", "JetBold" },
 						code and { code, "JetCode" },
 					}
 				end,
