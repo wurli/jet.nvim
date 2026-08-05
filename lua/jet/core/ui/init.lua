@@ -173,7 +173,7 @@ end
 
 ---@param k jet.kernel
 ---@return jet.ui.line<any>[]
-local kernel_info_lines = function(k)
+local kernel_expand_lines = function(k)
 	---@type jet.ui.line<any>[]
 	local out = {}
 
@@ -281,7 +281,7 @@ local kernel_lines = function(callback)
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_info_lines(k)) do
+					for _, l in ipairs(kernel_expand_lines(k)) do
 						table.insert(lines, l)
 					end
 				end
@@ -290,7 +290,7 @@ local kernel_lines = function(callback)
 			for _, k in ipairs(group.external) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_info_lines(k)) do
+					for _, l in ipairs(kernel_expand_lines(k)) do
 						table.insert(lines, l)
 					end
 				end
