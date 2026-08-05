@@ -380,7 +380,7 @@ M.show = function()
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
-	hooks.on_execution_state_changed.update_ui = function() ui:refresh() end
+	-- hooks.on_execution_state_changed.update_ui = function() ui:refresh() end
 
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
 
@@ -447,7 +447,7 @@ M.show = function()
 		callback = function()
 			ui:close()
 			hooks.on_status_changed.update_ui = nil
-			hooks.on_execution_state_changed.update_ui = nil
+			-- hooks.on_execution_state_changed.update_ui = nil
 		end,
 	})
 end
