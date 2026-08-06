@@ -32,6 +32,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field augroup? integer
 ---@field iopub_last_line { text: string, next_text: string, }
 ---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
+---@field on_started table<string, fun(k: jet.kernel)>
+---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 local Kernel = {}
 Kernel.__index = Kernel
 
@@ -46,6 +48,8 @@ local init_defaults = function()
 		ui_expand = false,
 		iopub_last_line = { text = "", next_text = "" },
 		on_message_received = {},
+		on_started = {},
+		metadata = {},
 	}
 end
 
@@ -457,10 +461,16 @@ end
 
 ---@param callback? fun(k: jet.kernel)
 function Kernel:start_lua_client(callback)
-	if self:has_lua_client() then
+	if self:status() == "connected" then
 		if callback then
 			callback(self)
 		end
+		return
+	end
+
+	table.insert(self.on_started, callback)
+
+	if self:status() == "connecting" then
 		return
 	end
 
@@ -538,8 +548,8 @@ function Kernel:start_lua_client(callback)
 				hook(self)
 			end
 
-			if callback then
-				callback(self)
+			for _, on_started_callback in pairs(self.on_started) do
+				on_started_callback(self)
 			end
 			return "exit"
 		else
