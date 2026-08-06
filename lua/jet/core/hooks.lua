@@ -7,7 +7,7 @@ local h = require("jet.core.config").options.hooks
 ---@return T
 local function make_caller(hooks)
 	return function(...)
-		for _, hook in ipairs(hooks) do
+		for _, hook in pairs(hooks) do
 			hook(...)
 		end
 	end
