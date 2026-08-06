@@ -615,7 +615,7 @@ function Kernel:close(quiet)
 	end
 
 	if self.augroup then
-		vim.api.nvim_del_augroup_by_id(self.augroup)
+		pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
 	end
 	self:delete_term_buffer()
 
