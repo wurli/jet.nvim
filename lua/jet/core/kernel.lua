@@ -1,6 +1,7 @@
 local manager = require("jet.core.manager")
 local config = require("jet.core.config")
 local utils = require("jet.core.utils")
+local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -65,9 +66,7 @@ function Kernel.init_owned(opts)
 	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
 	out:try_resolve_filetype()
 
-	for _, hook in pairs(config.options.hooks.on_kernel_init) do
-		hook(out)
-	end
+	hooks.kernel_init(out)
 
 	return out
 end
@@ -96,9 +95,7 @@ function Kernel.init_external(opts)
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
 
-	for _, hook in pairs(config.options.hooks.on_kernel_init) do
-		hook(out)
-	end
+	hooks.kernel_init(out)
 
 	return out
 end
@@ -403,9 +400,7 @@ function Kernel:handle_stream()
 			vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 		end
 
-		for _, hook in pairs(config.options.hooks.on_execution_state_changed) do
-			hook(self, new_state)
-		end
+		hooks.execution_state_changed(self, new_state)
 	end
 
 	utils.poll(self.stream, function(res)
@@ -414,9 +409,7 @@ function Kernel:handle_stream()
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
 			self:set_iopub_last_line(res.msg)
-			for _, hook in pairs(config.options.hooks.on_message_received) do
-				hook(self, res.msg)
-			end
+			hooks.message_received(self, res.msg)
 			for _, hook in pairs(self.on_message_received) do
 				hook(self, res.msg)
 			end
@@ -488,9 +481,7 @@ function Kernel:start_lua_client(callback)
 
 		self.client_id = STARTING_KERNEL_SENTINEL
 
-		for _, hook in pairs(config.options.hooks.on_status_changed) do
-			hook(self)
-		end
+		hooks.status_changed(self)
 
 		---@diagnostic disable-next-line: unnecessary-assert
 		assert(self.session_id, "Kernel did not return a session id")
@@ -541,12 +532,8 @@ function Kernel:start_lua_client(callback)
 			self:handle_stream()
 			self:register_lsp_client()
 
-			for _, hook in pairs(config.options.hooks.on_lua_client_start) do
-				hook(self)
-			end
-			for _, hook in pairs(config.options.hooks.on_status_changed) do
-				hook(self)
-			end
+			hooks.lua_client_start(self)
+			hooks.status_changed(self)
 
 			for _, on_started_callback in pairs(self.on_started) do
 				on_started_callback(self)
@@ -628,19 +615,13 @@ function Kernel:close(quiet)
 			if not quiet then
 				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
 			end
-			for _, hook in pairs(config.options.hooks.on_kernel_close) do
-				hook(self)
-			end
-			for _, hook in pairs(config.options.hooks.on_status_changed) do
-				hook(self)
-			end
+			hooks.kernel_close(self)
+			hooks.status_changed(self)
 		end)
 		return
 	end
 
-	for _, hook in pairs(config.options.hooks.on_status_changed) do
-		hook(self)
-	end
+	hooks.status_changed(self)
 end
 
 ---@param callback fun(success: boolean, failure_msg?: string)
@@ -726,9 +707,7 @@ function Kernel:send_repl(code)
 	-- at the end of statements which end on an indented line in order to be
 	-- actually sent to the kernel (otherwise you get the continuation prompt
 	-- '+ ...').
-	for _, hook in pairs(config.options.hooks.on_send_pre) do
-		hook(self, code)
-	end
+	hooks.send_pre(self, code)
 
 	-- Wrap in a bracketed-paste sequence so the REPL on the other end
 	-- accumulates the whole block as one cell instead of evaluating each

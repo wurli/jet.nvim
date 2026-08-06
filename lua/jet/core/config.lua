@@ -28,13 +28,13 @@ M.defaults = {
 	--- ```
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
 	hooks = {
+		on_execution_state_changed = {}, ---@type table<string | integer, fun(k: jet.kernel, state: jet.kernel.execution_state)>
+		on_kernel_close = {}, ---@type table<string | integer, fun(k: jet.kernel)>
 		on_kernel_init = {}, ---@type table<string | integer, fun(k: jet.kernel)>
 		on_lua_client_start = {}, ---@type table<string | integer, fun(k: jet.kernel)>
-		on_kernel_close = {}, ---@type table<string | integer, fun(k: jet.kernel)>
-		on_send_pre = {}, ---@type table<string | integer, fun(k: jet.kernel, code: string[])>
 		on_message_received = {}, ---@type table<string | integer, fun(k: jet.kernel, msg: jet.jupyter.msg)>
+		on_send_pre = {}, ---@type table<string | integer, fun(k: jet.kernel, code: string[])>
 		on_status_changed = {}, ---@type table<string | integer, fun(k: jet.kernel)>
-		on_execution_state_changed = {}, ---@type table<string | integer, fun(k: jet.kernel, state: jet.kernel.execution_state)>
 	},
 	send = {
 		---If `true` (the default) then each expression will be sent and
