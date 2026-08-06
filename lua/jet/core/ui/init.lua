@@ -411,7 +411,9 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.kernel
 			local k = l.data.kernel
-			k:close()
+			if k.session_id then
+				k:close()
+			end
 		end
 	end, { buf = ui.buf })
 

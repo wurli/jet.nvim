@@ -501,7 +501,10 @@ function Kernel:start_lua_client(callback)
 				self.spec.display_name,
 				vim.split(tostring(res), "\n")[1]
 			)
-			self:close(true)
+			---@diagnostic disable-next-line: unnecessary-if
+			if self.session_id then
+				self:close()
+			end
 			return nil
 		else
 			return res --[[@as jet.init.response?]]
