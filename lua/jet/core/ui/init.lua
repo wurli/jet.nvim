@@ -127,7 +127,7 @@ local keymaps_line = function()
 			return {
 				{ " Open (o) ", "JetButton" },
 				{ "  " },
-				{ " New session (n) ", "JetButton" },
+				{ " New session (s) ", "JetButton" },
 				{ "  " },
 				{ " Stop (x) ", "JetButton" },
 				{ "  " },
@@ -397,7 +397,7 @@ M.show = function()
 		end
 	end, { buf = ui.buf })
 
-	vim.keymap.set("n", "n", function()
+	vim.keymap.set("n", "s", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel then
 			---@type jet.kernel
