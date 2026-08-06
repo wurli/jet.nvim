@@ -464,6 +464,8 @@ function Kernel:start_lua_client(callback)
 		return
 	end
 
+	utils.log_info("Starting kernel '%s'", self.spec_path)
+
 	local cb
 	if self.owned then
 		---@diagnostic disable-next-line: unnecessary-assert
@@ -508,6 +510,8 @@ function Kernel:start_lua_client(callback)
 			return "exit"
 		end
 		if res.status == "ready" then
+			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self.session_id)
+
 			self.lsp_port = res.lsp_port
 			self.client_id = res.client_id
 			self.kernel_info = res.kernel_info
@@ -524,16 +528,15 @@ function Kernel:start_lua_client(callback)
 				self:set_as_filetype_primary()
 			end
 
+			self:handle_stream()
+			self:register_lsp_client()
+
 			for _, hook in pairs(config.options.hooks.on_lua_client_start) do
 				hook(self)
 			end
 			for _, hook in pairs(config.options.hooks.on_status_changed) do
 				hook(self)
 			end
-
-			self:handle_stream()
-
-			self:register_lsp_client()
 
 			if callback then
 				callback(self)
