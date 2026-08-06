@@ -26,6 +26,7 @@ M.setup = function(opts)
 	modify_jupyter_path()
 	config.set(opts)
 	require("jet.core.cmd").setup()
+	require("jet.core.ui.colours").setup()
 end
 
 return M

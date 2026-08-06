@@ -13,6 +13,7 @@ M.colours = {
 	Dim = { link = "ComplHint" },
 	Code = { link = "@markup.raw" },
 	Label = { link = "@label" },
+	Repl = { link = "NormalFloat" },
 }
 
 M.set_highlights = function()

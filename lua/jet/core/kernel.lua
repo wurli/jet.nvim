@@ -122,6 +122,9 @@ function Kernel:toggle_term()
 	end
 end
 
+local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
+vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
+
 ---@param callback? fun(k: jet.kernel, focus_gained: boolean)
 ---@param win_config? vim.api.keyset.win_config
 function Kernel:open_term(callback, win_config)
@@ -144,14 +147,16 @@ function Kernel:open_term(callback, win_config)
 				style = "minimal",
 			})
 
-			vim.api.nvim_win_call(
+			---@type integer
+			term_win = vim.api.nvim_win_call(
 				vim.api.nvim_win_is_valid(curr_win) and curr_win or vim.api.nvim_get_current_win(),
-				function() term_win = vim.api.nvim_open_win(self.term.buf, false, opts) end
+				function() return vim.api.nvim_open_win(self.term.buf, false, opts) end
 			)
+
+			vim.api.nvim_win_set_hl_ns(term_win, jet_hl_ns)
 
 			-- When the cursor is at the bottom of the REPL you get aut-scroll when
 			-- new lines appear. This is a good state to start in.
-			---@diagnostic disable-next-line: param-type-mismatch
 			vim.api.nvim_win_set_cursor(term_win, { vim.api.nvim_buf_line_count(self.term.buf), 0 })
 		end
 
