@@ -213,38 +213,38 @@ end
 
 ---@param k jet.kernel
 ---@return jet.ui.line<any>[]
-local kernel_expand_lines = function(k)
-	local align = function(text) return { text .. string.rep(" ", 12 - #text), "JetLabel" } end
+local kernel_expand = function(k)
+	local align = function(text, n) return { text .. string.rep(" ", (n or 12) - #text), "JetLabel" } end
 
 	---@type jet.ui.line<any>[]
 	local out = {}
 
-	if k.spec.argv and k.spec.argv[1] then
+	if k:status() == "inactive" and k.spec.argv and k.spec.argv[1] then
 		table.insert(
 			out,
 			line.new({
 				indent = 3,
-				make_parts = function() return { align("binary"), { k.spec.argv[1], "JetSpecial" } } end,
+				make_parts = function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end,
 			})
 		)
 	end
 
-	if k.spec.env and vim.tbl_count(k.spec.env) > 0 then
-		table.insert(
-			out,
-			line.new({
-				indent = 3,
-				make_parts = function()
-					local envs = {}
-					for name, val in pairs(k.spec.env) do
-						table.insert(envs, name .. ": " .. val)
-					end
-					table.sort(envs)
-					return { align("env"), { table.concat(envs, ", ") } }
-				end,
-			})
-		)
-	end
+	-- if k:status() == "inactive" and k.spec.env and vim.tbl_count(k.spec.env) > 0 then
+	-- 	table.insert(
+	-- 		out,
+	-- 		line.new({
+	-- 			indent = 3,
+	-- 			make_parts = function()
+	-- 				local envs = {}
+	-- 				for name, val in pairs(k.spec.env) do
+	-- 					table.insert(envs, name .. ": " .. val)
+	-- 				end
+	-- 				table.sort(envs)
+	-- 				return { align("env", 7), { table.concat(envs, ", ") } }
+	-- 			end,
+	-- 		})
+	-- 	)
+	-- end
 
 	if k.last_execution then
 		local next_progress_spinner = make_progress_spinner()
@@ -314,7 +314,7 @@ local kernel_lines = function(callback)
 
 			table.insert(lines, kernel_info_line(group.kernel))
 			if expanded_inactive_kernels[utils.path_normalise(group.kernel.spec_path)] then
-				for _, l in ipairs(kernel_expand_lines(group.kernel)) do
+				for _, l in ipairs(kernel_expand(group.kernel)) do
 					table.insert(lines, l)
 				end
 			end
@@ -323,7 +323,7 @@ local kernel_lines = function(callback)
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_expand_lines(k)) do
+					for _, l in ipairs(kernel_expand(k)) do
 						table.insert(lines, l)
 					end
 				end
@@ -332,7 +332,7 @@ local kernel_lines = function(callback)
 			for _, k in ipairs(group.external) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_expand_lines(k)) do
+					for _, l in ipairs(kernel_expand(k)) do
 						table.insert(lines, l)
 					end
 				end
