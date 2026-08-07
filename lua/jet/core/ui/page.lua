@@ -75,16 +75,16 @@ function Page:refresh()
 		local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
 
 		for lnum, l in ipairs(self.lines) do
-			l:refresh()
+			l:refresh(lnum)
 			table.insert(text, l.text)
 			table.insert(extmarks, l.marks)
 
 			-- When a 'line' updates, set the buffer text/marks for that line
-			l.on_refresh = function(line)
+			l.on_refresh.update_page = function(line)
 				vim.schedule(function()
 					self:set_line(lnum, line.text)
 					self:clear_marks(lnum - 1, lnum)
-					self:set_marks(lnum, line.marks)
+					self:set_marks(line.marks)
 				end)
 			end
 		end
@@ -98,8 +98,8 @@ function Page:refresh()
 		self:set_lines()
 
 		self:clear_marks()
-		for lnum, marks in ipairs(extmarks) do
-			self:set_marks(lnum, marks)
+		for _, marks in ipairs(extmarks) do
+			self:set_marks(marks)
 		end
 
 		if self.on_refresh then
@@ -124,10 +124,10 @@ function Page:clear_marks(line_start, line_end)
 	end
 end
 
-function Page:set_marks(lnum, marks)
+function Page:set_marks(marks)
 	if vim.api.nvim_buf_is_valid(self.buf) then
 		for _, mark in ipairs(marks) do
-			vim.api.nvim_buf_set_extmark(self.buf, self.ns, lnum - 1, mark[1], mark[2])
+			vim.api.nvim_buf_set_extmark(self.buf, self.ns, mark[1], mark[2], mark[3])
 		end
 	end
 end

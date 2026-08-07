@@ -1,13 +1,15 @@
 ---@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
+---@alias jet.ui.line.extmark { [1]: integer, [2]: vim.api.keyset.set_extmark }
 
 ---@class jet.ui.line
 ---@field indent integer
 ---@field timer? boolean
----@field on_refresh? fun(self: jet.ui.line) Called after `refresh` is called
+---@field on_refresh table<string, fun(self: jet.ui.line)> Called after `refresh` is called
 ---@field parts jet.ui.line.parts
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field text string
----@field marks vim.api.keyset.set_extmark[]
+---@field lnum? integer
+---@field marks jet.ui.line.extmark[]
 ---@field on_close? fun(self: jet.ui.line)
 ---@field data table<string, any>
 local Line = {}
@@ -22,21 +24,25 @@ Line.new = function(opts)
 		make_parts = opts.make_parts,
 		on_close = opts.on_close,
 		data = opts.data or {},
+		on_refresh = opts.on_refresh or {},
 	}, Line)
 end
 
-function Line:refresh()
+---@param lnum? integer
+function Line:refresh(lnum)
+	self.lnum = lnum or self.lnum
 	self.parts = self.make_parts()
-	self.text, self.marks = self:resolve()
-	if self.on_refresh then
-		self:on_refresh()
+	self:resolve()
+	for _, fn in pairs(self.on_refresh) do
+		fn(self)
 	end
 end
 
----@return string, { [1]: integer, [2]: vim.api.keyset.set_extmark }[]
 function Line:resolve()
+	assert(self.lnum, "Line:refresh must be called before Line:resolve")
+
 	local text = string.rep(" ", self.indent)
-	---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[]
+	---@type jet.ui.line.extmark[]
 	local marks = {}
 
 	for _, part in ipairs(self.parts) do
@@ -52,11 +58,12 @@ function Line:resolve()
 				opts = vim.tbl_extend("force", opts, part[2])
 			end
 
-			table.insert(marks, { start_col, opts })
+			table.insert(marks, { self.lnum - 1, start_col, opts })
 		end
 	end
 
-	return text, marks
+	self.text = text
+	self.marks = marks
 end
 
 return Line

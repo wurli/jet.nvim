@@ -263,23 +263,30 @@ local kernel_expand = function(k)
 					or (next_progress_spinner() .. " ")
 
 				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-				local code = k.last_execution.code
 				table.insert(parts, { icon .. elapsed, "JetDim" })
 
-				if code then
-					table.insert(parts, { " " })
-					for i, code_line in ipairs(vim.split(code, "\n")) do
-						if i > 1 then
-							table.insert(parts, { " ↪ ", "JetDim" })
-						end
-						table.insert(parts, { vim.trim(code_line), "JetCode" })
-					end
-				end
+				-- local code = k.last_execution.code
+				-- if code then
+				-- 	table.insert(parts, { " " })
+				-- 	for i, code_line in ipairs(vim.split(code, "\n")) do
+				-- 		if i > 1 then
+				-- 			table.insert(parts, { " ↪ ", "JetDim" })
+				-- 		end
+				-- 		table.insert(parts, { vim.trim(code_line), "JetCode" })
+				-- 	end
+				-- end
 
 				return truncate(parts)
 			end,
 		})
 	)
+
+	local code = k.last_execution and k.last_execution.code
+	if code then
+		for _, code_line in ipairs(vim.split(code, "\n")) do
+			table.insert(out, line.new({ indent = 6, make_parts = function() return { { code_line } } end }))
+		end
+	end
 
 	local stream_line = line.new({
 		indent = 4,
