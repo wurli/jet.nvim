@@ -151,25 +151,32 @@ end
 ---@param callback fun(kernels: jet.ui.kernel_group[])
 local list_kernel_groups = function(callback)
 	api.list_kernels({}, {}, function(kernel_list)
+		table.sort(kernel_list, function(a, b)
+			if a:status() == "inactive" and b:status() ~= "inactive" then
+				return true
+			end
+			return a.spec_path < b.spec_path
+		end)
+
 		---@type table<string, { kernel: jet.kernel, external: jet.kernel[], connected: jet.kernel[] }>
 		local kernels_grouped = {}
-		for _, k in ipairs(kernel_list) do
-			local path = utils.path_normalise(k.spec_path)
-			if not kernels_grouped[path] then
-				kernels_grouped[path] = {
-					kernel = k, -- Doesn't matter which kernel this one is, since we only use its basic info (name, path, etc.)
-					external = {},
-					connected = {},
-				}
-			end
+
+		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "inactive" })) do
+			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
 		end
 
 		for _, k in ipairs(api.filter_kernels(kernel_list, { status = { "connected", "connecting" } })) do
-			table.insert(kernels_grouped[utils.path_normalise(k.spec_path)].connected, k)
+			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
+			---@diagnostic disable-next-line: unnecessary-assert
+			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+			table.insert(group.connected, k)
 		end
 
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = { "external" } })) do
-			table.insert(kernels_grouped[utils.path_normalise(k.spec_path)].external, k)
+		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "external" })) do
+			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
+			---@diagnostic disable-next-line: unnecessary-assert
+			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+			table.insert(group.external, k)
 		end
 
 		-- Makes sorting possible
