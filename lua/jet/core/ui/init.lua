@@ -296,6 +296,8 @@ local kernel_expand_lines = function(k)
 	return out
 end
 
+local expanded_inactive_kernels = {}
+
 ---@param callback fun(lines: jet.ui.line<jet.kernel>[])
 local kernel_lines = function(callback)
 	list_kernel_groups(function(groups)
@@ -304,13 +306,19 @@ local kernel_lines = function(callback)
 		local group_name = ""
 
 		for _, group in ipairs(groups) do
-			local last_group = group_name
+			local prev_group = group_name
 			group_name = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
-			if group_name ~= last_group then
+			if group_name ~= prev_group then
 				table.insert(lines, kernel_group_line(group_name))
 			end
 
 			table.insert(lines, kernel_info_line(group.kernel))
+			if expanded_inactive_kernels[utils.path_normalise(group.kernel.spec_path)] then
+				for _, l in ipairs(kernel_expand_lines(group.kernel)) do
+					table.insert(lines, l)
+				end
+			end
+
 			local any_connected = false
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k))
@@ -426,10 +434,15 @@ M.show = function()
 
 	vim.keymap.set("n", "<cr>", function()
 		local l = ui.lines[vim.fn.line(".")]
-		if l and l.data and l.data.kernel then
-			---@type jet.kernel
-			local k = l.data.kernel
-			k.ui_expand = not k.ui_expand
+		local k = l and l.data and l.data.kernel --[[@as jet.kernel]]
+		if k then
+			if k:status() == "inactive" then
+				local path = utils.path_normalise(k.spec_path)
+				expanded_inactive_kernels[path] = not expanded_inactive_kernels[path]
+			else
+				k.ui_expand = not k.ui_expand
+			end
+
 			ui:refresh()
 		end
 	end, { buf = ui.buf })
