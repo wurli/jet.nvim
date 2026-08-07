@@ -76,11 +76,12 @@ end
 function Line:unwatch()
 	if self.timer then
 		self.timer:stop()
-		self.timer:close()
-		self.timer = nil
-		if self.alias then
-			Line.open_timers[self.alias] = nil
-		end
+		self.timer:close(function()
+			self.timer = nil
+			if self.alias then
+				Line.open_timers[self.alias] = nil
+			end
+		end)
 	end
 	if self.on_unwatch then
 		self:on_unwatch()
