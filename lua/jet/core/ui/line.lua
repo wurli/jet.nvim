@@ -1,5 +1,5 @@
 ---@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
----@alias jet.ui.line.extmark { [1]: integer, [2]: vim.api.keyset.set_extmark }
+---@alias jet.ui.line.extmark { [1]: integer, [2]: integer, [3]: vim.api.keyset.set_extmark }
 
 ---@class jet.ui.line
 ---@field indent integer

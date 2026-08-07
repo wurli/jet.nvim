@@ -283,8 +283,24 @@ local kernel_expand = function(k)
 
 	local code = k.last_execution and k.last_execution.code
 	if code then
+		---@type jet.ui.line[]
+		local code_lines = {}
 		for _, code_line in ipairs(vim.split(code, "\n")) do
-			table.insert(out, line.new({ indent = 6, make_parts = function() return { { code_line } } end }))
+			table.insert(code_lines, line.new({ indent = 6, make_parts = function() return { { code_line } } end }))
+		end
+		if code_lines[1] and k.filetype then
+			code_lines[1].on_refresh.set_ts_extmarks = function(l)
+				l.marks = require("jet.core.ui.get_highlights").get_ts_highlights(
+					code,
+					k.filetype,
+					l.indent,
+					l.lnum and l.lnum - 1
+				)
+			end
+		end
+
+		for _, l in ipairs(code_lines) do
+			table.insert(out, l)
 		end
 	end
 
