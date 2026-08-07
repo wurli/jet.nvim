@@ -244,49 +244,18 @@ local kernel_expand = function(k)
 	-- 	)
 	-- end
 
-	local next_progress_spinner = make_progress_spinner()
-	table.insert(
-		out,
-		line.new({
-			indent = 4,
-			timer = true,
-			make_parts = function()
-				local parts = { align("last input") }
-
-				if not k.last_execution then
-					table.insert(parts, { "n/a", "JetDim" })
-					return truncate(parts)
-				end
-
-				local icon = k.last_execution.is_error and " "
-					or k.last_execution.end_time and " "
-					or (next_progress_spinner() .. " ")
-
-				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-				table.insert(parts, { icon .. elapsed, "JetDim" })
-
-				-- local code = k.last_execution.code
-				-- if code then
-				-- 	table.insert(parts, { " " })
-				-- 	for i, code_line in ipairs(vim.split(code, "\n")) do
-				-- 		if i > 1 then
-				-- 			table.insert(parts, { " ↪ ", "JetDim" })
-				-- 		end
-				-- 		table.insert(parts, { vim.trim(code_line), "JetCode" })
-				-- 	end
-				-- end
-
-				return truncate(parts)
-			end,
-		})
-	)
-
 	local code = k.last_execution and k.last_execution.code
 	if code then
 		---@type jet.ui.line[]
 		local code_lines = {}
 		for _, code_line in ipairs(vim.split(code, "\n")) do
-			table.insert(code_lines, line.new({ indent = 6, make_parts = function() return { { code_line } } end }))
+			table.insert(
+				code_lines,
+				line.new({
+					indent = 5,
+					make_parts = function() return { { code_line } } end,
+				})
+			)
 		end
 		if code_lines[1] and k.filetype then
 			code_lines[1].on_refresh.set_ts_extmarks = function(l)
@@ -304,24 +273,47 @@ local kernel_expand = function(k)
 		end
 	end
 
-	local stream_line = line.new({
-		indent = 4,
+	table.insert(out, blank_line())
+
+	local next_progress = make_progress_spinner()
+	local timer_line = line.new({
+		indent = 5,
+		timer = true,
 		make_parts = function()
-			local parts = { align("last output") }
-			if k.iopub_last_line.text == "" then
+			local parts = {}
+			if not k.last_execution then
+				table.insert(parts, { "-", "JetDim" })
+				return truncate(parts)
+			end
+			local icon = k.last_execution.is_error and " "
+				or k.last_execution.end_time and " "
+				or next_progress() .. " "
+			local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
+			table.insert(parts, { icon .. elapsed, "JetDim" })
+			table.insert(parts, { " " })
+			return truncate(parts)
+		end,
+	})
+	local stream_line = line.new({
+		indent = 5,
+		timer = true,
+		make_parts = function()
+			local parts = {}
+			if k.iopub_last_line.text == "" or not k.last_execution then
 				table.insert(parts, { "n/a", "JetDim" })
 			else
 				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
 			end
 			return truncate(parts)
 		end,
-		on_close = function() k.on_message_received.update_ui = nil end,
 	})
 	k.on_message_received.update_ui = function(_, msg)
-		if msg.channel == "iopub" then
+		if k.ui_expand and msg.channel == "iopub" then
 			stream_line:refresh()
+			timer_line:refresh()
 		end
 	end
+	table.insert(out, timer_line)
 	table.insert(out, stream_line)
 
 	if #out > 0 then
