@@ -207,7 +207,7 @@ end
 ---@param k jet.kernel
 ---@return jet.ui.line<any>[]
 local kernel_expand_lines = function(k)
-	local align = function(text) return { text .. string.rep(" ", 8 - #text), "JetLabel" } end
+	local align = function(text) return { text .. string.rep(" ", 12 - #text), "JetLabel" } end
 
 	---@type jet.ui.line<any>[]
 	local out = {}
@@ -254,7 +254,7 @@ local kernel_expand_lines = function(k)
 
 					local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
 					local code = k.last_execution.code
-					local parts = { align("running"), { icon .. elapsed, "JetDim" } }
+					local parts = { align("last input"), { icon .. elapsed, "JetDim" } }
 
 					if code then
 						table.insert(parts, { " " })
@@ -275,7 +275,7 @@ local kernel_expand_lines = function(k)
 	if k.iopub_last_line.text ~= "" then
 		local stream_line = line.new({
 			indent = 3,
-			make_parts = function() return truncate({ align("stream"), { k.iopub_last_line.text, "JetCode" } }) end,
+			make_parts = function() return truncate({ align("last output"), { k.iopub_last_line.text, "JetCode" } }) end,
 			on_unwatch = function() k.on_message_received.update_ui = nil end,
 		})
 		k.on_message_received.update_ui = function(_, msg)
