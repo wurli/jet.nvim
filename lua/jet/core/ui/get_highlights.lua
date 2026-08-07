@@ -23,7 +23,7 @@ local get_ts_highlights = function(code, lang, col, row)
 		return {}
 	end
 
-	row, col = row and row - 1 or 0, col or 0
+	row, col = row and row or 0, col or 0
 
 	---@type jet.ui.line.extmark[]
 	local marks = {}
