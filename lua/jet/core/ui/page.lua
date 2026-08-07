@@ -38,12 +38,17 @@ end
 
 ---@param callback fun()
 function Page:update_lines(callback)
-	for _, l in ipairs(self.lines) do
-		l:unwatch()
-	end
-	self.get_lines(function(lines)
-		self.lines = lines
-		callback()
+	vim.schedule(function()
+		for _, l in ipairs(self.lines) do
+			l:unwatch()
+		end
+		if #require("jet.core.ui.line").open_timers > 0 then
+			error("Failed to close open timers before updating lines")
+		end
+		self.get_lines(function(lines)
+			self.lines = lines
+			callback()
+		end)
 	end)
 end
 
