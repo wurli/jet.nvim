@@ -1,51 +1,28 @@
 ---@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
 
 ---@class jet.ui.line
----@field timer? uv.uv_timer_t
 ---@field indent integer
----@field interval? integer
+---@field timer? boolean
 ---@field on_refresh? fun(self: jet.ui.line) Called after `refresh` is called
 ---@field parts jet.ui.line.parts
 ---@field make_parts fun(): jet.ui.line.parts Reset `parts`
 ---@field text string
 ---@field marks vim.api.keyset.set_extmark[]
----@field alias? string For debugging
----@field on_unwatch? fun(self: jet.ui.line)
+---@field on_close? fun(self: jet.ui.line)
 ---@field data table<string, any>
 local Line = {}
 Line.__index = Line
 
----@class jet.ui.line.new.opts
----@field indent? integer
----@field interval? integer
----@field make_parts fun(): jet.ui.line.parts Reset `parts`
----@field data? table<string, any>
----@field on_unwatch? fun(self: jet.ui.line)
----@field alias? string For debugging
-
-local id = 0
-
----@param opts jet.ui.line.new.opts
+---@param opts Partial<jet.ui.line>
 Line.new = function(opts)
-	if opts.interval and not opts.alias then
-		error("jet.ui.line.new: interval requires alias")
-	end
-
-	local out = setmetatable({
+	return setmetatable({
 		indent = (opts.indent or 0) * 2,
-		interval = opts.interval,
+		timer = opts.timer,
 		parts = {},
 		make_parts = opts.make_parts,
-		alias = opts.alias and (id .. " " .. opts.alias .. " (every " .. opts.interval .. "ms)") or nil,
-		on_unwatch = opts.on_unwatch,
+		on_close = opts.on_close,
 		data = opts.data or {},
 	}, Line)
-
-	if opts.alias then
-		id = id + 1
-	end
-
-	return out
 end
 
 function Line:refresh()
@@ -53,38 +30,6 @@ function Line:refresh()
 	self.text, self.marks = self:resolve()
 	if self.on_refresh then
 		self:on_refresh()
-	end
-end
-
--- for debugging
-Line.open_timers = {}
-
-function Line:watch()
-	if not self.interval then
-		return
-	end
-	self.timer = vim.uv.new_timer()
-	if not self.timer then
-		return
-	end
-	if self.alias then
-		Line.open_timers[self.alias] = self.timer
-	end
-	self.timer:start(self.interval, self.interval, function() self:refresh() end)
-end
-
-function Line:unwatch()
-	if self.timer then
-		self.timer:stop()
-		self.timer:close(function()
-			self.timer = nil
-			if self.alias then
-				Line.open_timers[self.alias] = nil
-			end
-		end)
-	end
-	if self.on_unwatch then
-		self:on_unwatch()
 	end
 end
 

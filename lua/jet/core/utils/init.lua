@@ -89,12 +89,13 @@ M.poll = function(callback, handler, opts)
 			local action = handler(callback()) or "wait"
 
 			if action == "exit" then
-				if opts.alias then
-					M.open_polls[opts.alias] = nil
-				end
 				timer:stop()
 				if not timer:is_closing() then
-					timer:close()
+					timer:close(function()
+						if opts.alias then
+							M.open_polls[opts.alias] = nil
+						end
+					end)
 				end
 				return
 			elseif action == "wait" then

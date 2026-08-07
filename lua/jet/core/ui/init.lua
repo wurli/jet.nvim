@@ -58,8 +58,7 @@ local active_kernel_line = function(k)
 
 	return line.new({
 		indent = 3,
-		interval = 100,
-		alias = "Active kernel line " .. k.session_id,
+		timer = true,
 		data = { kernel = k },
 		make_parts = function()
 			assert(k.session_info, "Kernel must have session info")
@@ -250,8 +249,7 @@ local kernel_expand = function(k)
 		out,
 		line.new({
 			indent = 4,
-			interval = 100,
-			alias = "Last execution " .. k.session_id,
+			timer = true,
 			make_parts = function()
 				local parts = { align("last input") }
 
@@ -294,7 +292,7 @@ local kernel_expand = function(k)
 			end
 			return truncate(parts)
 		end,
-		on_unwatch = function() k.on_message_received.update_ui = nil end,
+		on_close = function() k.on_message_received.update_ui = nil end,
 	})
 	k.on_message_received.update_ui = function(_, msg)
 		if msg.channel == "iopub" then

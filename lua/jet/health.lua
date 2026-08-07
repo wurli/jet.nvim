@@ -51,9 +51,11 @@ local check_timers = function()
 		vim.health.info(timer)
 	end
 
-	for timer, _ in pairs(require("jet.core.ui.line").open_timers) do
+	if require("jet.core.ui.page").timer:is_active() then
 		any_open = true
-		vim.health.info(timer)
+		vim.health.info(
+			string.format("Jet UI page refresh timer (%sms)", require("jet.core.ui.page").timer:get_repeat())
+		)
 	end
 
 	if not any_open then
