@@ -296,7 +296,14 @@ local kernel_expand = function(k)
 	return out
 end
 
+---@type table<string, boolean>
 local expanded_inactive_kernels = {}
+
+local tbl_append = function(x, y)
+	for _, v in ipairs(y) do
+		table.insert(x, v)
+	end
+end
 
 ---@param callback fun(lines: jet.ui.line<jet.kernel>[])
 local kernel_lines = function(callback)
@@ -312,32 +319,29 @@ local kernel_lines = function(callback)
 				table.insert(lines, kernel_group_line(group_name))
 			end
 
+			local any_connected = false
+
 			table.insert(lines, kernel_info_line(group.kernel))
 			if expanded_inactive_kernels[utils.path_normalise(group.kernel.spec_path)] then
-				for _, l in ipairs(kernel_expand(group.kernel)) do
-					table.insert(lines, l)
-				end
+				tbl_append(lines, kernel_expand(group.kernel))
 			end
 
-			local any_connected = false
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_expand(k)) do
-						table.insert(lines, l)
-					end
+					tbl_append(lines, kernel_expand(k))
 				end
 				any_connected = true
 			end
+
 			for _, k in ipairs(group.external) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					for _, l in ipairs(kernel_expand(k)) do
-						table.insert(lines, l)
-					end
+					tbl_append(lines, kernel_expand(k))
 				end
 				any_connected = true
 			end
+
 			if any_connected then
 				table.insert(lines, blank_line())
 			end
@@ -395,6 +399,7 @@ M.show = function()
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
+	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
 	-- hooks.on_execution_state_changed.update_ui = function() ui:refresh() end
 
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
@@ -469,7 +474,6 @@ M.show = function()
 		callback = function()
 			ui:close()
 			hooks.on_status_changed.update_ui = nil
-			-- hooks.on_execution_state_changed.update_ui = nil
 		end,
 	})
 end
