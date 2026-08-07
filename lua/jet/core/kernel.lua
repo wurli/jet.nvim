@@ -467,7 +467,7 @@ function Kernel:start_lua_client(callback)
 		return
 	end
 
-	utils.log_info("Starting kernel '%s'", self.spec_path)
+	utils.log_info("Starting kernel '%s'", utils.path_shorten(self.spec_path))
 
 	local cb
 	if self.owned then
