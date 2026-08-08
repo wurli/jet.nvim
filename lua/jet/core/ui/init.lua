@@ -227,91 +227,46 @@ local kernel_expand = function(k)
 	---@type jet.ui.line<any>[]
 	local out = {}
 
-	-- if k:status() == "inactive" and k.spec.env and vim.tbl_count(k.spec.env) > 0 then
-	-- 	table.insert(
-	-- 		out,
-	-- 		line.new({
-	-- 			indent = 3,
-	-- 			make_parts = function()
-	-- 				local envs = {}
-	-- 				for name, val in pairs(k.spec.env) do
-	-- 					table.insert(envs, name .. ": " .. val)
-	-- 				end
-	-- 				table.sort(envs)
-	-- 				return { align("env", 7), { table.concat(envs, ", ") } }
-	-- 			end,
-	-- 		})
-	-- 	)
-	-- end
-
 	local code = k.last_execution and k.last_execution.code
-	if code then
-		code = code:gsub("%s*$", "")
-		---@type jet.ui.line[]
-		local code_lines = {}
-		for i, code_line in ipairs(vim.split(code, "\n")) do
-			table.insert(
-				code_lines,
-				line.new({
-					indent = 7,
-					make_parts = function()
-						return {
-							{ i == 1 and ">  " or "+  ", "JetDim" },
-							{ code_line },
-						}
-					end,
-				})
-			)
-		end
-		if code_lines[1] and k.filetype then
-			code_lines[1].on_refresh.set_ts_extmarks = function(l)
-				local ts_marks = require("jet.core.ui.get_highlights").get_ts_highlights(
-					code,
-					k.filetype,
-					l.indent + 3,
-					l.lnum and l.lnum - 1
-				)
-
-				for _, mark in ipairs(ts_marks) do
-					table.insert(l.marks, mark)
+	code = code and code:gsub("%s*$", "") or nil
+	if code and code ~= "" then
+		for i, code_text in ipairs(vim.split(code, "\n")) do
+			local code_line = line.new({
+				indent = 7,
+				make_parts = function() return { { i == 1 and ">  " or "+  ", "JetDim" }, { code_text } } end,
+			})
+			if i == 1 and k.filetype then
+				code_line.on_refresh.set_ts_extmarks = function(l)
+					local hl = require("jet.core.ui.get_highlights").get_ts_highlights
+					for _, mark in ipairs(hl(code, k.filetype, l.indent + 3, l.lnum and l.lnum - 1)) do
+						table.insert(l.marks, mark)
+					end
 				end
 			end
+			table.insert(out, code_line)
 		end
 
-		for _, l in ipairs(code_lines) do
-			table.insert(out, l)
-		end
+		table.insert(out, blank_line())
 	end
 
-	table.insert(out, blank_line())
-
-	local next_progress = make_progress_spinner()
-	local stream_line = line.new({
-		indent = 4,
-		timer = true,
-		make_parts = function()
-			local parts = {}
-			if k.iopub_last_line.text == "" or not k.last_execution then
-				table.insert(parts, { "n/a", "JetDim" })
-			else
+	if k.last_execution and k.iopub_last_line.text ~= "" then
+		local next_progress = make_progress_spinner()
+		local stream_line = line.new({
+			indent = 4,
+			timer = true,
+			make_parts = function()
+				local parts = {}
 				local icon = k.last_execution.is_error and " "
 					or k.last_execution.end_time and " "
 					or next_progress() .. " "
 				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-				table.insert(parts, { icon .. elapsed, "JetDim" })
-				table.insert(parts, { "  " })
+				table.insert(parts, { icon .. elapsed .. "  ", "JetDim" })
 				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
-			end
-			return truncate(parts)
-		end,
-	})
-
-	k.on_message_received.update_ui = function(_, msg)
-		if k.ui_expand and msg.channel == "iopub" then
-			stream_line:refresh()
-		end
+				return truncate(parts)
+			end,
+		})
+		table.insert(out, stream_line)
 	end
-	table.insert(out, stream_line)
 
 	if #out > 0 then
 		table.insert(out, blank_line())
@@ -472,7 +427,7 @@ M.show = function()
 				k.ui_expand = not k.ui_expand
 			end
 
-			ui:refresh()
+			vim.schedule(function() ui:refresh() end)
 		end
 	end, { buf = ui.buf })
 
