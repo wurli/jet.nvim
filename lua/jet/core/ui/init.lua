@@ -46,7 +46,7 @@ local make_progress_spinner = function()
 	return function()
 		index = (index % #progress_icons) + 1
 		---@diagnostic disable-next-line: undefined-field
-		return progress_icons[index]
+		return progress_icons[index] .. " "
 	end
 end
 
@@ -64,19 +64,22 @@ local active_kernel_line = function(k)
 			assert(k.session_info, "Kernel must have session info")
 
 			local status, status_icon = k:status()
-			local icon
+			local parts = {}
 
 			if status == "connecting" then
-				icon = next_progress_spinner() .. " "
+				table.insert(parts, { next_progress_spinner(), "JetBusy" })
+			elseif status == "external" then
+				table.insert(parts, { status_icon, "JetExternal" })
+			elseif status == "connected" and k.last_execution and not k.last_execution.end_time then
+				table.insert(parts, { status_icon, "JetBusy" })
 			else
-				icon = status_icon
+				table.insert(parts, { status_icon, "JetIdle" })
 			end
 
-			return {
-				{ icon .. " ", status == "external" and "@variable.builtin" or "@string.regexp" },
-				{ (k.session_id or "") .. " ", "JetId" },
-				{ "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" },
-			}
+			table.insert(parts, { (k.session_id or "") .. " ", "JetId" })
+			table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" })
+
+			return parts
 		end,
 	})
 end
@@ -256,11 +259,16 @@ local kernel_expand = function(k)
 			timer = true,
 			make_parts = function()
 				local parts = {}
-				local icon = k.last_execution.is_error and " "
-					or k.last_execution.end_time and " "
-					or next_progress() .. " "
 				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-				table.insert(parts, { icon .. elapsed .. "  ", "JetDim" })
+				if k.last_execution.is_error then
+					table.insert(parts, { " " .. elapsed, "JetFailure" })
+				elseif k.last_execution.end_time then
+					table.insert(parts, { " " .. elapsed, "JetSuccess" })
+				else
+					local icon = next_progress()
+					table.insert(parts, { icon .. elapsed, "JetBusy" })
+				end
+				table.insert(parts, { "  " })
 				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
 				return truncate(parts)
 			end,
