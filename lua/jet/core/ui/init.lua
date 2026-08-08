@@ -164,6 +164,8 @@ local keymaps_line = function()
 				{ " Stop (x) ", "JetButton" },
 				{ "  " },
 				{ " Quit (q) ", "JetButton" },
+				{ "  " },
+				{ " Expand (<CR>) ", "JetButton" },
 			}
 		end,
 	})
@@ -426,7 +428,7 @@ M.show = function()
 			if not (self.text and self.text[4]) then
 				return
 			end
-			for match_start, match_end in utils.gfind(self.text[4], "%(.%)") do
+			for match_start, match_end in utils.gfind(self.text[4], "%(.-%)") do
 				vim.api.nvim_buf_set_extmark(self.buf, self.ns, 3, match_start - 1, {
 					end_col = match_end,
 					hl_group = "JetSpecial",
