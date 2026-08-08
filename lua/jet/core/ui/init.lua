@@ -246,25 +246,35 @@ local kernel_expand = function(k)
 
 	local code = k.last_execution and k.last_execution.code
 	if code then
+		code = code:gsub("%s*$", "")
 		---@type jet.ui.line[]
 		local code_lines = {}
-		for _, code_line in ipairs(vim.split(code, "\n")) do
+		for i, code_line in ipairs(vim.split(code, "\n")) do
 			table.insert(
 				code_lines,
 				line.new({
-					indent = 8,
-					make_parts = function() return { { code_line } } end,
+					indent = 7,
+					make_parts = function()
+						return {
+							{ i == 1 and ">  " or "+  ", "JetDim" },
+							{ code_line },
+						}
+					end,
 				})
 			)
 		end
 		if code_lines[1] and k.filetype then
 			code_lines[1].on_refresh.set_ts_extmarks = function(l)
-				l.marks = require("jet.core.ui.get_highlights").get_ts_highlights(
+				local ts_marks = require("jet.core.ui.get_highlights").get_ts_highlights(
 					code,
 					k.filetype,
-					l.indent,
+					l.indent + 3,
 					l.lnum and l.lnum - 1
 				)
+
+				for _, mark in ipairs(ts_marks) do
+					table.insert(l.marks, mark)
+				end
 			end
 		end
 
@@ -289,7 +299,7 @@ local kernel_expand = function(k)
 					or next_progress() .. " "
 				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
 				table.insert(parts, { icon .. elapsed, "JetDim" })
-				table.insert(parts, { " " })
+				table.insert(parts, { "  " })
 				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
 			end
 			return truncate(parts)
