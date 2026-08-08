@@ -252,7 +252,7 @@ local kernel_expand = function(k)
 			table.insert(
 				code_lines,
 				line.new({
-					indent = 5,
+					indent = 8,
 					make_parts = function() return { { code_line } } end,
 				})
 			)
@@ -275,36 +275,23 @@ local kernel_expand = function(k)
 
 	table.insert(out, blank_line())
 
+	local next_progress = make_progress_spinner()
 	local stream_line = line.new({
-		indent = 5,
+		indent = 4,
 		timer = true,
 		make_parts = function()
 			local parts = {}
 			if k.iopub_last_line.text == "" or not k.last_execution then
 				table.insert(parts, { "n/a", "JetDim" })
 			else
+				local icon = k.last_execution.is_error and " "
+					or k.last_execution.end_time and " "
+					or next_progress() .. " "
+				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
+				table.insert(parts, { icon .. elapsed, "JetDim" })
+				table.insert(parts, { " " })
 				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
 			end
-			return truncate(parts)
-		end,
-	})
-
-	local next_progress = make_progress_spinner()
-	local timer_line = line.new({
-		indent = 5,
-		timer = true,
-		make_parts = function()
-			local parts = {}
-			if not k.last_execution then
-				table.insert(parts, { "-", "JetDim" })
-				return truncate(parts)
-			end
-			local icon = k.last_execution.is_error and " "
-				or k.last_execution.end_time and " "
-				or next_progress() .. " "
-			local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-			table.insert(parts, { icon .. elapsed, "JetDim" })
-			table.insert(parts, { " " })
 			return truncate(parts)
 		end,
 	})
@@ -312,11 +299,9 @@ local kernel_expand = function(k)
 	k.on_message_received.update_ui = function(_, msg)
 		if k.ui_expand and msg.channel == "iopub" then
 			stream_line:refresh()
-			timer_line:refresh()
 		end
 	end
 	table.insert(out, stream_line)
-	table.insert(out, timer_line)
 
 	if #out > 0 then
 		table.insert(out, blank_line())
