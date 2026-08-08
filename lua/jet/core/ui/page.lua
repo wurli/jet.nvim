@@ -6,6 +6,7 @@
 ---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
 ---@field on_refresh? fun(self: jet.ui.page)
 ---@field timer uv.uv_timer_t
+---@field interval integer
 local Page = {}
 Page.__index = Page
 
@@ -20,6 +21,7 @@ Page.__index = Page
 Page.new = function(opts)
 	local out = setmetatable(opts, Page)
 	out.lines = {}
+	out.interval = 100
 
 	vim.bo[out.buf].buftype = "nofile"
 	vim.bo[out.buf].modifiable = false
@@ -36,7 +38,7 @@ function Page:start_timer()
 		error("Failed to create timer: " .. (err or "unknown error"))
 	end
 	self.timer = timer
-	self.timer:start(100, 100, function()
+	self.timer:start(self.interval, self.interval, function()
 		for _, l in ipairs(self.lines) do
 			if l.timer then
 				l:refresh()
