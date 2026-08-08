@@ -6,7 +6,7 @@
 ---@field timer? boolean
 ---@field on_refresh table<string, fun(self: jet.ui.line)> Called after `refresh` is called
 ---@field parts jet.ui.line.parts
----@field make_parts fun(): jet.ui.line.parts Reset `parts`
+---@field make_parts fun(): { [1]: string, [2]?: string }[] Reset `parts`
 ---@field text string
 ---@field lnum? integer
 ---@field marks jet.ui.line.extmark[]
