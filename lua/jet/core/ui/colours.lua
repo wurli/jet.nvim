@@ -14,6 +14,11 @@ M.colours = {
 	Code = { link = "@markup.raw" },
 	Label = { link = "@label" },
 	Repl = { link = "NormalFloat" },
+	External = { link = "@variable.builtin" },
+	Busy = { link = "DiagnosticWarn" },
+	Success = { link = "DiagnosticOk" },
+	Failure = { link = "DiagnosticError" },
+	Idle = { link = "DiagnosticOk" },
 }
 
 M.set_highlights = function()
