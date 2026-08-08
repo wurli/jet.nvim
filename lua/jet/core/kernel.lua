@@ -779,6 +779,11 @@ function Kernel:send_lua(code, silent, callback)
 	end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
 end
 
+function Kernel:interrupt()
+	assert(self.client_id, "Kernel has no client id")
+	require("jet.core.engine").interrupt(self.client_id)
+end
+
 -- ---@param code string | string[]
 -- ---@param user_expressions table<string, string>?
 -- function Kernel:execute(code, user_expressions)

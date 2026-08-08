@@ -200,6 +200,9 @@ local keymaps_line = function()
 				{ " Stop ", "JetButton" },
 				{ "(x) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
+				{ " Interrupt ", "JetButton" },
+				{ "(i) ", { "JetButton", "JetSpecial" } },
+				{ "  " },
 				{ " Quit ", "JetButton" },
 				{ "(q) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
@@ -495,6 +498,17 @@ M.show = function()
 			---@type jet.kernel
 			local k = l.data.kernel
 			require("jet.core.kernel").init_owned({ spec_path = k.spec_path }):open_term()
+		end
+	end, { buf = ui.buf })
+
+	vim.keymap.set("n", "i", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel then
+			---@type jet.kernel
+			local k = l.data.kernel
+			if k.client_id then
+				k:interrupt()
+			end
 		end
 	end, { buf = ui.buf })
 
