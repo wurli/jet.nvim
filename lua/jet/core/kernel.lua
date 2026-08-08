@@ -31,7 +31,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_last_line { text: string, next_text: string, }
+---@field iopub_stream { complete_lines: jet.utils.queue<string>, incomplete_line: string }
 ---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
 ---@field on_started table<string, fun(k: jet.kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
@@ -43,11 +43,16 @@ Kernel.__index = Kernel
 ---@field session_name? string
 ---@field spec? jet.kernel.spec | jet.kernel.paritalspec
 
+---@return Partial<jet.kernel>
 local init_defaults = function()
+	local queue = require("jet.core.utils.queue")
 	return {
 		comms = {},
 		ui_expand = false,
-		iopub_last_line = { text = "", next_text = "" },
+		iopub_stream = {
+			complete_lines = queue.new(3, {}),
+			incomplete_line = "",
+		},
 		on_message_received = {},
 		on_started = {},
 		metadata = {},
@@ -278,18 +283,7 @@ local strip_escapes = function(s)
 end
 
 ---@param s string
----@return string
-first_non_blank_line = function(s)
-	local split = vim.split(s, "[\n\r]", { plain = false, trimempty = true })
-	return split[1] or ""
-end
-
----@param s string
----@return string
-last_non_blank_line = function(s)
-	local split = vim.split(s, "[\n\r]", { plain = false, trimempty = true })
-	return split[#split] or ""
-end
+split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
 ---@param msg jet.jupyter.msg
 function Kernel:set_iopub_last_line(msg)
@@ -298,17 +292,19 @@ function Kernel:set_iopub_last_line(msg)
 	end
 
 	local flush = function()
-		if self.iopub_last_line.next_text ~= "" then
-			self.iopub_last_line.text = self.iopub_last_line.next_text
-			self.iopub_last_line.next_text = ""
+		if self.iopub_stream.incomplete_line ~= "" then
+			self.iopub_stream.complete_lines:append(self.iopub_stream.incomplete_line)
+			self.iopub_stream.incomplete_line = ""
 		end
 	end
 
 	---@param text string
-	local append = function(text) self.iopub_last_line.next_text = self.iopub_last_line.next_text .. strip_escapes(text) end
+	local append = function(text)
+		self.iopub_stream.incomplete_line = self.iopub_stream.incomplete_line .. strip_escapes(text)
+	end
 
 	if msg.header.msg_type == "stream" and msg.content.text then
-		for i, line_part in ipairs(vim.split(msg.content.text, "[\n\r]", { plain = false })) do
+		for i, line_part in ipairs(split(msg.content.text, false)) do
 			-- The first item may be a continuation of a previous partial line. Subsequent parts
 			-- always begin new lines (but don't necessarily finish them)
 			if i > 1 then
@@ -324,29 +320,47 @@ function Kernel:set_iopub_last_line(msg)
 
 	if msg.header.msg_type == "execute_result" then
 		flush()
-		append(last_non_blank_line(msg.content.data["text/plain"]))
-		flush()
+		for _, l in ipairs(split(msg.content.data["text/plain"], true)) do
+			append(l)
+			flush()
+		end
 	end
 
 	if msg.header.msg_type == "error" then
-		local text = ""
-		if msg.content.traceback and #msg.content.traceback > 0 then
-			text = first_non_blank_line(msg.content.traceback[1])
+		local lines = {}
+		if msg.content.traceback then
+			for _, traceback_segment in ipairs(msg.content.traceback) do
+				for _, line in ipairs(split(traceback_segment, true)) do
+					table.insert(lines, line)
+				end
+			end
 		else
 			if msg.content.ename and msg.content.ename ~= "" then
-				text = first_non_blank_line(msg.content.ename)
-				if msg.content.evalue then
-					text = text .. ": "
+				lines = split(msg.content.ename, true)
+				---@diagnostic disable-next-line: unnecessary-if
+				if lines[#lines] and msg.content.evalue then
+					lines[#lines] = lines[#lines] .. ": "
 				end
 			end
 			if msg.content.evalue then
-				text = text .. first_non_blank_line(msg.content.evalue)
+				if #lines == 0 then
+					lines[1] = ""
+				end
+				for i, line in split(msg.content.evalue, true) do
+					if i == 1 then
+						lines[#lines] = lines[#lines] .. line
+					else
+						table.insert(lines, line)
+					end
+				end
 			end
 		end
 
 		flush()
-		append(text)
-		flush()
+		for _, l in ipairs(lines) do
+			append(l)
+			flush()
+		end
 	end
 end
 

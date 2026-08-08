@@ -252,28 +252,34 @@ local kernel_expand = function(k)
 		table.insert(out, blank_line())
 	end
 
-	if k.last_execution and k.iopub_last_line.text ~= "" then
+	if k.last_execution then
 		local next_progress = make_progress_spinner()
-		local stream_line = line.new({
-			indent = 4,
-			timer = true,
-			make_parts = function()
-				local parts = {}
-				local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-				if k.last_execution.is_error then
-					table.insert(parts, { " " .. elapsed, "JetFailure" })
-				elseif k.last_execution.end_time then
-					table.insert(parts, { " " .. elapsed, "JetSuccess" })
-				else
-					local icon = next_progress()
-					table.insert(parts, { icon .. elapsed, "JetBusy" })
-				end
-				table.insert(parts, { "  " })
-				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
-				return truncate(parts)
-			end,
-		})
-		table.insert(out, stream_line)
+		for i = 1, k.iopub_stream.complete_lines:len() do
+			local stream_line = line.new({
+				indent = 4,
+				timer = true,
+				make_parts = function()
+					local parts = {}
+					if i == 1 then
+						local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
+						if k.last_execution.is_error then
+							table.insert(parts, { " " .. elapsed, "JetFailure" })
+						elseif k.last_execution.end_time then
+							table.insert(parts, { " " .. elapsed, "JetSuccess" })
+						else
+							local icon = next_progress()
+							table.insert(parts, { icon .. elapsed, "JetBusy" })
+						end
+						table.insert(parts, { "  " })
+					else
+						table.insert(parts, { "         " })
+					end
+					table.insert(parts, { k.iopub_stream.complete_lines[i], "JetCode" })
+					return truncate(parts)
+				end,
+			})
+			table.insert(out, stream_line)
+		end
 	end
 
 	if #out > 0 then
