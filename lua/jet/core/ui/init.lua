@@ -428,6 +428,15 @@ M.show = function()
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
 	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
+	hooks.on_message_received.update_ui = function(k, msg)
+		if
+			k.ui_expand
+			and msg.channel == "iopub"
+			and k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len
+		then
+			ui:refresh()
+		end
+	end
 
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
 
@@ -501,6 +510,7 @@ M.show = function()
 		callback = function()
 			ui:close()
 			hooks.on_status_changed.update_ui = nil
+			hooks.on_message_received.update_ui = nil
 		end,
 	})
 
