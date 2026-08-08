@@ -70,6 +70,10 @@ function Page:update_lines(callback)
 end
 
 function Page:refresh()
+	for _, l in ipairs(self.lines) do
+		l.stopped = true
+	end
+
 	self:update_lines(function()
 		local text = {} ---@type string[]
 		local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]

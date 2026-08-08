@@ -10,6 +10,7 @@
 ---@field text string
 ---@field lnum? integer
 ---@field marks jet.ui.line.extmark[]
+---@field stopped boolean
 ---@field on_close? fun(self: jet.ui.line)
 ---@field data table<string, any>
 local Line = {}
@@ -20,16 +21,20 @@ Line.new = function(opts)
 	return setmetatable({
 		indent = (opts.indent or 0) * 2,
 		timer = opts.timer,
-		parts = {},
 		make_parts = opts.make_parts,
 		on_close = opts.on_close,
 		data = opts.data or {},
 		on_refresh = opts.on_refresh or {},
+		parts = {},
+		stopped = false,
 	}, Line)
 end
 
 ---@param lnum? integer
 function Line:refresh(lnum)
+	if self.stopped then
+		return
+	end
 	self.lnum = lnum or self.lnum
 	self.parts = self.make_parts()
 	self:resolve()
