@@ -22,6 +22,7 @@ Page.new = function(opts)
 	out.interval = 100
 
 	vim.bo[out.buf].buftype = "nofile"
+	vim.bo[out.buf].filetype = "jetui"
 	vim.bo[out.buf].modifiable = false
 
 	out:refresh()
