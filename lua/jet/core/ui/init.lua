@@ -8,7 +8,7 @@ local line_max_length = 80
 
 --- ``` lua
 --- vim.print(truncate({ { "foofoo" }, { "barbar" }, { "bazbaz" } }, 10))
---- -- { { "foofoo" }, { "b" }, { "...", "JetDim" } }
+--- -- { { "foofoo" }, { "b" }, { "...", "JetDim1" } }
 --- ```
 ---@param l { [1]: string, [2]: string? }[]
 ---@param max_len? integer
@@ -30,11 +30,41 @@ local truncate = function(l, max_len)
 		else
 			local extra = max_len - l_len + i_len - 3
 			l[i][1] = l[i][1]:sub(1, extra)
-			table.insert(l, { "...", "JetDim" })
+			table.insert(l, { "...", "JetDim1" })
 			return l
 		end
 	end
 	return l
+end
+
+local tbl_combine = function(...)
+	local out = {}
+	for _, t in ipairs({ ... }) do
+		for _, e in ipairs(t) do
+			table.insert(out, e)
+		end
+	end
+	return out
+end
+
+---@param left string[][]
+---@param right string[][]
+---@param char? string
+local divider = function(left, right, char)
+	char = char or "·"
+	local out_len = math.max(30, math.min(line_max_length, 80))
+	local pad_left = { { char:rep(2), "JetDim2" } }
+	local pad_right = { { char:rep(2), "JetDim2" } }
+
+	local len = 0
+	for _, slice in ipairs({ left, right, pad_left, pad_right }) do
+		for _, part in ipairs(slice) do
+			len = len + vim.fn.strwidth(part[1])
+		end
+	end
+
+	local pad_center = { { string.rep(char, math.max(out_len - len - 2, 0)), "JetDim2" } }
+	return tbl_combine(pad_left, left, pad_center, right, pad_right)
 end
 
 local progress_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
@@ -102,7 +132,7 @@ local kernel_info_line = function(k)
 			return {
 				{ k.spec.display_name },
 				{ "    " },
-				{ utils.path_shorten(k.spec_path), "JetDim" },
+				{ utils.path_shorten(k.spec_path), "JetDim1" },
 			}
 		end,
 	})
@@ -224,58 +254,79 @@ local kernel_expand = function(k)
 				indent = 3,
 				make_parts = function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end,
 			}),
+			blank_line(),
 		}
 	end
 
 	---@type jet.ui.line<any>[]
 	local out = {}
 
-	local code = k.last_execution and k.last_execution.code
-	code = code and code:gsub("%s*$", "") or nil
-	if code and code ~= "" then
-		for i, code_text in ipairs(vim.split(code, "\n")) do
-			local code_line = line.new({
-				indent = 7,
-				make_parts = function() return { { i == 1 and ">  " or "+  ", "JetDim" }, { code_text } } end,
-			})
-			if i == 1 and k.filetype then
-				code_line.on_refresh.set_ts_extmarks = function(l)
-					local hl = require("jet.core.ui.get_highlights").get_ts_highlights
-					for _, mark in ipairs(hl(code, k.filetype, l.indent + 3, l.lnum and l.lnum - 1)) do
-						table.insert(l.marks, mark)
-					end
-				end
-			end
-			table.insert(out, code_line)
+	if k.last_execution then
+		local status_hl = function()
+			return k.last_execution.is_error and "JetFailure" or k.last_execution.end_time and "JetSuccess" or "JetBusy"
 		end
 
-		table.insert(out, blank_line())
-	end
+		local code = k.last_execution.code and k.last_execution.code:gsub("%s*$", "") or nil
+		if code and code ~= "" then
+			table.insert(
+				out,
+				line.new({
+					indent = 4,
+					timer = true,
+					make_parts = function()
+						return divider({ { "in" } }, {
+							{ "[", "JetDim2" },
+							{ "#" .. k.last_execution.count, status_hl() },
+							{ "]", "JetDim2" },
+						})
+					end,
+				})
+			)
 
-	if k.last_execution then
-		local next_progress = make_progress_spinner()
-		for i = 1, k.iopub_stream.complete_lines:len() do
+			for i, code_text in ipairs(vim.split(code, "\n")) do
+				local code_line = line.new({
+					indent = 6,
+					make_parts = function() return { { i == 1 and ">  " or "+  ", "JetDim1" }, { code_text } } end,
+				})
+				if i == 1 and k.filetype then
+					code_line.on_refresh.set_ts_extmarks = function(l)
+						local hl = require("jet.core.ui.get_highlights").get_ts_highlights
+						for _, mark in ipairs(hl(code, k.filetype, l.indent + 3, l.lnum and l.lnum - 1)) do
+							table.insert(l.marks, mark)
+						end
+					end
+				end
+				table.insert(out, code_line)
+			end
+		end
+
+		local spinner = make_progress_spinner()
+		for i = 1, k.iopub_stream.complete_lines:count() do
+			if i == 1 then
+				table.insert(out, blank_line())
+				local divier_line = line.new({
+					indent = 4,
+					timer = true,
+					make_parts = function()
+						local hl = status_hl()
+						local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
+						return divider({ { "out" } }, {
+							{ "[", "JetDim2" },
+							{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
+							{ "]", "JetDim2" },
+						})
+					end,
+				})
+				table.insert(out, divier_line)
+			end
 			local stream_line = line.new({
-				indent = 4,
+				indent = 6,
 				timer = true,
 				make_parts = function()
-					local parts = {}
-					if i == 1 then
-						local elapsed = utils.time_since(k.last_execution.start_time, k.last_execution.end_time)
-						if k.last_execution.is_error then
-							table.insert(parts, { " " .. elapsed, "JetFailure" })
-						elseif k.last_execution.end_time then
-							table.insert(parts, { " " .. elapsed, "JetSuccess" })
-						else
-							local icon = next_progress()
-							table.insert(parts, { icon .. elapsed, "JetBusy" })
-						end
-						table.insert(parts, { "  " })
-					else
-						table.insert(parts, { "         " })
-					end
-					table.insert(parts, { k.iopub_stream.complete_lines[i], "JetCode" })
-					return truncate(parts)
+					return truncate({
+						{ "•  ", "JetDim1" },
+						{ k.iopub_stream.complete_lines[i] or "", "JetCode" },
+					})
 				end,
 			})
 			table.insert(out, stream_line)
@@ -291,12 +342,6 @@ end
 
 ---@type table<string, boolean>
 local expanded_inactive_kernels = {}
-
-local tbl_append = function(x, y)
-	for _, v in ipairs(y) do
-		table.insert(x, v)
-	end
-end
 
 ---@param callback fun(lines: jet.ui.line<jet.kernel>[])
 local kernel_lines = function(callback)
@@ -316,13 +361,13 @@ local kernel_lines = function(callback)
 
 			table.insert(lines, kernel_info_line(group.kernel))
 			if expanded_inactive_kernels[utils.path_normalise(group.kernel.spec_path)] then
-				tbl_append(lines, kernel_expand(group.kernel))
+				lines = tbl_combine(lines, kernel_expand(group.kernel))
 			end
 
 			for _, k in ipairs(group.connected) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					tbl_append(lines, kernel_expand(k))
+					lines = tbl_combine(lines, kernel_expand(k))
 				end
 				any_connected = true
 			end
@@ -330,7 +375,7 @@ local kernel_lines = function(callback)
 			for _, k in ipairs(group.external) do
 				table.insert(lines, active_kernel_line(k))
 				if k.ui_expand then
-					tbl_append(lines, kernel_expand(k))
+					lines = tbl_combine(lines, kernel_expand(k))
 				end
 				any_connected = true
 			end
@@ -467,6 +512,14 @@ M.show = function()
 		callback = function()
 			ui:close()
 			hooks.on_status_changed.update_ui = nil
+		end,
+	})
+
+	vim.api.nvim_create_autocmd("WinResized", {
+		pattern = tostring(ui_win),
+		callback = function()
+			line_max_length = math.max(vim.api.nvim_win_get_width(ui_win) - 10, 40)
+			ui:refresh()
 		end,
 	})
 end

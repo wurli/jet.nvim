@@ -52,7 +52,7 @@ function Queue:items()
 	return out
 end
 
-function Queue:len() return self.last - self.first + 1 end
+function Queue:count() return self.last - self.first + 1 end
 
 --- ``` lua
 --- local q = M.queue(3, {} --[[@as string[] ]])

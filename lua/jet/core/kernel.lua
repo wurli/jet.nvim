@@ -26,7 +26,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
----@field last_execution? { start_time: integer, end_time?: integer, code: string?, is_error?: boolean }
+---@field last_execution? { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
@@ -380,6 +380,7 @@ function Kernel:handle_stream()
 		-- get the "busy" status.
 		if header.msg_type == "execute_input" and parent.msg_id == last_execute_id and self.last_execution then
 			self.last_execution.code = msg.content.code
+			self.last_execution.count = msg.content.execution_count
 			return
 		end
 
@@ -401,7 +402,8 @@ function Kernel:handle_stream()
 
 		if new_state == "busy" and parent.msg_type == "execute_request" then
 			last_execute_id = parent.msg_id or last_execute_id
-			self.last_execution = { start_time = os.time() }
+			local count = self.last_execution and self.last_execution.count or 0
+			self.last_execution = { start_time = os.time(), count = count + 1 }
 		elseif new_state == "idle" and parent.msg_id == last_execute_id and self.last_execution then
 			self.last_execution.end_time = os.time()
 		end
