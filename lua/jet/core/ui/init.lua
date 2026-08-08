@@ -4,15 +4,43 @@ local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
 local page = require("jet.core.ui.page")
 
-local line_max_length = 80
+local scale = function(x, y) return math.floor(x * y) end
+
+local win_width = scale(vim.o.columns, 0.8)
+local line_max_length = math.max(win_width - 10, 40)
+
+---@param parts jet.ui.line.parts
+local get_width = function(parts)
+	local len = 0
+	for _, part in ipairs(parts) do
+		len = len + vim.fn.strwidth(part[1])
+	end
+	return len
+end
+
+local tbl_combine = function(...)
+	local out = {}
+	for _, t in ipairs({ ... }) do
+		for _, e in ipairs(t) do
+			table.insert(out, e)
+		end
+	end
+	return out
+end
+
+---@param parts jet.ui.line.parts
+local center = function(parts, indent)
+	local pad_width = math.floor((win_width - get_width(parts) - (indent or 0) * 2) / 2)
+	return tbl_combine({ { string.rep(" ", pad_width) } }, parts)
+end
 
 --- ``` lua
 --- vim.print(truncate({ { "foofoo" }, { "barbar" }, { "bazbaz" } }, 10))
 --- -- { { "foofoo" }, { "b" }, { "...", "JetDim1" } }
 --- ```
----@param l { [1]: string, [2]: string? }[]
+---@param l jet.ui.line.parts
 ---@param max_len? integer
----@return { [1]: string, [2]: string? }[]
+---@return jet.ui.line.parts
 local truncate = function(l, max_len)
 	local l_len = 0
 	max_len = max_len or line_max_length
@@ -37,18 +65,8 @@ local truncate = function(l, max_len)
 	return l
 end
 
-local tbl_combine = function(...)
-	local out = {}
-	for _, t in ipairs({ ... }) do
-		for _, e in ipairs(t) do
-			table.insert(out, e)
-		end
-	end
-	return out
-end
-
----@param left string[][]
----@param right string[][]
+---@param left jet.ui.line.parts
+---@param right jet.ui.line.parts
 ---@param char? string
 local divider = function(left, right, char)
 	char = char or "·"
@@ -58,9 +76,7 @@ local divider = function(left, right, char)
 
 	local len = 0
 	for _, slice in ipairs({ left, right, pad_left, pad_right }) do
-		for _, part in ipairs(slice) do
-			len = len + vim.fn.strwidth(part[1])
-		end
+		len = len + get_width(slice)
 	end
 
 	local pad_center = { { string.rep(char, math.max(out_len - len - 2, 0)), "JetDim2" } }
@@ -138,17 +154,35 @@ local kernel_info_line = function(k)
 	})
 end
 
-local header_line = function()
+local title_line = function()
 	return line.new({
-		indent = 1,
-		make_parts = function() return { { "Jet ", "Title" }, { " ", "OkMsg" } } end,
+		make_parts = function()
+			return center({
+				{ "jet.nvim", "JetH1" },
+				{ " " },
+				{ " ", { "JetH1", "Comment" } },
+			})
+		end,
 	})
 end
 
 local url_line = function()
 	return line.new({
-		indent = 1,
-		make_parts = function() return { { "https://github.com/wurli/jet", "JetUrl" } } end,
+		make_parts = function() return center({ { "https://github.com/wurli/jet", "JetUrl" } }) end,
+	})
+end
+
+local version_line = function()
+	return line.new({
+		make_parts = function()
+			return center({
+				{ "plugin: " },
+				{ require("jet.core.config").jet_nvim_version, "JetId" },
+				{ " · " },
+				{ "lib: " },
+				{ require("jet.core.utils.download").check_lib_version().current, "JetId" },
+			})
+		end,
 	})
 end
 
@@ -281,7 +315,7 @@ local kernel_expand = function(k)
 					indent = 4,
 					timer = true,
 					make_parts = function()
-						return divider({ { "in" } }, {
+						return divider({ { "in", "JetComment" } }, {
 							{ "[", "JetDim2" },
 							{ "#" .. k.last_execution.count, status_hl() },
 							{ "]", "JetDim2" },
@@ -317,7 +351,7 @@ local kernel_expand = function(k)
 					make_parts = function()
 						local hl = status_hl()
 						local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
-						return divider({ { "out" } }, {
+						return divider({ { "out", "JetComment" } }, {
 							{ "[", "JetDim2" },
 							{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
 							{ "]", "JetDim2" },
@@ -350,7 +384,7 @@ end
 ---@type table<string, boolean>
 local expanded_inactive_kernels = {}
 
----@param callback fun(lines: jet.ui.line<jet.kernel>[])
+---@param callback fun(lines: jet.ui.line[])
 local kernel_lines = function(callback)
 	list_kernel_groups(function(groups)
 		local lines = {}
@@ -411,7 +445,9 @@ M.show = function()
 		get_lines = function(callback)
 			kernel_lines(function(kernels)
 				local lines = {
-					header_line(),
+					blank_line(),
+					title_line(),
+					version_line(),
 					url_line(),
 					blank_line(),
 					keymaps_line(),
@@ -490,9 +526,8 @@ M.show = function()
 
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
-	local scale = function(x, y) return math.floor(x * y) end
 
-	local win_width = scale(screen_width, 0.8)
+	win_width = scale(screen_width, 0.8)
 	line_max_length = math.max(win_width - 10, 40)
 
 	ui_win = vim.api.nvim_open_win(ui.buf, true, {
@@ -517,7 +552,8 @@ M.show = function()
 	vim.api.nvim_create_autocmd("WinResized", {
 		pattern = tostring(ui_win),
 		callback = function()
-			line_max_length = math.max(vim.api.nvim_win_get_width(ui_win) - 10, 40)
+			win_width = vim.api.nvim_win_get_width(ui_win)
+			line_max_length = math.max(win_width - 10, 40)
 			ui:refresh()
 		end,
 	})

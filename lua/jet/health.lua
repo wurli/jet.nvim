@@ -8,7 +8,7 @@ local check_jet_version = function()
 	local paths = dl.get_jet_paths()
 
 	if paths.bin then
-		local check = dl.check_bin_outdated(paths.bin)
+		local check = dl.check_bin_version(paths.bin)
 		if check.is_outdated then
 			vim.health.warn("Jet binary v" .. check.current .. " is less than required v" .. check.required)
 		else
@@ -25,7 +25,7 @@ local check_jet_version = function()
 	end
 
 	if paths.lib then
-		local check = dl.check_lib_outdated(paths.lib)
+		local check = dl.check_lib_version(paths.lib)
 		if check.is_outdated then
 			vim.health.warn("Jet library v" .. check.current .. " is less than required v" .. check.required)
 		else

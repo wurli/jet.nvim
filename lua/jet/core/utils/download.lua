@@ -245,7 +245,8 @@ M.get_jet_paths = function()
 	}
 end
 
-M.check_bin_outdated = function(path)
+M.check_bin_version = function(path)
+	path = path or M.get_jet_paths().bin
 	assert(path, "Binary path is required")
 
 	local required = require("jet.core.config").data.jet_min_version
@@ -263,7 +264,8 @@ M.check_bin_outdated = function(path)
 	}
 end
 
-M.check_lib_outdated = function(path)
+M.check_lib_version = function(path)
+	path = path or M.get_jet_paths().lib
 	local required = require("jet.core.config").data.jet_min_version
 
 	local lua_loader = package.loadlib(path, "luaopen_jet")
@@ -327,7 +329,7 @@ function M.maybe_download_jet(callback, has_done_download)
 	--        Check that version reqts are met         --
 	-----------------------------------------------------
 
-	if M.check_bin_outdated(paths.bin).is_outdated or M.check_lib_outdated(paths.lib).is_outdated then
+	if M.check_bin_version(paths.bin).is_outdated or M.check_lib_version(paths.lib).is_outdated then
 		if has_done_download then
 			utils.log_error("Jet binary and/or library is outdated after download!")
 			return

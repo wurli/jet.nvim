@@ -1,7 +1,7 @@
 local M = {}
 
 M.colours = {
-	H1 = { link = "IncSearch" },
+	H1 = { link = "Title" },
 	H2 = { link = "Bold" },
 	Button = { link = "CursorLine" },
 	Special = { link = "@punctuation.special" },

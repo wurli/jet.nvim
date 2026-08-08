@@ -64,6 +64,8 @@ M.defaults = {
 	},
 }
 
+M.jet_nvim_version = "0.0.1"
+
 ---@class jet.data
 M.data = {
 	jet_min_version = "0.0.5",
