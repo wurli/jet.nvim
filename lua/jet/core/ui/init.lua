@@ -275,6 +275,20 @@ local kernel_expand = function(k)
 
 	table.insert(out, blank_line())
 
+	local stream_line = line.new({
+		indent = 5,
+		timer = true,
+		make_parts = function()
+			local parts = {}
+			if k.iopub_last_line.text == "" or not k.last_execution then
+				table.insert(parts, { "n/a", "JetDim" })
+			else
+				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
+			end
+			return truncate(parts)
+		end,
+	})
+
 	local next_progress = make_progress_spinner()
 	local timer_line = line.new({
 		indent = 5,
@@ -294,27 +308,15 @@ local kernel_expand = function(k)
 			return truncate(parts)
 		end,
 	})
-	local stream_line = line.new({
-		indent = 5,
-		timer = true,
-		make_parts = function()
-			local parts = {}
-			if k.iopub_last_line.text == "" or not k.last_execution then
-				table.insert(parts, { "n/a", "JetDim" })
-			else
-				table.insert(parts, { k.iopub_last_line.text, "JetCode" })
-			end
-			return truncate(parts)
-		end,
-	})
+
 	k.on_message_received.update_ui = function(_, msg)
 		if k.ui_expand and msg.channel == "iopub" then
 			stream_line:refresh()
 			timer_line:refresh()
 		end
 	end
-	table.insert(out, timer_line)
 	table.insert(out, stream_line)
+	table.insert(out, timer_line)
 
 	if #out > 0 then
 		table.insert(out, blank_line())
