@@ -157,15 +157,20 @@ local keymaps_line = function()
 		indent = 1,
 		make_parts = function()
 			return {
-				{ " Open (o) ", "JetButton" },
+				{ " Open ", "JetButton" },
+				{ "(o) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
-				{ " New session (s) ", "JetButton" },
+				{ " New session ", "JetButton" },
+				{ "(s) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
-				{ " Stop (x) ", "JetButton" },
+				{ " Stop ", "JetButton" },
+				{ "(x) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
-				{ " Quit (q) ", "JetButton" },
+				{ " Quit ", "JetButton" },
+				{ "(q) ", { "JetButton", "JetSpecial" } },
 				{ "  " },
-				{ " Expand (<CR>) ", "JetButton" },
+				{ " Expand ", "JetButton" },
+				{ "(<CR>) ", { "JetButton", "JetSpecial" } },
 			}
 		end,
 	})
@@ -390,10 +395,6 @@ local kernel_lines = function(callback)
 	end)
 end
 
--- 1. Global refresh (sets all lines)
--- 2. Line refresh (sets only one line)
---  - Triggered by the ui or the line object itself
---	- Needs the current line no - or could take a callback?
 local ui_win = -99
 
 M.show = function()
@@ -422,25 +423,11 @@ M.show = function()
 				callback(lines)
 			end)
 		end,
-		-- Our abstractions only allow setting one layer of highlights, so just
-		-- set additional highlights in a second pass by pattern matching.
-		on_refresh = function(self)
-			if not (self.text and self.text[4]) then
-				return
-			end
-			for match_start, match_end in utils.gfind(self.text[4], "%(.-%)") do
-				vim.api.nvim_buf_set_extmark(self.buf, self.ns, 3, match_start - 1, {
-					end_col = match_end,
-					hl_group = "JetSpecial",
-				})
-			end
-		end,
 	})
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
 	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
-	-- hooks.on_execution_state_changed.update_ui = function() ui:refresh() end
 
 	vim.keymap.set("n", "q", function() vim.api.nvim_win_close(0, true) end, { buf = ui.buf })
 

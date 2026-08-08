@@ -1,4 +1,4 @@
----@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark }[]
+---@alias jet.ui.line.parts { [1]: string, [2]?: string | string[] }[]
 ---@alias jet.ui.line.extmark { [1]: integer, [2]: integer, [3]: vim.api.keyset.set_extmark }
 
 ---@class jet.ui.line
@@ -53,17 +53,9 @@ function Line:resolve()
 	for _, part in ipairs(self.parts) do
 		local start_col = #text
 		text = text .. part[1]
-		if part[2] then
-			---@type vim.api.keyset.set_extmark
-			local opts = { end_col = #text }
-
-			if type(part[2]) == "string" then
-				opts.hl_group = part[2]
-			elseif type(part[2]) == "table" then
-				opts = vim.tbl_extend("force", opts, part[2])
-			end
-
-			table.insert(marks, { self.lnum - 1, start_col, opts })
+		local hls = type(part[2]) == "table" and part[2] or type(part[1]) == "string" and { part[2] } or {}
+		for _, hl in ipairs(hls) do
+			table.insert(marks, { self.lnum - 1, start_col, { end_col = #text, hl_group = hl } })
 		end
 	end
 

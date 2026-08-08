@@ -4,7 +4,6 @@
 ---@field lines jet.ui.line<any>[]
 ---@field text string[]
 ---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
----@field on_refresh? fun(self: jet.ui.page)
 ---@field timer uv.uv_timer_t
 ---@field interval integer
 local Page = {}
@@ -12,7 +11,6 @@ Page.__index = Page
 
 ---@class jet.ui.page.new.opts
 ---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
----@field on_refresh? fun(self: jet.ui.page)
 ---@field buf integer
 ---@field ns integer
 
@@ -106,10 +104,6 @@ function Page:refresh()
 		self:clear_marks()
 		for _, marks in ipairs(extmarks) do
 			self:set_marks(marks)
-		end
-
-		if self.on_refresh then
-			self:on_refresh()
 		end
 	end)
 end
