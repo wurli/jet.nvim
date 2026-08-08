@@ -50,7 +50,7 @@ local init_defaults = function()
 		comms = {},
 		ui_expand = false,
 		iopub_stream = {
-			complete_lines = queue.new(3, {}),
+			complete_lines = queue.new(config.options.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
 		on_message_received = {},

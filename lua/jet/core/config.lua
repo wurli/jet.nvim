@@ -26,6 +26,9 @@ M.defaults = {
 	---     end
 	--- })
 	--- ```
+	ui = {
+		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
+	},
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
 	hooks = {
 		on_execution_state_changed = {}, ---@type table<string | integer, fun(k: jet.kernel, state: jet.kernel.execution_state)>
