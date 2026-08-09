@@ -176,22 +176,25 @@ local download_and_unpack = function(url, dest_dir, callback)
 
 	local download_path = vim.fn.tempname() .. ".tar.gz"
 
-	M.curl({ url, "-sL", "-o", download_path }, function()
-		vim.fs.rm(dest_dir, { recursive = true, force = true })
-		mkdir(dest_dir)
-		vim.system(
-			{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
-			{ text = true },
-			function(res)
-				if res.code ~= 0 then
-					error("Failed to unpack tarball: " .. res.stderr)
+	M.curl(
+		{ url, "-sL", "-o", download_path },
+		vim.schedule_wrap(function()
+			vim.fs.rm(dest_dir, { recursive = true, force = true })
+			mkdir(dest_dir)
+			vim.system(
+				{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
+				{ text = true },
+				function(res)
+					if res.code ~= 0 then
+						error("Failed to unpack tarball: " .. res.stderr)
+					end
+					if callback then
+						callback()
+					end
 				end
-				if callback then
-					callback()
-				end
-			end
-		)
-	end)
+			)
+		end)
+	)
 end
 
 ---@param version string either `"latest"` or a version like `"v0.0.1"`
