@@ -190,25 +190,19 @@ local keymaps_line = function()
 	return line.new({
 		indent = 1,
 		make_parts = function()
-			return {
-				{ " Open ", "JetButton" },
-				{ "(o) ", { "JetButton", "JetSpecial" } },
-				{ "  " },
-				{ " New session ", "JetButton" },
-				{ "(s) ", { "JetButton", "JetSpecial" } },
-				{ "  " },
-				{ " Stop ", "JetButton" },
-				{ "(x) ", { "JetButton", "JetSpecial" } },
-				{ "  " },
-				{ " Interrupt ", "JetButton" },
-				{ "(i) ", { "JetButton", "JetSpecial" } },
-				{ "  " },
-				{ " Quit ", "JetButton" },
-				{ "(q) ", { "JetButton", "JetSpecial" } },
-				{ "  " },
-				{ " Expand ", "JetButton" },
-				{ "(<CR>) ", { "JetButton", "JetSpecial" } },
-			}
+			local map = function(name, key)
+				name = string.format(" %s ", name)
+				key = string.format("(%s) ", key)
+				return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
+			end
+			return tbl_combine(
+				map("Open", "o"),
+				map("New session", "s"),
+				map("Stop", "x"),
+				map("Interrupt", "i"),
+				map("Expand", "<CR>"),
+				map("Quit", "q")
+			)
 		end,
 	})
 end
