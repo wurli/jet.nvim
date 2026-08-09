@@ -26,20 +26,23 @@ if #vim.api.nvim_list_uis() == 0 then
 		return paths.bin and paths.lib
 	end
 
-	if has_jet() then
-		return
+	if not has_jet() then
+		dl.download_jet("latest")
+		assert(vim.wait(30000, has_jet), "Could not download Jet CLI/lib")
+		vim.uv.sleep(500) -- Seems to avoid some flakes in CI?
 	end
-
-	dl.download_jet("latest")
-	assert(vim.wait(30000, has_jet), "Could not download Jet CLI/lib")
-
-	vim.uv.sleep(500)
 
 	require("jet").setup({})
 
-	vim.uv.sleep(500)
+	local paths = dl.get_jet_paths()
 
-	vim.print(dl.get_jet_paths())
-	vim.print(dl.check_bin_version())
-	vim.print(dl.check_lib_version())
+	vim.print({
+		jet_paths = paths,
+		jet_bin = dl.check_bin_version(),
+		jet_lib = dl.check_lib_version(),
+	})
+	print("")
+
+	_G.JET_LIB_PATH = paths.lib
+	_G.JET_BIN_PATH = paths.bin
 end
