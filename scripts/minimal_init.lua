@@ -19,5 +19,17 @@ if #vim.api.nvim_list_uis() == 0 then
 			reporter = require("mini.test").gen_reporter.stdout({ quit_on_finish = true }),
 		},
 	})
-	require("jet.core.utils.download").download_jet("latest")
+
+	local dl = require("jet.core.utils.download")
+	local has_jet = function()
+		local paths = dl.get_jet_paths()
+		return paths.bin and paths.lib
+	end
+
+	if has_jet() then
+		return
+	end
+
+	dl.download_jet("latest")
+	assert(vim.wait(30000, has_jet), "Could not download Jet CLI/lib")
 end

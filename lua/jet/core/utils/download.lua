@@ -218,7 +218,7 @@ M.download_jet = function(version, dir, callback)
 end
 
 M.get_jet_paths = function()
-	local config = require("jet.core.config").options
+	local config = require("jet.core.config").options or {}
 	local path_defaults = M.jet_resource_paths()
 
 	local bin_path_final = config.jet_binary_path or path_defaults.bin_path

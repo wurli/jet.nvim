@@ -3,7 +3,7 @@
 -- https://raw.githubusercontent.com/wurli/jet/refs/heads/main/crates/lua/meta/jet.lua,
 -- then run scripts/import-stubs.sh to regenerate this file.
 
----@meta jet
+---@meta jet.core.engine
 
 ---@class jet.kernel.spec
 ---@field argv string[]
