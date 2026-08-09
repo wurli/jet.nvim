@@ -32,4 +32,10 @@ if #vim.api.nvim_list_uis() == 0 then
 
 	dl.download_jet("latest")
 	assert(vim.wait(30000, has_jet), "Could not download Jet CLI/lib")
+
+	require("jet").setup({})
+
+	vim.print(dl.get_jet_paths())
+	vim.print(dl.check_bin_version())
+	vim.print(dl.check_lib_version())
 end
