@@ -24,7 +24,9 @@ jobs:
           curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
           sudo rm -rf /opt/nvim-linux-x86_64
           sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
-          export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
+
+      - name: Export nvim to PATH
+        run: echo "/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
 
       # Ark needs a real R at runtime. Install it out-of-band; the script
       # only downloads the ark binary and writes the kernelspec.
