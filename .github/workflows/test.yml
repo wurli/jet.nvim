@@ -24,9 +24,17 @@ jobs:
           curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
           sudo rm -rf /opt/nvim-linux-x86_64
           sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+          echo "/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
 
-      - name: Export nvim to PATH
-        run: echo "/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
+      - name: Install emmylua_check
+        run: |
+          curl -LO https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/0.25.0/emmylua_check-linux-x64.tar.gz
+          sudo rm -rf /opt/emmylua_check-linux-x64
+          sudo tar -C /opt -xzf emmylua_check-linux-x64.tar.gz
+          echo "/opt" >> $GITHUB_PATH
+
+      - name: Run emmylua_check
+        run: emmylua_check .
 
       # Ark needs a real R at runtime. Install it out-of-band; the script
       # only downloads the ark binary and writes the kernelspec.
