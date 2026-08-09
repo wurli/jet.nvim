@@ -19,4 +19,5 @@ if #vim.api.nvim_list_uis() == 0 then
 			reporter = require("mini.test").gen_reporter.stdout({ quit_on_finish = true }),
 		},
 	})
+	require("jet.core.utils.download").download_jet("latest")
 end
