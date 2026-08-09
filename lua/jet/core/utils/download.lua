@@ -21,8 +21,9 @@ M.curl = function(args, callback)
 end
 
 local mkdir = function(dir)
-	-- tonumber("755", 8) = 493
-	vim.uv.fs_mkdir(dir, 493)
+	if vim.fn.mkdir(dir, "p") ~= 1 then
+		error("Failed to create directory " .. dir)
+	end
 end
 
 ---@param dir? string
