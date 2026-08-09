@@ -1,16 +1,3 @@
--- Regression test: `jet start` spawned via plain `jobstart` (no `term=true`)
--- must receive every chansend line over its piped stdin.
---
--- The original bug: crates/cli/src/repl.rs's interrupt-byte watcher was
--- reading from STDIN_FILENO unconditionally. In pipe mode it raced
--- BufReader::read_line and silently swallowed every byte that wasn't
--- 0x03 (^C). Symptom from the user: only the FIRST chansend line reached
--- the kernel; everything after was dropped.
---
--- The plugin's own `Kernel:send_repl` runs over a pty (via `term=true`),
--- so this scenario is reached when callers use `jobstart` directly —
--- exactly what the bug report described. We reproduce it here.
-
 local MiniTest = require("mini.test")
 
 local new_set = MiniTest.new_set
@@ -26,15 +13,12 @@ local T = new_set({
 })
 
 T["chansend over plain pipe stdin delivers every line"] = function()
-	-- jobstart's on_stdout/on_stderr callbacks are functions, which can't
-	-- cross the RPC boundary — they have to be created inside the child.
-	-- Everything else (chansend, polling _G.output) goes through redirectors.
 	child.lua([[
 			_G.output = {}
 			local function collect(_, data, _)
 				for _, l in ipairs(data) do table.insert(_G.output, l) end
 			end
-			_G.job_id = vim.fn.jobstart({ "jet", "start", ... }, {
+			_G.job_id = vim.fn.jobstart({ "jet", "start", "test-kernels/python3/kernel.json" }, {
 				on_stdout = collect,
 				on_stderr = collect,
 			})
@@ -46,7 +30,7 @@ T["chansend over plain pipe stdin delivers every line"] = function()
 
 	vim.wait(3000)
 
-	local marker = "JETPIPEOK-" .. os.time() .. "-" .. math.random(1e9)
+	local marker = "<<<this is the expected output>>>"
 	child.fn.chansend(job_id, { "x = 1", "" })
 	child.fn.chansend(job_id, { "x = x + 1", "" })
 	child.fn.chansend(job_id, { 'print("' .. marker .. ':" + str(x))', "" })

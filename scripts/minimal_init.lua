@@ -4,6 +4,8 @@
 
 vim.cmd([[let &rtp.=','.getcwd()]])
 
+vim.env.JUPYTER_PATH = vim.fn.getcwd() .. "/test-kernels"
+
 -- mini.test setup runs only in the headless runner (no UIs attached).
 -- Child instances get a UI and skip this block — they just need the
 -- plugin on rtp.

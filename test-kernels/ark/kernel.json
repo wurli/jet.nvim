@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/Users/jacobscott/Repos/jet.nvim/test-kernels/ark/ark",
+    "--connection_file",
+    "{connection_file}",
+    "--session-mode",
+    "notebook",
+    "--log",
+    "/Users/jacobscott/Repos/jet.nvim/test-kernels/ark/ark.log",
+    "--",
+    "--quiet"
+  ],
+  "display_name": "Ark R Kernel",
+  "language": "R",
+  "env": {
+    "RUST_LOG": "error"
+  }
+}

@@ -4,3 +4,9 @@ deps/*
 pyproject.toml
 uv.lock
 tmp.*
+.DS_Store
+
+# scripts/install-dev-kernels.sh populates kernels/<name>/ with binaries
+# and a kernel.json. Only the kernel.json files are worth tracking.
+/test-kernels/*/*
+!/test-kernels/*/kernel.json

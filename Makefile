@@ -11,3 +11,5 @@ deps/mini.nvim:
 	@mkdir -p deps
 	git clone --filter=blob:none https://github.com/nvim-mini/mini.nvim $@
 
+deps/test-kernels:
+	sh scripts/install-dev-kernels.sh

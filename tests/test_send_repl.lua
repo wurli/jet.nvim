@@ -1,9 +1,3 @@
--- Companion to test_send_repl.lua: with `send.send_by_expr = true`,
--- Kernel:send_repl bypasses the bracketed-paste path and instead sends
--- the code as a list of lines via chansend. Each expression is meant to
--- be evaluated one at a time. The bug: only the first line ever made it
--- into the REPL because the list lacked a trailing "" to force the final
--- newline (per the chansend contract).
 local MiniTest = require("mini.test")
 
 local new_set = MiniTest.new_set
@@ -23,7 +17,7 @@ local T = new_set({
 local run_send = function()
 	child.lua([[
 			local Kernel = require("jet.core.kernel")
-			_G.kernel = Kernel.init_owned({ spec_path = ..., session_name = "minitest" })
+			_G.kernel = Kernel.init_owned({ spec_path = "test-kernels/ark/kernel.json", session_name = "minitest" })
 			_G.kernel:open_term(function()
 				vim.uv.sleep(500)
 				_G.kernel:send_repl({ "print('first line')", "print('second line')" })
@@ -36,8 +30,6 @@ local run_send = function()
 			or ""
 	]]
 
-	-- In send_by_expr mode each line is evaluated separately, so both
-	-- markers must appear. The previous bug stopped after the first.
 	local repl_text = ""
 	local ok = vim.wait(4000, function()
 		repl_text = child.lua_get(TERM_TEXT)
