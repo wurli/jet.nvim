@@ -13,11 +13,12 @@ env:
 jobs:
   run_tests:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.neovim == 'nightly' }}
 
     strategy:
       fail-fast: false
       matrix:
-        neovim: ["0.12.4"]
+        neovim: [stable, nightly]
         r: ["4.5.0"]
         include:
           - os: ubuntu-latest
@@ -28,12 +29,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-
-      - name: Cache Neovim installation
-        uses: actions/cache@v4
-        with:
-          path: ${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}/bin
-          key: dummy-key
 
       - name: Install Stylua
         run: |
@@ -47,7 +42,7 @@ jobs:
 
       - name: Install Neovim
         run: |
-          curl -LO https://github.com/neovim/neovim/releases/download/v${{ matrix.neovim }}/${{ matrix.nvim_stem }}.tar.gz
+          curl -LO https://github.com/neovim/neovim/releases/download/${{ matrix.neovim }}/${{ matrix.nvim_stem }}.tar.gz
           sudo rm -rf ${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}
           sudo tar -C ${{ matrix.tools_dir }} -xzf ${{ matrix.nvim_stem }}.tar.gz
           echo "${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}/bin" >> $GITHUB_PATH
