@@ -228,6 +228,8 @@ local list_kernel_groups = function(callback)
 	end)
 end
 
+local execution_in_progress_spinner = make_progress_spinner()
+
 ---@param k jet.kernel
 ---@return jet.ui.line<any>[]
 local kernel_expand = function(k)
@@ -285,13 +287,14 @@ local kernel_expand = function(k)
 			end
 		end
 
-		local spinner = make_progress_spinner()
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
 				table.insert(out, simple_line())
 				local divier_line = line.new({ indent = 4, timer = true }, function()
 					local hl = status_hl()
-					local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
+					local icon = hl == "JetFailure" and " "
+						or hl == "JetSuccess" and " "
+						or execution_in_progress_spinner()
 					return divider({ { "out", "JetComment" } }, {
 						{ "[", "JetDim2" },
 						{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
@@ -404,14 +407,29 @@ M.show = function()
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
 	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
+
+	-- If a kernel block is expanded, some messages may cause the expanded
+	-- block to grow/shrink. In such cases we redraw the whole UI - this is
+	-- expensive though, so we want to be as accurate as possible when
+	-- detecting cases which should cause a change in size.
 	hooks.on_message_received.update_ui = function(k, msg)
 		if not k.ui_expand or not msg.channel == "iopub" then
 			return
 		end
-		if
-			k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len
-			or msg.header.msg_type == "execute_input"
-		then
+		-- If the stream is not 'full' yet then just redraw every time we get
+		-- an iopub message. This triggers a few unnecessary redraws, but only
+		-- if the user sets a bunch of code running and immediately opens the
+		-- UI - an edge cases.
+		if k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len then
+			ui:refresh()
+			return
+		end
+		-- Update when the last executed code changes
+		if msg.header.msg_type == "execute_input" then
+			local code = k.last_execution and k.last_execution.code
+			if not code then
+				return
+			end
 			ui:refresh()
 		end
 	end
