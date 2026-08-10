@@ -17,9 +17,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         neovim: ["0.12.4"]
         r: ["4.5.0"]
+        include:
+          - os: ubuntu-latest
+            nvim_stem: nvim-linux-x86_64
+            stylua_stem: stylua-linux-x86_64
+            emmylua_stem: emmylua_check-linux-x64
+            tools_dir: /opt
 
     steps:
       - uses: actions/checkout@v5
@@ -27,25 +32,25 @@ jobs:
       - name: Cache Neovim installation
         uses: actions/cache@v4
         with:
-          path: $PATH:/opt/nvim-linux-x86_64/bin
+          path: ${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}/bin
           key: dummy-key
 
       - name: Install Stylua
         run: |
-          curl -LO https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/stylua-linux-x86_64.zip
-          sudo rm -rf /opt/stylua-linux-x86_64
-          sudo unzip stylua-linux-x86_64.zip -d /opt
-          echo "/opt" >> $GITHUB_PATH
+          curl -LO https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/${{ matrix.stylua_stem }}.zip
+          sudo rm -rf ${{ matrix.tools_dir }}/stylua
+          sudo unzip ${{ matrix.stylua_stem }}.zip -d ${{ matrix.tools_dir }}
+          echo "${{ matrix.tools_dir }}" >> $GITHUB_PATH
 
       - name: Check styling
         run: stylua . --check --color Always
 
       - name: Install Neovim
         run: |
-          curl -LO https://github.com/neovim/neovim/releases/download/v${{ matrix.neovim }}/nvim-linux-x86_64.tar.gz
-          sudo rm -rf /opt/nvim-linux-x86_64
-          sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
-          echo "/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
+          curl -LO https://github.com/neovim/neovim/releases/download/v${{ matrix.neovim }}/${{ matrix.nvim_stem }}.tar.gz
+          sudo rm -rf ${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}
+          sudo tar -C ${{ matrix.tools_dir }} -xzf ${{ matrix.nvim_stem }}.tar.gz
+          echo "${{ matrix.tools_dir }}/${{ matrix.nvim_stem }}/bin" >> $GITHUB_PATH
 
       - name: Cache testing deps (mini.nvim)
         uses: actions/cache@v4
@@ -58,10 +63,10 @@ jobs:
 
       - name: Install emmylua_check
         run: |
-          curl -LO https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/${EMMYLUA_CHECK_VERSION}/emmylua_check-linux-x64.tar.gz
-          sudo rm -rf /opt/emmylua_check-linux-x64
-          sudo tar -C /opt -xzf emmylua_check-linux-x64.tar.gz
-          echo "/opt" >> $GITHUB_PATH
+          curl -LO https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/${EMMYLUA_CHECK_VERSION}/${{ matrix.emmylua_stem }}.tar.gz
+          sudo rm -rf ${{ matrix.tools_dir }}/${{ matrix.emmylua_stem }}
+          sudo tar -C ${{ matrix.tools_dir }} -xzf ${{ matrix.emmylua_stem }}.tar.gz
+          echo "${{ matrix.tools_dir }}" >> $GITHUB_PATH
 
       - name: Run emmylua_check
         run: |
