@@ -26,6 +26,15 @@ jobs:
           sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
           echo "/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
 
+      - name: Cache testing deps (mini.nvim)
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-minideps-${{ hashFiles('Makefile') }}
+
+      - name: Install testing deps (mini.nvim)
+        run: make deps/mini.nvim
+
       - name: Install emmylua_check
         run: |
           curl -LO https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/0.25.0/emmylua_check-linux-x64.tar.gz
@@ -36,7 +45,7 @@ jobs:
       - name: Run emmylua_check
         run: |
           export VIMRUNTIME=$(nvim --clean --headless +'lua io.write(vim.env.VIMRUNTIME)' +qa)
-          emmylua_check .
+          emmylua_check . --warnings-as-errors --output-format github
 
       # Ark needs a real R at runtime. Install it out-of-band; the script
       # only downloads the ark binary and writes the kernelspec.
@@ -68,15 +77,6 @@ jobs:
       - name: Export LD_LIBRARY_PATH for ark (Linux)
         if: runner.os == 'Linux'
         run: echo "LD_LIBRARY_PATH=$(R RHOME)/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
-
-      - name: Cache testing deps (mini.nvim)
-        uses: actions/cache@v4
-        with:
-          path: deps
-          key: ${{ runner.os }}-minideps-${{ hashFiles('Makefile') }}
-
-      - name: Install testing deps (mini.nvim)
-        run: make deps/mini.nvim
 
       - name: Run Tests
         run: make test
