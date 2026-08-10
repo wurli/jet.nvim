@@ -532,6 +532,19 @@ M.show = function()
 		end
 	end, { buf = ui.buf })
 
+	local next_kernel = function(direction)
+		local lnum = vim.fn.line(".")
+		for i = lnum + direction, direction == 1 and #ui.lines or 1, direction do
+			if ui.lines[i] and ui.lines[i].data and ui.lines[i].data.kernel then
+				vim.api.nvim_win_set_cursor(ui_win, { i, 0 })
+				return
+			end
+		end
+	end
+
+	vim.keymap.set("n", "]]", function() next_kernel(1) end, { buf = ui.buf, desc = "[jet] go to next kernel" })
+	vim.keymap.set("n", "[[", function() next_kernel(-1) end, { buf = ui.buf, desc = "[jet] go to previous kernel" })
+
 	local screen_width = vim.o.columns
 	local screen_height = vim.o.lines
 
