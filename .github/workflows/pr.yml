@@ -11,6 +11,23 @@ env:
   EMMYLUA_CHECK_VERSION: "0.25.0"
 
 jobs:
+  code_style:
+    # Doesn't depend on OS or any assets (e.g. nvim runtime) so best to run
+    # this outside the matrix.
+    name: stylua
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Stylua
+        run: |
+          curl -LO https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/stylua-linux-x86_64.zip
+          sudo unzip stylua-linux-x86_64.zip -d /opt
+          echo "/opt" >> $GITHUB_PATH
+
+      - name: Check styling
+        run: stylua . --check --color Always
+
   run_tests:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.neovim == 'nightly' }}
@@ -24,22 +41,11 @@ jobs:
         include:
           - os: ubuntu-latest
             nvim_stem: nvim-linux-x86_64
-            stylua_stem: stylua-linux-x86_64
             emmylua_stem: emmylua_check-linux-x64
             tools_dir: /opt
 
     steps:
       - uses: actions/checkout@v5
-
-      - name: Install Stylua
-        run: |
-          curl -LO https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/${{ matrix.stylua_stem }}.zip
-          sudo rm -rf ${{ matrix.tools_dir }}/stylua
-          sudo unzip ${{ matrix.stylua_stem }}.zip -d ${{ matrix.tools_dir }}
-          echo "${{ matrix.tools_dir }}" >> $GITHUB_PATH
-
-      - name: Check styling
-        run: stylua . --check --color Always
 
       - name: Install Neovim
         run: |
