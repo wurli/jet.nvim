@@ -51,7 +51,7 @@ function Line:resolve()
 	---@type jet.ui.line.extmark[]
 	local marks = {}
 
-	---@param x string | string[] | vim.api.keyset.set_extmark | vim.api.keyset.set_extmark[]
+	---@param x string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[]
 	---@return vim.api.keyset.set_extmark[]
 	local to_extmarks = function(x)
 		if not vim.isarray(x) then
