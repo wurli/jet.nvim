@@ -14,6 +14,7 @@ jobs:
   run_tests:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.neovim == 'nightly' }}
+    name: Nvim ${{ matrix.neovim }}
 
     strategy:
       fail-fast: false
