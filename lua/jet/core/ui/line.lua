@@ -1,4 +1,5 @@
----@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[], start_col?: integer, end_col?: integer }[]
+---@alias jet.ui.line.parts { [1]: string, [2]?: jet.ui.line.extmark_shorthand, start_col?: integer, end_col?: integer }[]
+---@alias jet.ui.line.extmark_shorthand string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[]
 ---@alias jet.ui.line.extmark { [1]: integer, [2]: integer, [3]: vim.api.keyset.set_extmark }
 
 ---@class jet.ui.line
@@ -16,11 +17,13 @@
 local Line = {}
 Line.__index = Line
 
----@param opts Partial<jet.ui.line>
----@param make_parts fun(): jet.ui.line.parts Reset `parts`
-Line.new = function(opts, make_parts)
+---@param opts? Partial<jet.ui.line>
+---@param parts? jet.ui.line.parts | fun(): jet.ui.line.parts Reset `parts`
+Line.new = function(opts, parts)
+	opts = opts or {}
+	parts = parts or {}
 	return setmetatable({
-		make_parts = make_parts,
+		make_parts = type(parts) == "function" and parts or function() return parts end,
 		indent = (opts.indent or 0) * 2,
 		timer = opts.timer,
 		on_close = opts.on_close,
@@ -51,7 +54,7 @@ function Line:resolve()
 	---@type jet.ui.line.extmark[]
 	local marks = {}
 
-	---@param x string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[]
+	---@param x jet.ui.line.extmark_shorthand
 	---@return vim.api.keyset.set_extmark[]
 	local to_extmarks = function(x)
 		if not vim.isarray(x) then

@@ -94,15 +94,9 @@ local active_kernel_line = function(k)
 	end)
 end
 
----@param opts? Partial<jet.ui.line>
----@param parts? jet.ui.line.parts
-local simple_line = function(opts, parts)
-	return line.new(opts or {}, function() return parts or {} end)
-end
-
 ---@param k jet.kernel
 local kernel_info_line = function(k)
-	return simple_line({ indent = 2, data = { kernel = k } }, {
+	return line.new({ indent = 2, data = { kernel = k } }, {
 		{ k.spec.display_name },
 		{ "    " },
 		{ utils.path_shorten(k.spec_path), "JetDim1" },
@@ -147,7 +141,7 @@ local keymaps_line = function()
 		key = string.format("(%s) ", key)
 		return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
 	end
-	return simple_line(
+	return line.new(
 		{ indent = 1 },
 		tbl_combine(
 			map("Open", "o"),
@@ -238,7 +232,7 @@ local kernel_expand = function(k)
 	if k:status() == "inactive" and k.spec.argv and k.spec.argv[1] then
 		return {
 			line.new({ indent = 3 }, function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end),
-			simple_line(),
+			line.new(),
 		}
 	end
 
@@ -289,7 +283,7 @@ local kernel_expand = function(k)
 
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
-				table.insert(out, simple_line())
+				table.insert(out, line.new())
 				local divier_line = line.new({ indent = 4, timer = true }, function()
 					local hl = status_hl()
 					local icon = hl == "JetFailure" and " "
@@ -315,7 +309,7 @@ local kernel_expand = function(k)
 	end
 
 	if #out > 0 then
-		table.insert(out, simple_line())
+		table.insert(out, line.new())
 	end
 
 	return out
@@ -335,7 +329,7 @@ local kernel_lines = function(callback)
 			local prev_group = group_name
 			group_name = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
 			if group_name ~= prev_group then
-				table.insert(lines, simple_line({ indent = 1 }, { { group_name, "JetH2" } }))
+				table.insert(lines, line.new({ indent = 1 }, { { group_name, "JetH2" } }))
 			end
 
 			local any_connected = false
@@ -362,7 +356,7 @@ local kernel_lines = function(callback)
 			end
 
 			if any_connected then
-				table.insert(lines, simple_line())
+				table.insert(lines, line.new())
 			end
 		end
 		callback(lines)
@@ -384,13 +378,13 @@ M.show = function()
 		get_lines = function(callback)
 			kernel_lines(function(kernels)
 				local lines = {
-					simple_line(),
+					line.new(),
 					title_line(),
 					version_line(),
 					url_line(),
-					simple_line(),
+					line.new(),
 					keymaps_line(),
-					simple_line(),
+					line.new(),
 				}
 				for _, l in ipairs(kernels) do
 					table.insert(lines, l)
