@@ -11,19 +11,15 @@ Page.__index = Page
 
 ---@class jet.ui.page.new.opts
 ---@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
----@field buf integer
 ---@field ns integer
 
 ---@param opts jet.ui.page.new.opts
 ---nreturn jet.ui.page
 Page.new = function(opts)
 	local out = setmetatable(opts, Page)
+	out.buf = vim.api.nvim_create_buf(false, true)
 	out.lines = {}
 	out.interval = 100
-
-	vim.bo[out.buf].buftype = "nofile"
-	vim.bo[out.buf].filetype = "jetui"
-	vim.bo[out.buf].modifiable = false
 
 	out:refresh()
 	out:start_timer()
