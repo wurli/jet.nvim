@@ -41,7 +41,7 @@ jobs:
         run: stylua . --check --color Always
 
       - name: Install Neovim
-        run: Always |
+        run: |
           curl -LO https://github.com/neovim/neovim/releases/download/v${{ matrix.neovim }}/nvim-linux-x86_64.tar.gz
           sudo rm -rf /opt/nvim-linux-x86_64
           sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
