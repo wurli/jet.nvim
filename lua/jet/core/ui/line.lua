@@ -16,24 +16,13 @@
 local Line = {}
 Line.__index = Line
 
----passing `Partial<jet.ui.line>` stops emmylua_ls enforcing return type of
----`make_parts()`, so just duplicate some types here.
----@class jet.ui.line.opts
----@field make_parts fun(): jet.ui.line.parts Reset `parts`
----@field indent? integer
----@field timer? boolean
----@field on_refresh? table<string, fun(self: jet.ui.line)> Called after `refresh` is called
----@field parts? jet.ui.line.parts
----@field lnum? integer
----@field on_close? fun(self: jet.ui.line)
----@field data? table<string, any>
-
----@param opts jet.ui.line.opts
-Line.new = function(opts)
+---@param opts Partial<jet.ui.line>
+---@param make_parts fun(): jet.ui.line.parts Reset `parts`
+Line.new = function(opts, make_parts)
 	return setmetatable({
+		make_parts = make_parts,
 		indent = (opts.indent or 0) * 2,
 		timer = opts.timer,
-		make_parts = opts.make_parts,
 		on_close = opts.on_close,
 		data = opts.data or {},
 		on_refresh = opts.on_refresh or {},

@@ -102,79 +102,69 @@ local active_kernel_line = function(k)
 
 	local next_progress_spinner = make_progress_spinner()
 
-	return line.new({
-		indent = 3,
-		timer = true,
-		data = { kernel = k },
-		make_parts = function()
-			assert(k.session_info, "Kernel must have session info")
+	return line.new({ indent = 3, timer = true, data = { kernel = k } }, function()
+		assert(k.session_info, "Kernel must have session info")
 
-			local status, status_icon = k:status()
-			local parts = {}
+		local status, status_icon = k:status()
+		local parts = {}
 
-			if status == "connecting" then
-				table.insert(parts, { next_progress_spinner(), "JetBusy" })
-			elseif status == "external" then
-				table.insert(parts, { status_icon, "JetExternal" })
-			elseif status == "connected" and k.last_execution and not k.last_execution.end_time then
-				table.insert(parts, { status_icon, "JetBusy" })
-			else
-				table.insert(parts, { status_icon, "JetIdle" })
-			end
+		if status == "connecting" then
+			table.insert(parts, { next_progress_spinner(), "JetBusy" })
+		elseif status == "external" then
+			table.insert(parts, { status_icon, "JetExternal" })
+		elseif status == "connected" and k.last_execution and not k.last_execution.end_time then
+			table.insert(parts, { status_icon, "JetBusy" })
+		else
+			table.insert(parts, { status_icon, "JetIdle" })
+		end
 
-			table.insert(parts, { (k.session_id or "") .. " ", "JetId" })
-			table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" })
+		table.insert(parts, { (k.session_id or "") .. " ", "JetId" })
+		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" })
 
-			return parts
-		end,
-	})
+		return parts
+	end)
 end
 
 ---@param name string
 local kernel_group_line = function(name)
-	local out = line.new({
-		indent = 1,
-		make_parts = function() return { { name, "JetH2" } } end,
-	})
-	return out
+	return line.new({ indent = 1 }, function() return { { name, "JetH2" } } end)
 end
 
 ---@param k jet.kernel
 local kernel_info_line = function(k)
-	return line.new({
-		indent = 2,
-		data = { kernel = k },
-		make_parts = function()
+	return line.new(
+		{ indent = 2, data = { kernel = k } },
+		function()
 			return {
 				{ k.spec.display_name },
 				{ "    " },
 				{ utils.path_shorten(k.spec_path), "JetDim1" },
 			}
-		end,
-	})
+		end
+	)
 end
 
 local title_line = function()
-	return line.new({
-		make_parts = function()
+	return line.new(
+		{},
+		function()
 			return center({
 				{ "jet.nvim", "JetH1" },
 				{ " " },
 				{ " ", { "JetH1", "Comment" } },
 			})
-		end,
-	})
+		end
+	)
 end
 
 local url_line = function()
-	return line.new({
-		make_parts = function() return center({ { "https://github.com/wurli/jet", "JetUrl" } }) end,
-	})
+	return line.new({}, function() return center({ { "https://github.com/wurli/jet", "JetUrl" } }) end)
 end
 
 local version_line = function()
-	return line.new({
-		make_parts = function()
+	return line.new(
+		{},
+		function()
 			return center({
 				{ "plugin: " },
 				{ require("jet.core.config").jet_nvim_version, "JetId" },
@@ -182,35 +172,30 @@ local version_line = function()
 				{ "lib: " },
 				{ require("jet.core.utils.download").check_lib_version().current, "JetId" },
 			})
-		end,
-	})
+		end
+	)
 end
 
 local keymaps_line = function()
-	return line.new({
-		indent = 1,
-		make_parts = function()
-			local map = function(name, key)
-				name = string.format(" %s ", name)
-				key = string.format("(%s) ", key)
-				return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
-			end
-			return tbl_combine(
-				map("Open", "o"),
-				map("New session", "s"),
-				map("Stop", "x"),
-				map("Interrupt", "i"),
-				map("Expand", "<CR>"),
-				map("Quit", "q")
-			)
-		end,
-	})
+	return line.new({ indent = 1 }, function()
+		local map = function(name, key)
+			name = string.format(" %s ", name)
+			key = string.format("(%s) ", key)
+			return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
+		end
+		return tbl_combine(
+			map("Open", "o"),
+			map("New session", "s"),
+			map("Stop", "x"),
+			map("Interrupt", "i"),
+			map("Expand", "<CR>"),
+			map("Quit", "q")
+		)
+	end)
 end
 
 local blank_line = function()
-	return line.new({
-		make_parts = function() return { { "" } } end,
-	})
+	return line.new({}, function() return { { "" } } end)
 end
 
 ---@class jet.ui.kernel_group
@@ -288,10 +273,7 @@ local kernel_expand = function(k)
 
 	if k:status() == "inactive" and k.spec.argv and k.spec.argv[1] then
 		return {
-			line.new({
-				indent = 3,
-				make_parts = function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end,
-			}),
+			line.new({ indent = 3 }, function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end),
 			blank_line(),
 		}
 	end
@@ -308,30 +290,27 @@ local kernel_expand = function(k)
 		if code and code ~= "" then
 			table.insert(
 				out,
-				line.new({
-					indent = 4,
-					timer = true,
-					make_parts = function()
+				line.new(
+					{ indent = 4, timer = true },
+					function()
 						return divider({ { "in", "JetComment" } }, {
 							{ "[", "JetDim2" },
 							{ "#" .. k.last_execution.count, status_hl() },
 							{ "]", "JetDim2" },
 						})
-					end,
-				})
+					end
+				)
 			)
 
 			for i, code_text in ipairs(vim.split(code, "\n")) do
-				local code_line = line.new({
-					make_parts = function()
-						local prefix = i == 1 and ">  " or "+  "
-						local mark = {
-							virt_text = { { "            " .. prefix, "JetDim1" } },
-							virt_text_pos = "inline",
-						}
-						return { { code_text, mark, start_col = 0 } }
-					end,
-				})
+				local code_line = line.new({}, function()
+					local prefix = i == 1 and ">  " or "+  "
+					local mark = {
+						virt_text = { { "            " .. prefix, "JetDim1" } },
+						virt_text_pos = "inline",
+					}
+					return { { code_text, mark, start_col = 0 } }
+				end)
 				if i == 1 and k.filetype then
 					code_line.on_refresh.set_ts_extmarks = function(l)
 						local hl = require("jet.core.ui.get_highlights").get_ts_highlights
@@ -348,31 +327,24 @@ local kernel_expand = function(k)
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
 				table.insert(out, blank_line())
-				local divier_line = line.new({
-					indent = 4,
-					timer = true,
-					make_parts = function()
-						local hl = status_hl()
-						local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
-						return divider({ { "out", "JetComment" } }, {
-							{ "[", "JetDim2" },
-							{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
-							{ "]", "JetDim2" },
-						})
-					end,
-				})
+				local divier_line = line.new({ indent = 4, timer = true }, function()
+					local hl = status_hl()
+					local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
+					return divider({ { "out", "JetComment" } }, {
+						{ "[", "JetDim2" },
+						{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
+						{ "]", "JetDim2" },
+					})
+				end)
 				table.insert(out, divier_line)
 			end
-			local stream_line = line.new({
-				timer = true,
-				make_parts = function()
-					local mark = {
-						virt_text = { { "            •  ", "JetDim1" } },
-						virt_text_pos = "inline",
-					}
-					return { { k.iopub_stream.complete_lines[i] or "", "JetCode" }, { "", mark, start_col = 0 } }
-				end,
-			})
+			local stream_line = line.new({ timer = true }, function()
+				local mark = {
+					virt_text = { { "            •  ", "JetDim1" } },
+					virt_text_pos = "inline",
+				}
+				return { { k.iopub_stream.complete_lines[i] or "", "JetCode" }, { "", mark, start_col = 0 } }
+			end)
 			table.insert(out, stream_line)
 		end
 	end
