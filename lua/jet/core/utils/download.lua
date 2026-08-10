@@ -21,8 +21,9 @@ M.curl = function(args, callback)
 end
 
 local mkdir = function(dir)
-	-- tonumber("755", 8) = 493
-	vim.uv.fs_mkdir(dir, 493)
+	if vim.fn.mkdir(dir, "p") ~= 1 then
+		error("Failed to create directory " .. dir)
+	end
 end
 
 ---@param dir? string
@@ -175,22 +176,25 @@ local download_and_unpack = function(url, dest_dir, callback)
 
 	local download_path = vim.fn.tempname() .. ".tar.gz"
 
-	M.curl({ url, "-sL", "-o", download_path }, function()
-		vim.fs.rm(dest_dir, { recursive = true, force = true })
-		mkdir(dest_dir)
-		vim.system(
-			{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
-			{ text = true },
-			function(res)
-				if res.code ~= 0 then
-					error("Failed to unpack tarball: " .. res.stderr)
+	M.curl(
+		{ url, "-sL", "-o", download_path },
+		vim.schedule_wrap(function()
+			vim.fs.rm(dest_dir, { recursive = true, force = true })
+			mkdir(dest_dir)
+			vim.system(
+				{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
+				{ text = true },
+				function(res)
+					if res.code ~= 0 then
+						error("Failed to unpack tarball: " .. res.stderr)
+					end
+					if callback then
+						callback()
+					end
 				end
-				if callback then
-					callback()
-				end
-			end
-		)
-	end)
+			)
+		end)
+	)
 end
 
 ---@param version string either `"latest"` or a version like `"v0.0.1"`
@@ -218,7 +222,7 @@ M.download_jet = function(version, dir, callback)
 end
 
 M.get_jet_paths = function()
-	local config = require("jet.core.config").options
+	local config = require("jet.core.config").options or {}
 	local path_defaults = M.jet_resource_paths()
 
 	local bin_path_final = config.jet_binary_path or path_defaults.bin_path

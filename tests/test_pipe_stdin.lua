@@ -18,7 +18,7 @@ T["chansend over plain pipe stdin delivers every line"] = function()
 			local function collect(_, data, _)
 				for _, l in ipairs(data) do table.insert(_G.output, l) end
 			end
-			_G.job_id = vim.fn.jobstart({ "jet", "start", "test-kernels/python3/kernel.json" }, {
+			_G.job_id = vim.fn.jobstart({ _G.JET_BIN_PATH, "start", "test-kernels/python3/kernel.json" }, {
 				on_stdout = collect,
 				on_stderr = collect,
 			})
