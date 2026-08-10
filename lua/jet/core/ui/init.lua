@@ -145,11 +145,8 @@ local kernel_info_line = function(k)
 		indent = 2,
 		data = { kernel = k },
 		make_parts = function()
-			return {
-				{ k.spec.display_name },
-				{ "    " },
-				{ utils.path_shorten(k.spec_path), "JetDim1" },
-			}
+			local path = "`" .. utils.path_shorten(k.spec_path) .. "`"
+			return { { k.spec.display_name }, { "    " }, { path, "JetDim1" } }
 		end,
 	})
 end
@@ -207,10 +204,8 @@ local keymaps_line = function()
 	})
 end
 
-local blank_line = function()
-	return line.new({
-		make_parts = function() return { { "" } } end,
-	})
+local text_line = function(text, ...)
+	return line.new({ make_parts = function() return { { text or "" } } end, ... })
 end
 
 ---@class jet.ui.kernel_group
@@ -292,7 +287,7 @@ local kernel_expand = function(k)
 				indent = 3,
 				make_parts = function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end,
 			}),
-			blank_line(),
+			text_line(),
 		}
 	end
 
@@ -321,19 +316,16 @@ local kernel_expand = function(k)
 				})
 			)
 
-			for i, code_text in ipairs(vim.split(code, "\n")) do
+			for _, code_text in ipairs(vim.split("``` " .. (k.filetype or "") .. "\n" .. code .. "\n```", "\n")) do
 				local code_line = line.new({
-					indent = 6,
-					make_parts = function() return { { i == 1 and ">  " or "+  ", "JetDim1" }, { code_text } } end,
+					make_parts = function()
+						local mark = {
+							virt_text = { { "            +  ", "JetDim2" } },
+							virt_text_pos = "inline",
+						}
+						return { { code_text, mark, start_col = 0 } }
+					end,
 				})
-				if i == 1 and k.filetype then
-					code_line.on_refresh.set_ts_extmarks = function(l)
-						local hl = require("jet.core.ui.get_highlights").get_ts_highlights
-						for _, mark in ipairs(hl(code, k.filetype, l.indent + 3, l.lnum and l.lnum - 1)) do
-							table.insert(l.marks, mark)
-						end
-					end
-				end
 				table.insert(out, code_line)
 			end
 		end
@@ -341,8 +333,8 @@ local kernel_expand = function(k)
 		local spinner = make_progress_spinner()
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
-				table.insert(out, blank_line())
-				local divier_line = line.new({
+				table.insert(out, text_line())
+				local divider_line = line.new({
 					indent = 4,
 					timer = true,
 					make_parts = function()
@@ -355,16 +347,16 @@ local kernel_expand = function(k)
 						})
 					end,
 				})
-				table.insert(out, divier_line)
+				table.insert(out, divider_line)
 			end
 			local stream_line = line.new({
-				indent = 6,
 				timer = true,
 				make_parts = function()
-					return truncate({
-						{ "•  ", "JetDim1" },
-						{ k.iopub_stream.complete_lines[i] or "", "JetCode" },
-					})
+					local mark = {
+						virt_text = { { "            •  ", "JetDim2" } },
+						virt_text_pos = "inline",
+					}
+					return truncate({ { k.iopub_stream.complete_lines[i], mark, start_col = 0 } })
 				end,
 			})
 			table.insert(out, stream_line)
@@ -372,7 +364,7 @@ local kernel_expand = function(k)
 	end
 
 	if #out > 0 then
-		table.insert(out, blank_line())
+		table.insert(out, text_line())
 	end
 
 	return out
@@ -419,7 +411,7 @@ local kernel_lines = function(callback)
 			end
 
 			if any_connected then
-				table.insert(lines, blank_line())
+				table.insert(lines, text_line())
 			end
 		end
 		callback(lines)
@@ -442,13 +434,13 @@ M.show = function()
 		get_lines = function(callback)
 			kernel_lines(function(kernels)
 				local lines = {
-					blank_line(),
+					text_line(),
 					title_line(),
 					version_line(),
 					url_line(),
-					blank_line(),
+					text_line(),
 					keymaps_line(),
-					blank_line(),
+					text_line(),
 				}
 				for _, l in ipairs(kernels) do
 					table.insert(lines, l)
@@ -560,6 +552,9 @@ M.show = function()
 		style = "minimal",
 		border = "rounded",
 	})
+
+	vim.wo[ui_win].conceallevel = 3
+	-- vim.wo[ui_win].concealcursor = "n"
 
 	vim.api.nvim_create_autocmd("WinClosed", {
 		pattern = tostring(ui_win),
