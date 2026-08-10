@@ -405,10 +405,12 @@ M.show = function()
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
 	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
 	hooks.on_message_received.update_ui = function(k, msg)
+		if not k.ui_expand or not msg.channel == "iopub" then
+			return
+		end
 		if
-			k.ui_expand
-			and msg.channel == "iopub"
-			and k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len
+			k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len
+			or msg.header.msg_type == "execute_input"
 		then
 			ui:refresh()
 		end
