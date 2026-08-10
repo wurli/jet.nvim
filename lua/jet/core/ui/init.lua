@@ -34,37 +34,6 @@ local center = function(parts, indent)
 	return tbl_combine({ { string.rep(" ", pad_width) } }, parts)
 end
 
---- ``` lua
---- vim.print(truncate({ { "foofoo" }, { "barbar" }, { "bazbaz" } }, 10))
---- -- { { "foofoo" }, { "b" }, { "...", "JetDim1" } }
---- ```
----@param l jet.ui.line.parts
----@param max_len? integer
----@return jet.ui.line.parts
-local truncate = function(l, max_len)
-	local l_len = 0
-	max_len = max_len or line_max_length
-	for _, part in ipairs(l) do
-		l_len = l_len + #part[1]
-	end
-	if l_len <= max_len then
-		return l
-	end
-	for i = #l, 1, -1 do
-		local i_len = #l[i][1]
-		if l_len - i_len + 3 > max_len then
-			table.remove(l, i)
-			l_len = l_len - i_len
-		else
-			local extra = max_len - l_len + i_len - 3
-			l[i][1] = l[i][1]:sub(1, extra)
-			table.insert(l, { "...", "JetDim1" })
-			return l
-		end
-	end
-	return l
-end
-
 ---@param left jet.ui.line.parts
 ---@param right jet.ui.line.parts
 ---@param char? string
