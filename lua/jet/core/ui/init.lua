@@ -443,7 +443,6 @@ M.show = function()
 	require("jet.core.ui.colours").setup()
 
 	local ui = page.new({
-		buf = vim.api.nvim_create_buf(false, true),
 		ns = vim.api.nvim_create_namespace("jet.ui"),
 		get_lines = function(callback)
 			kernel_lines(function(kernels)
@@ -463,6 +462,10 @@ M.show = function()
 			end)
 		end,
 	})
+
+	vim.bo[ui.buf].buftype = "nofile"
+	vim.bo[ui.buf].filetype = "jetui"
+	vim.bo[ui.buf].modifiable = false
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
