@@ -1,4 +1,4 @@
----@alias jet.ui.line.parts { [1]: string, [2]?: string | string[] | vim.api.keyset.set_extmark | vim.api.keyset.set_extmark[], start_col?: integer, end_col?: integer }[]
+---@alias jet.ui.line.parts { [1]: string, [2]?: string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[], start_col?: integer, end_col?: integer }[]
 ---@alias jet.ui.line.extmark { [1]: integer, [2]: integer, [3]: vim.api.keyset.set_extmark }
 
 ---@class jet.ui.line
