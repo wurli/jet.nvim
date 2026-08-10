@@ -94,23 +94,19 @@ local active_kernel_line = function(k)
 	end)
 end
 
----@param name string
-local kernel_group_line = function(name)
-	return line.new({ indent = 1 }, function() return { { name, "JetH2" } } end)
+---@param opts? Partial<jet.ui.line>
+---@param parts? jet.ui.line.parts
+local simple_line = function(opts, parts)
+	return line.new(opts or {}, function() return parts or {} end)
 end
 
 ---@param k jet.kernel
 local kernel_info_line = function(k)
-	return line.new(
-		{ indent = 2, data = { kernel = k } },
-		function()
-			return {
-				{ k.spec.display_name },
-				{ "    " },
-				{ utils.path_shorten(k.spec_path), "JetDim1" },
-			}
-		end
-	)
+	return simple_line({ indent = 2, data = { kernel = k } }, {
+		{ k.spec.display_name },
+		{ "    " },
+		{ utils.path_shorten(k.spec_path), "JetDim1" },
+	})
 end
 
 local title_line = function()
@@ -146,13 +142,14 @@ local version_line = function()
 end
 
 local keymaps_line = function()
-	return line.new({ indent = 1 }, function()
-		local map = function(name, key)
-			name = string.format(" %s ", name)
-			key = string.format("(%s) ", key)
-			return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
-		end
-		return tbl_combine(
+	local map = function(name, key)
+		name = string.format(" %s ", name)
+		key = string.format("(%s) ", key)
+		return { { name, "JetButton" }, { key, { "JetButton", "JetSpecial" } }, { "  " } }
+	end
+	return simple_line(
+		{ indent = 1 },
+		tbl_combine(
 			map("Open", "o"),
 			map("New session", "s"),
 			map("Stop", "x"),
@@ -160,11 +157,7 @@ local keymaps_line = function()
 			map("Expand", "<CR>"),
 			map("Quit", "q")
 		)
-	end)
-end
-
-local blank_line = function()
-	return line.new({}, function() return { { "" } } end)
+	)
 end
 
 ---@class jet.ui.kernel_group
@@ -243,7 +236,7 @@ local kernel_expand = function(k)
 	if k:status() == "inactive" and k.spec.argv and k.spec.argv[1] then
 		return {
 			line.new({ indent = 3 }, function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end),
-			blank_line(),
+			simple_line(),
 		}
 	end
 
@@ -295,7 +288,7 @@ local kernel_expand = function(k)
 		local spinner = make_progress_spinner()
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
-				table.insert(out, blank_line())
+				table.insert(out, simple_line())
 				local divier_line = line.new({ indent = 4, timer = true }, function()
 					local hl = status_hl()
 					local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or spinner()
@@ -319,7 +312,7 @@ local kernel_expand = function(k)
 	end
 
 	if #out > 0 then
-		table.insert(out, blank_line())
+		table.insert(out, simple_line())
 	end
 
 	return out
@@ -339,7 +332,7 @@ local kernel_lines = function(callback)
 			local prev_group = group_name
 			group_name = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
 			if group_name ~= prev_group then
-				table.insert(lines, kernel_group_line(group_name))
+				table.insert(lines, simple_line({ indent = 1 }, { { group_name, "JetH2" } }))
 			end
 
 			local any_connected = false
@@ -366,7 +359,7 @@ local kernel_lines = function(callback)
 			end
 
 			if any_connected then
-				table.insert(lines, blank_line())
+				table.insert(lines, simple_line())
 			end
 		end
 		callback(lines)
@@ -388,13 +381,13 @@ M.show = function()
 		get_lines = function(callback)
 			kernel_lines(function(kernels)
 				local lines = {
-					blank_line(),
+					simple_line(),
 					title_line(),
 					version_line(),
 					url_line(),
-					blank_line(),
+					simple_line(),
 					keymaps_line(),
-					blank_line(),
+					simple_line(),
 				}
 				for _, l in ipairs(kernels) do
 					table.insert(lines, l)
