@@ -3,18 +3,15 @@
 ---@field lines jet.ui.line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[][]
----@field timer? boolean
 ---@field stopped? boolean
 local Linegroup = {}
 Linegroup.__index = Linegroup
 
----@param opts Partial<jet.ui.linegroup>
 ---@param lines jet.ui.line[] | fun(): jet.ui.line[]
-Linegroup.new = function(opts, lines)
+Linegroup.new = function(lines)
 	return setmetatable({
 		make_lines = type(lines) == "function" and lines or nil,
 		lines = type(lines) == "table" and lines or {},
-		timer = opts.timer,
 		text = {},
 		marks = {},
 	}, Linegroup)

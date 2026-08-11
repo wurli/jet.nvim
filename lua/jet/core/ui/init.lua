@@ -347,23 +347,23 @@ local make_kernel_linegroups = function(callback)
 			group_title = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
 
 			if group_title ~= prev_group_title then
-				table.insert(groups, linegroup.new({}, { line.new({ indent = 1 }, { { group_title, "JetH2" } }) }))
+				table.insert(groups, linegroup.new({ line.new({ indent = 1 }, { { group_title, "JetH2" } }) }))
 			end
 
-			table.insert(groups, linegroup.new({}, { kernel_info_line(group.kernel) }))
-			table.insert(groups, linegroup.new({ timer = true }, function() return expand_inactive(group.kernel) end))
+			table.insert(groups, linegroup.new({ kernel_info_line(group.kernel) }))
+			table.insert(groups, linegroup.new(function() return expand_inactive(group.kernel) end))
 
 			local any_active = false
 			for _, kernels in ipairs({ group.connected, group.external }) do
 				for _, k in ipairs(kernels) do
 					any_active = true
-					table.insert(groups, linegroup.new({}, { session_info_line(k) }))
-					table.insert(groups, linegroup.new({ timer = true }, function() return expand_active(k) end))
+					table.insert(groups, linegroup.new({ session_info_line(k) }))
+					table.insert(groups, linegroup.new(function() return expand_active(k) end))
 				end
 			end
 
 			if any_active then
-				table.insert(groups, linegroup.new({}, { line.new() }))
+				table.insert(groups, linegroup.new({ line.new() }))
 			end
 		end
 
@@ -384,7 +384,7 @@ M.show = function()
 	local ui = page.new({
 		ns = vim.api.nvim_create_namespace("jet.ui"),
 		get_groups = function(callback)
-			local header_group = linegroup.new({}, {
+			local header_group = linegroup.new({
 				line.new(),
 				title_line(),
 				version_line(),
