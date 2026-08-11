@@ -44,7 +44,7 @@ end
 local divider = function(left, right, char)
 	char = char or "·"
 	local out_len = math.max(30, math.min(line_max_length, 80))
-	local pad_left = { { char:rep(2), "JetDim2" } }
+	local pad_left = { { char:rep(2), "JetDim2" } } --[[@as jet.ui.line.parts]]
 	local pad_right = { { char:rep(2), "JetDim2" } }
 
 	local len = 0

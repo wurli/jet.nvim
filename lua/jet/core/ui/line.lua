@@ -26,7 +26,7 @@ Line.new = function(opts, parts)
 		data = opts.data or {},
 		parts = type(parts) == "table" and parts or {},
 		stopped = false,
-		on_refresh = opts.on_refresh,
+		on_resolve = opts.on_resolve,
 		marks = {},
 	}, Line)
 
