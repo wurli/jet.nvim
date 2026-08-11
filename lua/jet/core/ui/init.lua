@@ -44,15 +44,15 @@ end
 local divider = function(left, right, char)
 	char = char or "·"
 	local out_len = math.max(30, math.min(line_max_length, 80))
-	local pad_left = { { char:rep(2), "JetDim2" } } --[[@as jet.ui.line.parts]]
-	local pad_right = { { char:rep(2), "JetDim2" } }
+	local pad_left = { { char:rep(2), "JetDim3" } } --[[@as jet.ui.line.parts]]
+	local pad_right = { { char:rep(2), "JetDim3" } }
 
 	local len = 0
 	for _, slice in ipairs({ left, right, pad_left, pad_right }) do
 		len = len + get_width(slice)
 	end
 
-	local pad_center = { { string.rep(char, math.max(out_len - len - 2, 0)), "JetDim2" } }
+	local pad_center = { { string.rep(char, math.max(out_len - len - 2, 0)), "JetDim3" } }
 	return tbl_combine(pad_left, left, pad_center, right, pad_right)
 end
 
@@ -72,7 +72,7 @@ local kernel_info_line = function(k)
 	return line.new({ indent = 2, data = { kernel = k } }, {
 		{ k.spec.display_name },
 		{ "    " },
-		{ utils.path_shorten(k.spec_path), "JetDim1" },
+		{ utils.path_shorten(k.spec_path), "JetDim2" },
 	})
 end
 
@@ -99,7 +99,7 @@ local session_info_line = function(k)
 		end
 
 		table.insert(parts, { (k.session_id or "") .. " ", "JetId" })
-		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "Comment" })
+		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
 
 		return parts
 	end)
@@ -112,7 +112,7 @@ local title_line = function()
 			return center({
 				{ "jet.nvim", "JetH1" },
 				{ " " },
-				{ " ", { "JetH1", "Comment" } },
+				{ " ", { "JetH1", "JetDim1" } },
 			})
 		end
 	)
@@ -201,10 +201,10 @@ local expand_active = function(k)
 				line.new(
 					{ indent = 4 },
 					function()
-						return divider({ { "in", "JetComment" } }, {
-							{ "[", "JetDim2" },
+						return divider({ { "in", "JetDim1" } }, {
+							{ "[", "JetDim3" },
 							{ "#" .. k.last_execution.count, status_hl() },
-							{ "]", "JetDim2" },
+							{ "]", "JetDim3" },
 						})
 					end
 				)
@@ -214,7 +214,7 @@ local expand_active = function(k)
 				local code_line = line.new({}, function()
 					local prefix = i == 1 and ">  " or "+  "
 					local mark = {
-						virt_text = { { "            " .. prefix, "JetDim1" } },
+						virt_text = { { "            " .. prefix, "JetDim2" } },
 						virt_text_pos = "inline",
 					}
 					return { { code_text, mark, start_col = 0 } }
@@ -239,17 +239,17 @@ local expand_active = function(k)
 						or hl == "JetSuccess" and " "
 						or execution_in_progress_spinner()
 
-					return divider({ { "out", "JetComment" } }, {
-						{ "[", "JetDim2" },
+					return divider({ { "out", "JetDim1" } }, {
+						{ "[", "JetDim3" },
 						{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
-						{ "]", "JetDim2" },
+						{ "]", "JetDim3" },
 					})
 				end)
 				table.insert(out, divider_line)
 			end
 			local stream_line = line.new({}, function()
 				local mark = {
-					virt_text = { { "            •  ", "JetDim1" } },
+					virt_text = { { "            •  ", "JetDim2" } },
 					virt_text_pos = "inline",
 				}
 				return { { k.iopub_stream.complete_lines[i] or "", "JetCode" }, { "", mark, start_col = 0 } }
