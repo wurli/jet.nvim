@@ -5,26 +5,25 @@
 ---@field lines jet.ui.line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[]
----@field get_groups fun(callback: fun(groups: jet.ui.linegroup[]))
+---@field make_groups fun(callback: fun(groups: jet.ui.linegroup[]))
 ---@field timer uv.uv_timer_t
 ---@field interval integer
 local Page = {}
 Page.__index = Page
 
----@class jet.ui.page.new.opts
----@field get_groups fun(callback: fun(groups: jet.ui.linegroup[]))
----@field ns integer
-
----@param opts jet.ui.page.new.opts
+---@param opts Partial<jet.ui.page>
+---@param make_groups fun(callback: fun(groups: jet.ui.linegroup[]))
 ---@return jet.ui.page
-Page.new = function(opts)
-	local out = setmetatable(opts, Page)
-	out.buf = vim.api.nvim_create_buf(false, true)
-	out.groups = {}
-	out.interval = 100
-	out.lines = {}
-	out.groups = {}
-	out.text = {}
+Page.new = function(opts, make_groups)
+	local out = setmetatable({
+		make_groups = make_groups,
+		ns = opts.ns,
+		buf = opts.buf or vim.api.nvim_create_buf(false, true),
+		interval = opts.interval or 100,
+		groups = {},
+		lines = {},
+		text = {},
+	}, Page)
 
 	out:refresh()
 	out:start_timer()
@@ -57,7 +56,7 @@ function Page:refresh()
 	for _, group in ipairs(self.groups) do
 		group.stopped = true
 	end
-	self.get_groups(function(groups)
+	self.make_groups(function(groups)
 		self.groups = groups
 		self:redraw()
 	end)

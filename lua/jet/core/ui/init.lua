@@ -381,25 +381,22 @@ M.show = function()
 
 	require("jet.core.ui.colours").setup()
 
-	local ui = page.new({
-		ns = vim.api.nvim_create_namespace("jet.ui"),
-		get_groups = function(callback)
-			local header_group = linegroup.new({
-				line.new(),
-				title_line(),
-				version_line(),
-				url_line(),
-				line.new(),
-				keymaps_line(),
-				line.new(),
-			})
+	local ui = page.new({ ns = vim.api.nvim_create_namespace("jet.ui") }, function(callback)
+		local header_group = linegroup.new({
+			line.new(),
+			title_line(),
+			version_line(),
+			url_line(),
+			line.new(),
+			keymaps_line(),
+			line.new(),
+		})
 
-			make_kernel_linegroups(function(groups)
-				table.insert(groups, 1, header_group)
-				callback(groups)
-			end)
-		end,
-	})
+		make_kernel_linegroups(function(groups)
+			table.insert(groups, 1, header_group)
+			callback(groups)
+		end)
+	end)
 
 	vim.bo[ui.buf].buftype = "nofile"
 	vim.bo[ui.buf].filetype = "jetui"
