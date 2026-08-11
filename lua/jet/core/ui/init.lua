@@ -270,9 +270,9 @@ local kernel_expand = function(k)
 					return { { code_text, mark, start_col = 0 } }
 				end)
 				if i == 1 and k.filetype then
-					code_line.on_refresh.set_ts_extmarks = function(l)
+					code_line.on_refresh = function(l)
 						local hl = require("jet.core.ui.get_highlights").get_ts_highlights
-						for _, mark in ipairs(hl(code, k.filetype, 0, l.lnum and l.lnum - 1)) do
+						for _, mark in ipairs(hl(code, k.filetype)) do
 							table.insert(l.marks, mark)
 						end
 					end

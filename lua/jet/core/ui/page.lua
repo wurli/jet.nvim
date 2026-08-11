@@ -1,24 +1,25 @@
 ---@class jet.ui.page
 ---@field buf integer
 ---@field ns integer
----@field lines jet.ui.line<any>[]
+---@field groups jet.ui.linegroup[]
 ---@field text string[]
----@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
+---@field marks jet.ui.line.extmark[]
+---@field get_groups fun(callback: fun(groups: jet.ui.linegroup[]))
 ---@field timer uv.uv_timer_t
 ---@field interval integer
 local Page = {}
 Page.__index = Page
 
 ---@class jet.ui.page.new.opts
----@field get_lines fun(callback: fun(lines: jet.ui.line<any>[]))
+---@field get_groups fun(callback: fun(groups: jet.ui.linegroup[]))
 ---@field ns integer
 
 ---@param opts jet.ui.page.new.opts
----nreturn jet.ui.page
+---@return jet.ui.page
 Page.new = function(opts)
 	local out = setmetatable(opts, Page)
 	out.buf = vim.api.nvim_create_buf(false, true)
-	out.lines = {}
+	out.groups = {}
 	out.interval = 100
 
 	out:refresh()
@@ -33,22 +34,36 @@ function Page:start_timer()
 		error("Failed to create timer: " .. (err or "unknown error"))
 	end
 	self.timer = timer
-	self.timer:start(self.interval, self.interval, function()
-		for _, l in ipairs(self.lines) do
-			if l.timer then
-				l:refresh()
-			end
+	self.timer:start(self.interval, self.interval, function() self:refresh_incremental() end)
+end
+
+function Page:refresh_incremental()
+	local len_changed = false
+	for _, g in ipairs(self.groups) do
+		if g.timer then
+			len_changed = len_changed or g:refresh()
 		end
-	end)
+	end
+	self:resolve()
+end
+
+function Page:resolve()
+	local text = {}
+	local marks = {}
+	for _, g in ipairs(self.groups) do
+		for _, line in ipairs(g.text) do
+			table.insert(text, line)
+		end
+		for _, line_marks in ipairs(g.marks) do
+			-- TODO: update marks to record the correct line numbers
+			table.insert(marks, line_marks)
+		end
+	end
+	self.text = text
+	self.marks = marks
 end
 
 function Page:close()
-	for _, l in ipairs(self.lines) do
-		if l.on_close then
-			l:on_close()
-		end
-	end
-
 	vim.schedule(function()
 		self.timer:stop()
 		self.timer:close()
@@ -59,53 +74,25 @@ function Page:close()
 end
 
 ---@param callback fun()
-function Page:update_lines(callback)
-	self.get_lines(function(lines)
-		self.lines = lines
+function Page:update_groups(callback)
+	self.get_groups(function(groups)
+		self.groups = groups
 		callback()
 	end)
 end
 
 function Page:refresh()
-	for _, l in ipairs(self.lines) do
-		l.stopped = true
+	for _, g in ipairs(self.groups) do
+		g.stopped = true
 	end
 
-	self:update_lines(function()
-		local text = {} ---@type string[]
-		local extmarks = {} ---@type { [1]: integer, [2]: vim.api.keyset.set_extmark }[][]
-
-		for lnum, l in ipairs(self.lines) do
-			l:refresh(lnum)
-			table.insert(text, l.text)
-			table.insert(extmarks, l.marks)
-
-			-- When a 'line' updates, set the buffer text/marks for that line
-			l.on_refresh.update_page = function(line)
-				vim.schedule(function()
-					self:set_line(lnum, line.text)
-					self:clear_marks(lnum - 1, lnum)
-					self:set_marks(line.marks)
-				end)
-			end
-		end
-
-		self.text = text
-
-		if not vim.api.nvim_buf_is_valid(self.buf) then
-			return
-		end
-
+	self:update_groups(function()
+		self:resolve()
 		self:set_lines()
-
 		self:clear_marks()
-		for _, marks in ipairs(extmarks) do
-			self:set_marks(marks)
-		end
+		self:set_marks(self.marks)
 	end)
 end
-
-function Page:set_line(lnum, text) self:set_lines({ text }, lnum - 1, lnum) end
 
 function Page:set_lines(lines, start_lnum, end_lnum)
 	if vim.api.nvim_buf_is_valid(self.buf) then
