@@ -10,15 +10,6 @@ local scale = function(x, y) return math.floor(x * y) end
 local win_width = scale(vim.o.columns, 0.8)
 local line_max_length = math.max(win_width - 10, 40)
 
----@param parts jet.ui.line.parts
-local get_width = function(parts)
-	local len = 0
-	for _, part in ipairs(parts) do
-		len = len + vim.fn.strwidth(part[1])
-	end
-	return len
-end
-
 ---@generic T
 ---@param ... T[]
 ---@return T[]
@@ -33,8 +24,17 @@ local tbl_combine = function(...)
 end
 
 ---@param parts jet.ui.line.parts
+local get_width = function(parts)
+	local len = 0
+	for _, part in ipairs(parts) do
+		len = len + vim.fn.strwidth(part[1])
+	end
+	return len
+end
+
+---@param parts jet.ui.line.parts
 local center = function(parts, indent)
-	local pad_width = math.floor((win_width - get_width(parts) - (indent or 0) * 2) / 2)
+	local pad_width = math.floor((win_width - (indent or 0) * 2 - get_width(parts)) / 2)
 	return tbl_combine({ { string.rep(" ", pad_width) } }, parts)
 end
 
@@ -57,8 +57,6 @@ local divider = function(left, right, char)
 end
 
 local progress_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
--- These look rubbish unfortunately
--- { "󰪞 ", "󰪟 ", "󰪠 ", "󰪡 ", "󰪢 ", "󰪣 ", "󰪤 ", "󰪥 " }
 
 local make_progress_spinner = function()
 	local index = 1
@@ -84,7 +82,7 @@ local session_info_line = function(k)
 
 	local next_progress_spinner = make_progress_spinner()
 
-	return line.new({ indent = 3, timer = true, data = { kernel = k } }, function()
+	return line.new({ indent = 3, data = { kernel = k } }, function()
 		assert(k.session_info, "Kernel must have session info")
 
 		local status, status_icon = k:status()
@@ -175,9 +173,8 @@ local expand_inactive = function(k)
 		return {}
 	end
 
-	local align = function(text, n) return { text .. string.rep(" ", (n or 12) - #text), "JetLabel" } end
 	return {
-		line.new({ indent = 3 }, function() return { align("binary", 7), { cmd, "JetSpecial" } } end),
+		line.new({ indent = 3 }, { { "binary ", "JetLabel" }, { cmd, "JetSpecial" } }),
 		line.new(),
 	}
 end
@@ -202,7 +199,7 @@ local expand_active = function(k)
 			table.insert(
 				out,
 				line.new(
-					{ indent = 4, timer = true },
+					{ indent = 4 },
 					function()
 						return divider({ { "in", "JetComment" } }, {
 							{ "[", "JetDim2" },
@@ -225,9 +222,7 @@ local expand_active = function(k)
 				if i == 1 and k.filetype then
 					code_line.on_resolve = function(l)
 						local hl = require("jet.core.ui.get_highlights").get_ts_highlights
-						for _, mark in ipairs(hl(code, k.filetype)) do
-							table.insert(l.marks, mark)
-						end
+						l.marks = tbl_combine(l.marks, hl(code, k.filetype))
 					end
 				end
 				table.insert(out, code_line)
@@ -237,20 +232,22 @@ local expand_active = function(k)
 		for i = 1, k.iopub_stream.complete_lines:count() do
 			if i == 1 then
 				table.insert(out, line.new())
-				local divier_line = line.new({ indent = 4, timer = true }, function()
+				local divider_line = line.new({ indent = 4 }, function()
 					local hl = status_hl()
+
 					local icon = hl == "JetFailure" and " "
 						or hl == "JetSuccess" and " "
 						or execution_in_progress_spinner()
+
 					return divider({ { "out", "JetComment" } }, {
 						{ "[", "JetDim2" },
 						{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
 						{ "]", "JetDim2" },
 					})
 				end)
-				table.insert(out, divier_line)
+				table.insert(out, divider_line)
 			end
-			local stream_line = line.new({ timer = true }, function()
+			local stream_line = line.new({}, function()
 				local mark = {
 					virt_text = { { "            •  ", "JetDim1" } },
 					virt_text_pos = "inline",
@@ -522,6 +519,8 @@ M.show = function()
 		border = "rounded",
 	})
 
+	-- The UI runs a timer which is moderately expensive, so just nuke the
+	-- whole UI when it's not visible
 	vim.api.nvim_create_autocmd("WinClosed", {
 		pattern = tostring(ui_win),
 		callback = function()

@@ -9,7 +9,6 @@
 ---@field text string
 ---@field lnum? integer
 ---@field marks jet.ui.line.extmark[]
----@field stopped boolean
 ---@field data table<string, any>
 ---@field on_resolve? fun(self: jet.ui.line)
 local Line = {}
@@ -25,7 +24,6 @@ Line.new = function(opts, parts)
 		indent = (opts.indent or 0) * 2,
 		data = opts.data or {},
 		parts = type(parts) == "table" and parts or {},
-		stopped = false,
 		on_resolve = opts.on_resolve,
 		marks = {},
 	}, Line)
@@ -39,7 +37,7 @@ Line.new = function(opts, parts)
 end
 
 function Line:refresh()
-	if self.make_parts and not self.stopped then
+	if self.make_parts then
 		self.parts = self.make_parts()
 		self:resolve()
 	end

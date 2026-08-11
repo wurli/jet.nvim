@@ -53,9 +53,9 @@ function Page:start_timer()
 end
 
 function Page:refresh()
-	for _, group in ipairs(self.groups) do
-		group.stopped = true
-	end
+	-- for _, group in ipairs(self.groups) do
+	-- 	group.stopped = true
+	-- end
 	self.make_groups(function(groups)
 		self.groups = groups
 		self:redraw()
@@ -68,8 +68,7 @@ function Page:redraw()
 	end
 	self:resolve()
 	self:set_lines()
-	self:clear_marks()
-	self:set_marks(self.marks)
+	self:set_marks()
 end
 
 function Page:resolve()
@@ -99,24 +98,18 @@ function Page:resolve()
 	self.marks = marks
 end
 
-function Page:set_lines(lines, start_lnum, end_lnum)
+function Page:set_lines()
 	if vim.api.nvim_buf_is_valid(self.buf) then
 		vim.bo[self.buf].modifiable = true
-		vim.api.nvim_buf_set_lines(self.buf, start_lnum or 0, end_lnum or -1, false, lines or self.text)
+		vim.api.nvim_buf_set_lines(self.buf, 0, -1, false, self.text)
 		vim.bo[self.buf].modifiable = false
 	end
 end
 
-function Page:clear_marks(line_start, line_end)
+function Page:set_marks()
 	if vim.api.nvim_buf_is_valid(self.buf) then
-		vim.api.nvim_buf_clear_namespace(self.buf, self.ns, (line_start or 1), line_end or -1)
-	end
-end
-
----@param marks jet.ui.line.extmark[]
-function Page:set_marks(marks)
-	if vim.api.nvim_buf_is_valid(self.buf) then
-		for _, mark in ipairs(marks) do
+		vim.api.nvim_buf_clear_namespace(self.buf, self.ns, 1, -1)
+		for _, mark in ipairs(self.marks) do
 			assert(mark.start_row and mark.start_col, "Mark must have start_row and start_col: " .. vim.inspect(mark))
 			vim.api.nvim_buf_set_extmark(self.buf, self.ns, mark.start_row, mark.start_col, mark.mark)
 		end

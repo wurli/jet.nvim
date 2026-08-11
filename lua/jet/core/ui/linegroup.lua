@@ -3,7 +3,6 @@
 ---@field lines jet.ui.line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[][]
----@field stopped? boolean
 local Linegroup = {}
 Linegroup.__index = Linegroup
 
@@ -18,9 +17,6 @@ Linegroup.new = function(lines)
 end
 
 function Linegroup:refresh()
-	if self.stopped then
-		return
-	end
 	if self.make_lines then
 		self.lines = self.make_lines()
 	end
