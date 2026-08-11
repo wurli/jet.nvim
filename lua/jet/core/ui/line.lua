@@ -1,13 +1,11 @@
----@alias jet.ui.line.parts { [1]: string, [2]?: jet.ui.line.extmark_shorthand, start_col?: integer, end_col?: integer }[]
+---@alias jet.ui.line.parts { [1]: string, [2]?: jet.ui.line.extmark_shorthand, start_col?: integer, start_row?: integer }[]
 ---@alias jet.ui.line.extmark_shorthand string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[]
----@alias jet.ui.line.extmark { [1]: integer, [2]: integer, [3]: vim.api.keyset.set_extmark }
+---@alias jet.ui.line.extmark { mark: vim.api.keyset.set_extmark, start_col?: integer, start_row?: integer }}
 
 ---@class jet.ui.line
 ---@field indent integer
----@field timer? boolean
----@field on_refresh? fun(self: jet.ui.line) Called after `refresh` is called
 ---@field parts jet.ui.line.parts
----@field make_parts fun(): jet.ui.line.parts Reset `parts`
+---@field make_parts? fun(): jet.ui.line.parts Reset `parts`
 ---@field text string
 ---@field lnum? integer
 ---@field marks jet.ui.line.extmark[]
@@ -21,25 +19,26 @@ Line.__index = Line
 Line.new = function(opts, parts)
 	opts = opts or {}
 	parts = parts or {}
-	return setmetatable({
-		make_parts = type(parts) == "function" and parts or function() return parts end,
+	local out = setmetatable({
+		make_parts = type(parts) == "function" and parts or nil,
 		indent = (opts.indent or 0) * 2,
-		timer = opts.timer,
 		data = opts.data or {},
-		on_refresh = opts.on_refresh,
-		parts = {},
+		parts = type(parts) == "table" and parts or {},
 		stopped = false,
 	}, Line)
+
+	-- In this case we only need to resolve once
+	if type(parts) == "table" then
+		out:resolve()
+	end
+
+	return out
 end
 
 function Line:refresh()
-	if self.stopped then
-		return
-	end
-	self.parts = self.make_parts()
-	self:resolve()
-	if self.on_refresh then
-		self:on_refresh()
+	if self.make_parts and not self.stopped then
+		self.parts = self.make_parts()
+		self:resolve()
 	end
 end
 
@@ -51,10 +50,7 @@ function Line:resolve()
 	---@param x jet.ui.line.extmark_shorthand
 	---@return vim.api.keyset.set_extmark[]
 	local to_extmarks = function(x)
-		if not vim.isarray(x) then
-			x = { x }
-		end
-		---@diagnostic disable-next-line: param-type-mismatch
+		x = vim.isarray(x) and x or { x } ---@type string[] | vim.api.keyset.set_extmark[]
 		return vim.tbl_map(function(xi) return type(xi) == "string" and { hl_group = xi } or xi end, x)
 	end
 
@@ -63,8 +59,9 @@ function Line:resolve()
 		text = text .. part[1]
 		for _, mark in ipairs(to_extmarks(part[2] or {})) do
 			table.insert(marks, {
-				part.start_col or start_col,
-				vim.tbl_extend("keep", mark, { end_col = part.end_col or #text }),
+				mark = vim.tbl_extend("keep", mark, { end_col = #text }),
+				start_col = part.start_col or start_col,
+				start_row = part.start_row,
 			})
 		end
 	end

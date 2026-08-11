@@ -2,6 +2,7 @@ local M = {}
 local api = require("jet.core.api")
 local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
+local linegroup = require("jet.core.ui.linegroup")
 local page = require("jet.core.ui.page")
 
 local scale = function(x, y) return math.floor(x * y) end
@@ -375,21 +376,26 @@ M.show = function()
 
 	local ui = page.new({
 		ns = vim.api.nvim_create_namespace("jet.ui"),
-		get_lines = function(callback)
+		get_groups = function(callback)
+			local header_group = linegroup.new({}, {
+				line.new(),
+				title_line(),
+				version_line(),
+				url_line(),
+				line.new(),
+				keymaps_line(),
+				line.new(),
+			})
+
 			kernel_lines(function(kernels)
-				local lines = {
-					line.new(),
-					title_line(),
-					version_line(),
-					url_line(),
-					line.new(),
-					keymaps_line(),
-					line.new(),
-				}
-				for _, l in ipairs(kernels) do
-					table.insert(lines, l)
-				end
-				callback(lines)
+				local kernels_group = linegroup.new({ timer = true }, function()
+					local lines = {}
+					for _, l in ipairs(kernels) do
+						table.insert(lines, l)
+					end
+					return lines
+				end)
+				callback({ header_group, kernels_group })
 			end)
 		end,
 	})
@@ -415,7 +421,7 @@ M.show = function()
 		-- if the user sets a bunch of code running and immediately opens the
 		-- UI - an edge cases.
 		if k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len then
-			ui:refresh()
+			ui:redraw()
 			return
 		end
 		-- Update when the last executed code changes
@@ -424,7 +430,7 @@ M.show = function()
 			if not code then
 				return
 			end
-			ui:refresh()
+			ui:redraw()
 		end
 	end
 
@@ -485,7 +491,7 @@ M.show = function()
 				k.ui_expand = not k.ui_expand
 			end
 
-			vim.schedule(function() ui:refresh() end)
+			ui:redraw()
 		end
 	end, { buf = ui.buf })
 
@@ -532,7 +538,7 @@ M.show = function()
 		callback = function()
 			win_width = vim.api.nvim_win_get_width(ui_win)
 			line_max_length = math.max(win_width - 10, 40)
-			ui:refresh()
+			ui:redraw()
 		end,
 	})
 end

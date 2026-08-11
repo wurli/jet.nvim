@@ -1,37 +1,36 @@
 ---@class jet.ui.linegroup
----@field make_lines fun(): jet.ui.line[]
+---@field make_lines? fun(): jet.ui.line[]
 ---@field lines jet.ui.line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[][]
----@field on_refresh? fun(self: jet.ui.linegroup)
 ---@field timer? boolean
 ---@field stopped? boolean
 local Linegroup = {}
 Linegroup.__index = Linegroup
 
 ---@param opts Partial<jet.ui.linegroup>
----@param lines fun(): jet.ui.line | jet.ui.linegroup
+---@param lines jet.ui.line[] | fun(): jet.ui.line[]
 Linegroup.new = function(opts, lines)
 	return setmetatable({
-		make_lines = lines,
+		make_lines = type(lines) == "function" and lines or nil,
+		lines = type(lines) == "table" and lines or {},
 		timer = opts.timer,
+		text = {},
+		marks = {},
 	}, Linegroup)
 end
 
----@return boolean Whether the number of lines in the group has changed
 function Linegroup:refresh()
 	if self.stopped then
-		return false
+		return
 	end
-	self.lines = self.make_lines()
+	if self.make_lines then
+		self.lines = self.make_lines()
+	end
 	for _, l in ipairs(self.lines) do
 		l:refresh()
 	end
-	local len_changed = self:resolve()
-	if self.on_refresh then
-		self:on_refresh()
-	end
-	return len_changed
+	self:resolve()
 end
 
 ---@return boolean

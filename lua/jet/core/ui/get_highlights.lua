@@ -29,9 +29,9 @@ local get_ts_highlights = function(code, lang)
 		local start_row, start_col, end_row, end_col = node:range()
 
 		table.insert(marks, {
-			start_row,
-			start_col,
-			{
+			start_row = start_row,
+			start_col = start_col,
+			mark = {
 				end_col = end_col,
 				end_row = end_row,
 				hl_group = "@" .. capture,
