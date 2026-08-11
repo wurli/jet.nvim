@@ -301,18 +301,19 @@ local list_kernel_groups = function(callback)
 			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
 		end
 
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = { "connected", "connecting" } })) do
-			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
-			---@diagnostic disable-next-line: unnecessary-assert
-			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
-			table.insert(group.connected, k)
-		end
-
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "external" })) do
-			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
-			---@diagnostic disable-next-line: unnecessary-assert
-			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
-			table.insert(group.external, k)
+		for group_name, kernels in pairs({
+			connected = api.filter_kernels(kernel_list, { status = { "connected", "connecting" } }),
+			external = api.filter_kernels(kernel_list, { status = "external" }),
+		}) do
+			for _, k in ipairs(kernels) do
+				local path = utils.path_normalise(k.spec_path)
+				kernels_grouped[path] = kernels_grouped[path] or { kernel = k, external = {}, connected = {} }
+				local group = kernels_grouped[path]
+				---@diagnostic disable-next-line: unnecessary-assert
+				assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+				---@diagnostic disable-next-line: undefined-field
+				table.insert(group[group_name], k)
+			end
 		end
 
 		-- Makes sorting possible
