@@ -19,6 +19,9 @@ local get_width = function(parts)
 	return len
 end
 
+---@generic T
+---@param ... T[]
+---@return T[]
 local tbl_combine = function(...)
 	local out = {}
 	for _, t in ipairs({ ... }) do
@@ -67,7 +70,16 @@ local make_progress_spinner = function()
 end
 
 ---@param k jet.kernel
-local active_kernel_line = function(k)
+local kernel_info_line = function(k)
+	return line.new({ indent = 2, data = { kernel = k } }, {
+		{ k.spec.display_name },
+		{ "    " },
+		{ utils.path_shorten(k.spec_path), "JetDim1" },
+	})
+end
+
+---@param k jet.kernel
+local session_info_line = function(k)
 	assert(k.session_id, "Kernel must have a session_id")
 
 	local next_progress_spinner = make_progress_spinner()
@@ -93,15 +105,6 @@ local active_kernel_line = function(k)
 
 		return parts
 	end)
-end
-
----@param k jet.kernel
-local kernel_info_line = function(k)
-	return line.new({ indent = 2, data = { kernel = k } }, {
-		{ k.spec.display_name },
-		{ "    " },
-		{ utils.path_shorten(k.spec_path), "JetDim1" },
-	})
 end
 
 local title_line = function()
@@ -155,86 +158,35 @@ local keymaps_line = function()
 	)
 end
 
----@class jet.ui.kernel_group
----@field kernel jet.kernel
----@field external jet.kernel[]
----@field connected jet.kernel[]
-
----@param callback fun(kernels: jet.ui.kernel_group[])
-local list_kernel_groups = function(callback)
-	api.list_kernels({}, {}, function(kernel_list)
-		table.sort(kernel_list, function(a, b)
-			if a:status() == "inactive" and b:status() ~= "inactive" then
-				return true
-			end
-			return a.spec_path < b.spec_path
-		end)
-
-		---@type table<string, { kernel: jet.kernel, external: jet.kernel[], connected: jet.kernel[] }>
-		local kernels_grouped = {}
-
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "inactive" })) do
-			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
-		end
-
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = { "connected", "connecting" } })) do
-			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
-			---@diagnostic disable-next-line: unnecessary-assert
-			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
-			table.insert(group.connected, k)
-		end
-
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "external" })) do
-			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
-			---@diagnostic disable-next-line: unnecessary-assert
-			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
-			table.insert(group.external, k)
-		end
-
-		-- Makes sorting possible
-		---@type jet.ui.kernel_group[]
-		local out = vim.tbl_values(kernels_grouped)
-
-		table.sort(out, function(a, b)
-			---@type table<jet.kernel.status, integer>
-			local status_ranks = {
-				connected = 1,
-				connecting = 1,
-				external = 2,
-				inactive = 3,
-			}
-
-			local a_min_status = status_ranks[(a.connected[1] or a.external[1] or a.kernel):status()]
-			local b_min_status = status_ranks[(b.connected[1] or b.external[1] or b.kernel):status()]
-
-			if a_min_status ~= b_min_status then
-				return a_min_status < b_min_status
-			end
-
-			return a.kernel.spec.display_name < b.kernel.spec.display_name
-		end)
-
-		for _, running in pairs(out) do
-			table.sort(running.connected, function(a, b) return a.session_id < b.session_id end)
-			table.sort(running.external, function(a, b) return a.session_id < b.session_id end)
-		end
-
-		callback(out)
-	end)
-end
-
 local execution_in_progress_spinner = make_progress_spinner()
 
----@param k jet.kernel
----@return jet.ui.line<any>[]
-local kernel_expand = function(k)
-	local align = function(text, n) return { text .. string.rep(" ", (n or 12) - #text), "JetLabel" } end
+---@type table<string, boolean>
+local expanded_inactive_kernels = {}
 
-	if k:status() == "inactive" and k.spec.argv and k.spec.argv[1] then
-		return {
-			line.new({ indent = 3 }, function() return { align("binary", 7), { k.spec.argv[1], "JetSpecial" } } end),
-			line.new(),
-		}
+---@param k jet.kernel
+---@return jet.ui.line[]
+local expand_inactive = function(k)
+	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path)] then
+		return {}
+	end
+	local cmd = k.spec.argv and k.spec.argv[1] or nil
+
+	if not cmd then
+		return {}
+	end
+
+	local align = function(text, n) return { text .. string.rep(" ", (n or 12) - #text), "JetLabel" } end
+	return {
+		line.new({ indent = 3 }, function() return { align("binary", 7), { cmd, "JetSpecial" } } end),
+		line.new(),
+	}
+end
+
+---@param k jet.kernel
+---@return jet.ui.line[]
+local expand_active = function(k)
+	if not k.ui_expand then
+		return {}
 	end
 
 	---@type jet.ui.line<any>[]
@@ -316,51 +268,106 @@ local kernel_expand = function(k)
 	return out
 end
 
----@type table<string, boolean>
-local expanded_inactive_kernels = {}
+---@class jet.ui.kernel_group
+---@field kernel jet.kernel
+---@field external jet.kernel[]
+---@field connected jet.kernel[]
 
----@param callback fun(lines: jet.ui.line[])
-local kernel_lines = function(callback)
-	list_kernel_groups(function(groups)
-		local lines = {}
+---@param callback fun(kernels: jet.ui.kernel_group[])
+local list_kernel_groups = function(callback)
+	api.list_kernels({}, {}, function(kernel_list)
+		table.sort(kernel_list, function(a, b)
+			if a:status() == "inactive" and b:status() ~= "inactive" then
+				return true
+			end
+			return a.spec_path < b.spec_path
+		end)
 
-		local group_name = ""
+		---@type table<string, { kernel: jet.kernel, external: jet.kernel[], connected: jet.kernel[] }>
+		local kernels_grouped = {}
 
-		for _, group in ipairs(groups) do
-			local prev_group = group_name
-			group_name = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
-			if group_name ~= prev_group then
-				table.insert(lines, line.new({ indent = 1 }, { { group_name, "JetH2" } }))
+		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "inactive" })) do
+			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
+		end
+
+		for _, k in ipairs(api.filter_kernels(kernel_list, { status = { "connected", "connecting" } })) do
+			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
+			---@diagnostic disable-next-line: unnecessary-assert
+			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+			table.insert(group.connected, k)
+		end
+
+		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "external" })) do
+			local group = kernels_grouped[utils.path_normalise(k.spec_path)]
+			---@diagnostic disable-next-line: unnecessary-assert
+			assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+			table.insert(group.external, k)
+		end
+
+		-- Makes sorting possible
+		---@type jet.ui.kernel_group[]
+		local out = vim.tbl_values(kernels_grouped)
+
+		table.sort(out, function(a, b)
+			---@type table<jet.kernel.status, integer>
+			local status_ranks = {
+				connected = 1,
+				connecting = 1,
+				external = 2,
+				inactive = 3,
+			}
+
+			local a_min_status = status_ranks[(a.connected[1] or a.external[1] or a.kernel):status()]
+			local b_min_status = status_ranks[(b.connected[1] or b.external[1] or b.kernel):status()]
+
+			if a_min_status ~= b_min_status then
+				return a_min_status < b_min_status
 			end
 
-			local any_connected = false
+			return a.kernel.spec.display_name < b.kernel.spec.display_name
+		end)
 
-			table.insert(lines, kernel_info_line(group.kernel))
-			if expanded_inactive_kernels[utils.path_normalise(group.kernel.spec_path)] then
-				lines = tbl_combine(lines, kernel_expand(group.kernel))
+		for _, running in pairs(out) do
+			table.sort(running.connected, function(a, b) return a.session_id < b.session_id end)
+			table.sort(running.external, function(a, b) return a.session_id < b.session_id end)
+		end
+
+		callback(out)
+	end)
+end
+
+---@param callback fun(groups: jet.ui.linegroup[])
+local make_kernel_linegroups = function(callback)
+	list_kernel_groups(function(kernel_groups)
+		local group_title = ""
+		local groups = {}
+
+		for _, group in ipairs(kernel_groups) do
+			local prev_group_title = group_title
+			group_title = (#group.connected > 0 or #group.external > 0) and "Active Kernels" or "Inactive Kernels"
+
+			if group_title ~= prev_group_title then
+				table.insert(groups, linegroup.new({}, { line.new({ indent = 1 }, { { group_title, "JetH2" } }) }))
 			end
 
-			for _, k in ipairs(group.connected) do
-				table.insert(lines, active_kernel_line(k))
-				if k.ui_expand then
-					lines = tbl_combine(lines, kernel_expand(k))
+			table.insert(groups, linegroup.new({}, { kernel_info_line(group.kernel) }))
+			table.insert(groups, linegroup.new({ timer = true }, function() return expand_inactive(group.kernel) end))
+
+			local any_active = false
+			for _, kernels in ipairs({ group.connected, group.external }) do
+				for _, k in ipairs(kernels) do
+					any_active = true
+					table.insert(groups, linegroup.new({}, { session_info_line(k) }))
+					table.insert(groups, linegroup.new({ timer = true }, function() return expand_active(k) end))
 				end
-				any_connected = true
 			end
 
-			for _, k in ipairs(group.external) do
-				table.insert(lines, active_kernel_line(k))
-				if k.ui_expand then
-					lines = tbl_combine(lines, kernel_expand(k))
-				end
-				any_connected = true
-			end
-
-			if any_connected then
-				table.insert(lines, line.new())
+			if any_active then
+				table.insert(groups, linegroup.new({}, { line.new() }))
 			end
 		end
-		callback(lines)
+
+		callback(groups)
 	end)
 end
 
@@ -387,15 +394,9 @@ M.show = function()
 				line.new(),
 			})
 
-			kernel_lines(function(kernels)
-				local kernels_group = linegroup.new({ timer = true }, function()
-					local lines = {}
-					for _, l in ipairs(kernels) do
-						table.insert(lines, l)
-					end
-					return lines
-				end)
-				callback({ header_group, kernels_group })
+			make_kernel_linegroups(function(groups)
+				table.insert(groups, 1, header_group)
+				callback(groups)
 			end)
 		end,
 	})
