@@ -85,13 +85,14 @@ function Page:resolve()
 		for _, line_text in ipairs(g.text) do
 			table.insert(text, line_text)
 		end
-		-- TODO: update marks to record the correct line numbers
 		for _, line_marks in ipairs(g.marks) do
-			lnum = lnum + 1
 			for _, mark in ipairs(line_marks) do
-				mark.start_row = mark.start_row or lnum - 1
-				table.insert(marks, mark)
+				local m = vim.deepcopy(mark)
+				m.start_row = m.start_row and (m.start_row + lnum) or lnum
+				m.mark.end_row = m.mark.end_row and (m.mark.end_row + lnum) or nil
+				table.insert(marks, m)
 			end
+			lnum = lnum + 1
 		end
 	end
 	self.lines = lines

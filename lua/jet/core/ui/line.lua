@@ -11,6 +11,7 @@
 ---@field marks jet.ui.line.extmark[]
 ---@field stopped boolean
 ---@field data table<string, any>
+---@field on_resolve? fun(self: jet.ui.line)
 local Line = {}
 Line.__index = Line
 
@@ -25,6 +26,8 @@ Line.new = function(opts, parts)
 		data = opts.data or {},
 		parts = type(parts) == "table" and parts or {},
 		stopped = false,
+		on_refresh = opts.on_refresh,
+		marks = {},
 	}, Line)
 
 	-- In this case we only need to resolve once
@@ -68,6 +71,10 @@ function Line:resolve()
 
 	self.text = text
 	self.marks = marks
+
+	if self.on_resolve then
+		self:on_resolve()
+	end
 end
 
 return Line
