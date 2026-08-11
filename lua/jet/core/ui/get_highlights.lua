@@ -1,9 +1,7 @@
 ---@param code string
 ---@param lang string
----@param col? integer
----@param row? integer
 ---@return jet.ui.line.extmark[]
-local get_ts_highlights = function(code, lang, col, row)
+local get_ts_highlights = function(code, lang)
 	local ok, parser = pcall(vim.treesitter.get_string_parser, code, lang)
 
 	if not ok then
@@ -23,8 +21,6 @@ local get_ts_highlights = function(code, lang, col, row)
 		return {}
 	end
 
-	row, col = row and row or 0, col or 0
-
 	---@type jet.ui.line.extmark[]
 	local marks = {}
 
@@ -33,11 +29,11 @@ local get_ts_highlights = function(code, lang, col, row)
 		local start_row, start_col, end_row, end_col = node:range()
 
 		table.insert(marks, {
-			start_row + row,
-			start_col + col,
-			{
-				end_col = end_col + col,
-				end_row = end_row + row,
+			start_row = start_row,
+			start_col = start_col,
+			mark = {
+				end_col = end_col,
+				end_row = end_row,
 				hl_group = "@" .. capture,
 			},
 		})

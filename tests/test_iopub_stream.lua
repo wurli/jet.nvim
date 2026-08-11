@@ -8,13 +8,13 @@ local T = new_set({
 	hooks = {
 		pre_case = function()
 			child.restart({ "-u", "scripts/minimal_init.lua" })
-			child.lua([[require("jet").setup()]])
+			child.lua([[require("jet").setup({ ui = { stream_lines = 50 } })]])
 		end,
 		post_once = child.stop,
 	},
 })
 
-T["kernel records stream from iopub in Kernel.iopub_stream"] = function()
+T["kernel records stream from output in Kernel.output_stream"] = function()
 	child.lua([[
 		_G.k = require("jet.core.kernel").init_owned({ spec_path = "test-kernels/ark/kernel.json" })
 
@@ -35,8 +35,8 @@ T["kernel records stream from iopub in Kernel.iopub_stream"] = function()
 	local lines = {}
 	local stream
 	local ok = vim.wait(20000, function()
-		stream = child.lua_get("_G.k.iopub_stream.complete_lines")
-		lines = child.lua_get("_G.k.iopub_stream.complete_lines:items()")
+		stream = child.lua_get("_G.k.output_stream.complete_lines")
+		lines = child.lua_get("_G.k.output_stream.complete_lines:items()")
 		for _, l in ipairs(lines) do
 			if l:find("this is line 4") then
 				return true
@@ -45,7 +45,7 @@ T["kernel records stream from iopub in Kernel.iopub_stream"] = function()
 		return false
 	end)
 
-	assert(ok, "Kernel didn't record the expected iopub output\nIopub lines: \"", vim.inspect(lines))
+	assert(ok, "Kernel didn't record the expected output\noutput lines: \"", vim.inspect(lines))
 end
 
 return T
