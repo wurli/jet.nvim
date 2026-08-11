@@ -31,7 +31,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
 ---@field augroup? integer
----@field iopub_stream { complete_lines: jet.utils.queue<string>, incomplete_line: string }
+---@field output_stream { complete_lines: jet.utils.queue<string>, incomplete_line: string }
 ---@field on_message_received table<string, fun(k: jet.kernel, msg: jet.jupyter.msg)>
 ---@field on_started table<string, fun(k: jet.kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
@@ -49,7 +49,7 @@ local init_defaults = function()
 	return {
 		comms = {},
 		ui_expand = false,
-		iopub_stream = {
+		output_stream = {
 			complete_lines = queue.new(config.options.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
@@ -286,21 +286,29 @@ end
 split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
 ---@param msg jet.jupyter.msg
-function Kernel:set_iopub_last_line(msg)
-	if msg.channel ~= "iopub" then
-		return
-	end
-
-	local flush = function()
-		if self.iopub_stream.incomplete_line ~= "" then
-			self.iopub_stream.complete_lines:append(self.iopub_stream.incomplete_line)
-			self.iopub_stream.incomplete_line = ""
+function Kernel:update_output_stream(msg)
+	local flush = function(allow_empty)
+		if allow_empty or self.output_stream.incomplete_line ~= "" then
+			self.output_stream.complete_lines:append(self.output_stream.incomplete_line)
+			self.output_stream.incomplete_line = ""
 		end
 	end
 
 	---@param text string
 	local append = function(text)
-		self.iopub_stream.incomplete_line = self.iopub_stream.incomplete_line .. strip_escapes(text)
+		self.output_stream.incomplete_line = self.output_stream.incomplete_line .. strip_escapes(text)
+	end
+
+	if msg.channel == "shell" and msg.header.msg_type == "kernel_info_reply" and msg.content and msg.content.banner then
+		flush()
+		for _, l in ipairs(split(vim.trim(msg.content.banner), false)) do
+			append(l)
+			flush(true)
+		end
+	end
+
+	if msg.channel ~= "iopub" then
+		return
 	end
 
 	if msg.header.msg_type == "stream" and msg.content.text then
@@ -424,7 +432,7 @@ function Kernel:handle_stream()
 			return "exit"
 		elseif res.status == "busy" then
 			update_execution_state(res.msg)
-			self:set_iopub_last_line(res.msg)
+			self:update_output_stream(res.msg)
 			hooks.message_received(self, res.msg)
 			for _, hook in pairs(self.on_message_received) do
 				hook(self, res.msg)

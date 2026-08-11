@@ -38,10 +38,12 @@ local center = function(parts, indent)
 	return tbl_combine({ { string.rep(" ", pad_width) } }, parts)
 end
 
----@param left jet.ui.line.parts
----@param right jet.ui.line.parts
+---@param left? jet.ui.line.parts
+---@param right? jet.ui.line.parts
 ---@param char? string
 local divider = function(left, right, char)
+	left = left or {}
+	right = right or {}
 	char = char or "·"
 	local out_len = math.max(30, math.min(line_max_length, 80))
 	local pad_left = { { char:rep(2), "JetDim3" } } --[[@as jet.ui.line.parts]]
@@ -189,11 +191,19 @@ local expand_active = function(k)
 	---@type jet.ui.line<any>[]
 	local out = {}
 
-	if k.last_execution then
-		local status_hl = function()
-			return k.last_execution.is_error and "JetFailure" or k.last_execution.end_time and "JetSuccess" or "JetBusy"
+	local status_hl = function()
+		if not k.last_execution then
+			return "JetIdle"
+		elseif k.last_execution.is_error then
+			return "JetFailure"
+		elseif k.last_execution.end_time then
+			return "JetSuccess"
+		else
+			return "JetBusy"
 		end
+	end
 
+	if k.last_execution then
 		local code = k.last_execution.code and k.last_execution.code:gsub("%s*$", "") or nil
 		if code and code ~= "" then
 			table.insert(
@@ -227,40 +237,44 @@ local expand_active = function(k)
 				end
 				table.insert(out, code_line)
 			end
+
+			table.insert(out, line.new())
 		end
+	end
 
-		for i = 1, k.iopub_stream.complete_lines:count() do
-			if i == 1 then
-				table.insert(out, line.new())
-				local divider_line = line.new({ indent = 4 }, function()
-					local hl = status_hl()
+	local divider_line = line.new({ indent = 4 }, function()
+		local hl = status_hl()
 
-					local icon = hl == "JetFailure" and " "
-						or hl == "JetSuccess" and " "
-						or execution_in_progress_spinner()
+		local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or execution_in_progress_spinner()
 
-					return divider({ { "out", "JetDim1" } }, {
-						{ "[", "JetDim3" },
-						{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
-						{ "]", "JetDim3" },
-					})
-				end)
-				table.insert(out, divider_line)
-			end
+		return divider({ { "out", "JetDim1" } }, k.last_execution and {
+			{ "[", "JetDim3" },
+			{ icon .. utils.time_since(k.last_execution.start_time, k.last_execution.end_time), hl },
+			{ "]", "JetDim3" },
+		})
+	end)
+	table.insert(out, divider_line)
+
+	local stream = k.output_stream.complete_lines:items()
+	local output_indent = { virt_text = { { "            •  ", "JetDim2" } }, virt_text_pos = "inline" } --[[@as vim.api.keyset.set_extmark]]
+
+	if #stream == 0 then
+		local no_output_line = line.new({}, { { "No kernel output", "JetDim1" }, { "", output_indent, start_col = 0 } })
+		table.insert(out, no_output_line)
+	else
+		for _, output_line in ipairs(stream) do
 			local stream_line = line.new({}, function()
-				local mark = {
-					virt_text = { { "            •  ", "JetDim2" } },
-					virt_text_pos = "inline",
-				}
-				return { { k.iopub_stream.complete_lines[i] or "", "JetCode" }, { "", mark, start_col = 0 } }
+				local parts = { { output_line, "JetCode" }, { "", output_indent, start_col = 0 } }
+				return parts
 			end)
 			table.insert(out, stream_line)
 		end
 	end
 
-	if #out > 0 then
-		table.insert(out, line.new())
+	if #out == 0 then
+		table.insert(out, line.new({ indent = 4 }, { { "> No output yet", "JetDim2" } }))
 	end
+	table.insert(out, line.new())
 
 	return out
 end
@@ -415,7 +429,7 @@ M.show = function()
 		-- an iopub message. This triggers a few unnecessary redraws, but only
 		-- if the user sets a bunch of code running and immediately opens the
 		-- UI - an edge cases.
-		if k.iopub_stream.complete_lines.last <= k.iopub_stream.complete_lines._len then
+		if k.output_stream.complete_lines.last <= k.output_stream.complete_lines._len then
 			ui:redraw()
 			return
 		end
@@ -521,7 +535,7 @@ M.show = function()
 
 	-- The UI runs a timer which is moderately expensive, so just nuke the
 	-- whole UI when it's not visible
-	vim.api.nvim_create_autocmd("WinClosed", {
+	vim.api.nvim_create_autocmd({ "WinClosed", "BufWinLeave" }, {
 		pattern = tostring(ui_win),
 		callback = function()
 			ui:close()
