@@ -100,7 +100,7 @@ local session_info_line = function(k)
 			table.insert(parts, { status_icon, "JetIdle" })
 		end
 
-		table.insert(parts, { (k.session_id or "") .. " ", "JetId" })
+		table.insert(parts, { (k.session_name or k.session_id or "") .. " ", "JetId" })
 		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
 
 		return parts
@@ -152,6 +152,7 @@ local keymaps_line = function()
 			map("New session", "s"),
 			map("Stop", "x"),
 			map("Interrupt", "i"),
+			map("Rename session", "r"),
 			map("Expand", "<CR>"),
 			map("Quit", "q")
 		)
@@ -201,6 +202,11 @@ local expand_active = function(k)
 		else
 			return "JetBusy"
 		end
+	end
+
+	if k.session_name and k.session_id then
+		table.insert(out, line.new({ indent = 4 }, { { "session id ", "JetLabel" }, { k.session_id, "JetId" } }))
+		table.insert(out, line.new())
 	end
 
 	if k.last_execution then
@@ -487,6 +493,25 @@ M.show = function()
 			if k.session_id then
 				k:close()
 			end
+		end
+	end, { buf = ui.buf })
+
+	vim.keymap.set("n", "r", function()
+		local l = ui.lines[vim.fn.line(".")]
+		if l and l.data and l.data.kernel and l.data.kernel.session_id then
+			---@type jet.kernel
+			local k = l.data.kernel
+			vim.ui.input({
+				prompt = "Set session name: ",
+				default = k.session_name or "",
+				-- Note: right now highlighting doesn't show up if require("vim._core.ui2").enable({})
+				highlight = function(text) return { { 0, #text, "JetId" } } end,
+			}, function(input)
+				if input then
+					k.session_name = input ~= "" and input or nil
+					ui:redraw()
+				end
+			end)
 		end
 	end, { buf = ui.buf })
 
