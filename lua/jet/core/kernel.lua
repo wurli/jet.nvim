@@ -38,11 +38,6 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 local Kernel = {}
 Kernel.__index = Kernel
 
----@class jet.kernel.init_owned.opts
----@field spec_path string
----@field session_name? string
----@field spec? jet.kernel.spec | jet.kernel.paritalspec
-
 ---@return Partial<jet.kernel>
 local init_defaults = function()
 	local queue = require("jet.core.utils.queue")
@@ -58,6 +53,11 @@ local init_defaults = function()
 		metadata = {},
 	}
 end
+
+---@class jet.kernel.init_owned.opts
+---@field spec_path string
+---@field session_name? string
+---@field spec? jet.kernel.spec | jet.kernel.paritalspec
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
@@ -714,7 +714,9 @@ function Kernel:comm_send(comm_id, data)
 end
 
 ---@param code string | string[]
-function Kernel:send_repl(code)
+---@param tabstop? integer
+function Kernel:send_repl(code, tabstop)
+	tabstop = tabstop or vim.bo.tabstop or 4
 	assert(self.term and self.term.job_id, "Kernel has no repl job id")
 	if type(code) == "string" then
 		code = vim.split(code, "[\n\r]", { plain = false })
@@ -743,6 +745,7 @@ function Kernel:send_repl(code)
 	-- any REPL that honors bracketed paste.
 	---@diagnostic disable-next-line: param-type-mismatch
 	code = table.concat(code, "\r")
+	code = code:gsub("\t", string.rep(" ", tabstop))
 
 	-- We use bracketed paste so the Jet REPL knows not to evaluate the code
 	-- until the end of the paste. This matches behaviour of Positron.
