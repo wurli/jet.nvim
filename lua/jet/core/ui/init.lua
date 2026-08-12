@@ -45,16 +45,13 @@ local divider = function(left, right, char)
 	left = left or {}
 	right = right or {}
 	char = char or "·"
-	local out_len = math.max(30, math.min(line_max_length, 80))
+	local out_width = math.max(30, math.min(line_max_length, 80))
 	local pad_left = { { char:rep(2), "JetDim3" } } --[[@as jet.ui.line.parts]]
 	local pad_right = { { char:rep(2), "JetDim3" } }
 
-	local len = 0
-	for _, slice in ipairs({ left, right, pad_left, pad_right }) do
-		len = len + get_width(slice)
-	end
+	local width = get_width(left) + get_width(right) + get_width(pad_left) + get_width(pad_right)
+	local pad_center = { { string.rep(char, math.max(out_width - width - 2, 0)), "JetDim3" } }
 
-	local pad_center = { { string.rep(char, math.max(out_len - len - 2, 0)), "JetDim3" } }
 	return tbl_combine(pad_left, left, pad_center, right, pad_right)
 end
 
