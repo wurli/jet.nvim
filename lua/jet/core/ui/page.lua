@@ -34,7 +34,9 @@ end
 function Page:close()
 	vim.schedule(function()
 		self.timer:stop()
-		self.timer:close()
+		if not self.timer:is_closing() then
+			self.timer:close()
+		end
 		if vim.api.nvim_buf_is_valid(self.buf) then
 			vim.api.nvim_buf_delete(self.buf, { force = true })
 		end
