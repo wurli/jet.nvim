@@ -50,7 +50,7 @@ M.send_auto = function(r, move_cursor)
 	table.insert(code_filtered, "")
 
 	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
-		k:send_repl(code_filtered)
+		k:send_repl(code_filtered, vim.bo[r.buf].tabstop)
 
 		if move_cursor then
 			local next_line = r.end_row
