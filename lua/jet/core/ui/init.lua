@@ -5,6 +5,16 @@ local line = require("jet.core.ui.line")
 local linegroup = require("jet.core.ui.linegroup")
 local page = require("jet.core.ui.page")
 
+local icons = {
+	jet = " ",
+	item_separator = " · ",
+	divider = "·",
+	progress = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" },
+	primary = "★",
+	failure = " ",
+	success = " ",
+}
+
 local scale = function(x, y) return math.floor(x * y) end
 
 local win_width = scale(vim.o.columns, 0.8)
@@ -40,29 +50,25 @@ end
 
 ---@param left? jet.ui.line.parts
 ---@param right? jet.ui.line.parts
----@param char? string
-local divider = function(left, right, char)
+local divider = function(left, right)
 	left = left or {}
 	right = right or {}
-	char = char or "·"
 	local out_width = math.max(30, math.min(line_max_length, 80))
-	local pad_left = { { char:rep(2), "JetDim3" } } --[[@as jet.ui.line.parts]]
-	local pad_right = { { char:rep(2), "JetDim3" } }
+	local pad_left = { { icons.divider:rep(2), "JetDim3" } } --[[@as jet.ui.line.parts]]
+	local pad_right = { { icons.divider:rep(2), "JetDim3" } }
 
 	local width = get_width(left) + get_width(right) + get_width(pad_left) + get_width(pad_right)
-	local pad_center = { { string.rep(char, math.max(out_width - width - 2, 0)), "JetDim3" } }
+	local pad_center = { { string.rep(icons.divider, math.max(out_width - width - 2, 0)), "JetDim3" } }
 
 	return tbl_combine(pad_left, left, pad_center, right, pad_right)
 end
 
-local progress_icons = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" }
-
 local make_progress_spinner = function()
 	local index = 1
 	return function()
-		index = (index % #progress_icons) + 1
+		index = (index % #icons.progress) + 1
 		---@diagnostic disable-next-line: undefined-field
-		return progress_icons[index] .. " "
+		return icons.progress[index] .. " "
 	end
 end
 
@@ -81,11 +87,32 @@ local session_info_line = function(k)
 
 	local next_progress_spinner = make_progress_spinner()
 
-	return line.new({ indent = 3, data = { kernel = k } }, function()
+	return line.new({ indent = 2, data = { kernel = k } }, function()
 		assert(k.session_info, "Kernel must have session info")
 
 		local status, status_icon = k:status()
 		local parts = {}
+
+		local n_kernels_with_k_filetype = 0
+		for _, kernel in pairs(require("jet.core.manager").kernels) do
+			if kernel.filetype == k.filetype then
+				n_kernels_with_k_filetype = n_kernels_with_k_filetype + 1
+			end
+		end
+
+		local ft_for_which_k_is_primary = nil ---@type string?
+		for ft, session_id in pairs(require("jet.core.manager").filetype_primary) do
+			if session_id == k.session_id then
+				ft_for_which_k_is_primary = ft
+				break
+			end
+		end
+
+		if ft_for_which_k_is_primary and n_kernels_with_k_filetype > 1 then
+			table.insert(parts, { icons.primary .. " ", "JetSpecial" })
+		else
+			table.insert(parts, { "  " })
+		end
 
 		if status == "connecting" then
 			table.insert(parts, { next_progress_spinner(), "JetBusy" })
@@ -111,7 +138,7 @@ local title_line = function()
 			return center({
 				{ "jet.nvim", "JetH1" },
 				{ " " },
-				{ " ", { "JetH1", "JetDim1" } },
+				{ icons.jet, { "JetH1", "JetDim1" } },
 			})
 		end
 	)
@@ -128,7 +155,7 @@ local version_line = function()
 			return center({
 				{ "plugin: " },
 				{ require("jet.core.config").jet_nvim_version, "JetId" },
-				{ " · " },
+				{ icons.item_separator },
 				{ "lib: " },
 				{ require("jet.core.utils.download").check_lib_version().current, "JetId" },
 			})
@@ -248,7 +275,9 @@ local expand_active = function(k)
 	local divider_line = line.new({ indent = 4 }, function()
 		local hl = status_hl()
 
-		local icon = hl == "JetFailure" and " " or hl == "JetSuccess" and " " or execution_in_progress_spinner()
+		local icon = hl == "JetFailure" and icons.failure
+			or hl == "JetSuccess" and icons.success
+			or execution_in_progress_spinner()
 
 		return divider({ { "out", "JetDim1" } }, k.last_execution and {
 			{ "[", "JetDim3" },
