@@ -21,7 +21,7 @@ local modify_jupyter_path = function()
 	vim.env.JUPYTER_PATH = table.concat({ config.data.jet_nvim_data_dir, vim.env.JUPYTER_PATH }, pathsep)
 end
 
----@param opts Partial<jet.config>
+---@param opts Partial<jet.Config>
 M.setup = function(opts)
 	modify_jupyter_path()
 	config.set(opts)

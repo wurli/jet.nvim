@@ -6,6 +6,7 @@ uv.lock
 tmp.*
 .DS_Store
 .claude/
+emmylua_doc_cli/
 
 # scripts/install-dev-kernels.sh populates kernels/<name>/ with binaries
 # and a kernel.json. Only the kernel.json files are worth tracking.

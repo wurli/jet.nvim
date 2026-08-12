@@ -107,7 +107,7 @@ M.setup = function()
 		end
 
 		if args[1] == "send" and args[2] then
-			---@param k jet.kernel
+			---@param k jet.Kernel
 			return api.get_any({}, {}, function(k) k:send_lua(args[2], false) end)
 		end
 
