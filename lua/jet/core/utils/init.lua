@@ -1,5 +1,11 @@
 local M = {}
 
+M.mkdir = function(dir)
+	if vim.fn.mkdir(dir, "p") ~= 1 then
+		error("Failed to create directory " .. dir)
+	end
+end
+
 M.time = function(f, name)
 	local time = vim.uv.hrtime()
 	f()
