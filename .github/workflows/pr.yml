@@ -9,6 +9,7 @@ on:
 env:
   STYLUA_VERSION: "2.5.2"
   EMMYLUA_CHECK_VERSION: "0.25.0"
+  EMMYLUA_DOC_CLI_VERSION: "0.24.0"
 
 jobs:
   code_style:
@@ -28,7 +29,43 @@ jobs:
       - name: Check styling
         run: stylua . --check --color Always
 
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.10"
+
+      - name: Install emmylua_doc_cli
+        run: |
+          curl -LO https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/${EMMYLUA_DOC_CLI_VERSION}/emmylua_doc_cli-linux-x64.tar.gz
+          sudo rm -rf /opt/emmylua_doc_cli-linux-x64
+          sudo tar -C /opt -xzf emmylua_doc_cli-linux-x64.tar.gz
+          echo "/opt" >> $GITHUB_PATH
+
+      - name: Install Neovim
+        run: |
+          curl -LO https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz
+          sudo rm -rf /opt/nvim-linux-x86_64
+          sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+          echo "$/opt/nvim-linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Make docs
+        run: make docs
+
+      - name: Check doc dir not stale
+        run: |
+          if ! git diff --exit-code doc; then
+            echo "::error::doc dir is stale. Please run \`make docs\` and commit the results."
+            exit 1
+          fi
+
   run_tests:
+    needs:
+      - docs
+      - code_style
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.neovim == 'nightly' }}
     name: Nvim ${{ matrix.neovim }}

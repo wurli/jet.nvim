@@ -225,8 +225,8 @@ M.get_jet_paths = function()
 	local config = require("jet.core.config").options or {}
 	local path_defaults = M.jet_resource_paths()
 
-	local bin_path_final = config.jet_binary_path or path_defaults.bin_path
-	local lib_path_final = config.jet_library_path or path_defaults.lib_path
+	local bin_path_final = config.binary_path or path_defaults.bin_path
+	local lib_path_final = config.library_path or path_defaults.lib_path
 
 	local bin_stat = bin_path_final and vim.uv.fs_stat(bin_path_final)
 	---@diagnostic disable-next-line: param-type-mismatch
@@ -241,8 +241,8 @@ M.get_jet_paths = function()
 	return {
 		bin = bin_path_final,
 		lib = lib_path_final,
-		bin_user = config.jet_binary_path,
-		lib_user = config.jet_library_path,
+		bin_user = config.binary_path,
+		lib_user = config.library_path,
 		bin_default = path_defaults.bin_path,
 		lib_default = path_defaults.lib_path,
 		default_dir = path_defaults.dir,

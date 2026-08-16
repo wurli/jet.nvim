@@ -13,9 +13,9 @@ local M = {}
 ---@field default? boolean Only gets the default kernel for `filetype` (see `config.default_kernels`)
 ---@field status? jet.kernel.status | jet.kernel.status[]
 
----@param kernels jet.kernel[]
+---@param kernels jet.Kernel[]
 ---@param opts? jet.api.list_kernels.filters
----@return jet.kernel[]
+---@return jet.Kernel[]
 M.filter_kernels = function(kernels, opts)
 	opts = opts or {}
 	opts.status = opts.status or { "connecting", "connected", "external", "inactive" }
@@ -24,7 +24,7 @@ M.filter_kernels = function(kernels, opts)
 		opts.filetype = require("jet.core.send.utils").local_lang_info().filetype
 	end
 
-	---@param k jet.kernel
+	---@param k jet.Kernel
 	return vim.tbl_filter(function(k)
 		local status, _ = k:status()
 		if not vim.tbl_contains(opts.status, status) then
@@ -75,13 +75,13 @@ end
 
 ---@param filters jet.api.list_kernels.filters
 ---@param init_opts? {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
----@param callback fun(kernels: jet.kernel[])
+---@param callback fun(kernels: jet.Kernel[])
 M.list_kernels = function(filters, init_opts, callback)
 	filters = filters or {}
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
 	filters.status = type(filters.status) == "string" and { filters.status } or filters.status
 
-	---@type jet.kernel[]
+	---@type jet.Kernel[]
 	local kernels = {}
 
 	if vim.tbl_contains(filters.status, "connected") or vim.tbl_contains(filters.status, "connecting") then
@@ -120,13 +120,13 @@ M.list_kernels = function(filters, init_opts, callback)
 	callback(M.filter_kernels(kernels, filters))
 end
 
----@param kernels jet.kernel[]
+---@param kernels jet.Kernel[]
 ---@param msg string
----@param callback fun(k: jet.kernel)
+---@param callback fun(k: jet.Kernel)
 local select_kernel = function(kernels, msg, callback)
 	vim.ui.select(kernels, {
 		prompt = msg,
-		---@param k jet.kernel
+		---@param k jet.Kernel
 		format_item = function(k)
 			local _, status_icon = k:status()
 			return string.format("%s  %s  %s", status_icon, k.spec.display_name, utils.path_shorten(k.spec_path))
@@ -142,7 +142,7 @@ end
 ---
 ---@param filters jet.api.list_kernels.filters
 ---@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
----@param callback fun(k: jet.kernel)
+---@param callback fun(k: jet.Kernel)
 M.get_inactive = function(filters, init_opts, callback)
 	filters = filters or {}
 	filters.status = { "inactive" }
@@ -154,7 +154,7 @@ M.get_inactive = function(filters, init_opts, callback)
 		end
 
 		-- Show user the choices even if only 1 kernel available
-		---@param k jet.kernel
+		---@param k jet.Kernel
 		select_kernel(kernels, "Select a kernel to start", function(k) callback(k) end)
 	end)
 end
@@ -163,7 +163,7 @@ end
 ---
 ---@param filters jet.api.list_kernels.filters
 ---@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
----@param callback fun(k: jet.kernel)
+---@param callback fun(k: jet.Kernel)
 M.get_external = function(filters, init_opts, callback)
 	filters = filters or {}
 	filters.status = { "external" }
@@ -181,7 +181,7 @@ end
 ---Run `callback()` on a kernel which is running and connected to Neovim
 ---
 ---@param filters? jet.api.list_kernels.filters
----@param callback fun(k: jet.kernel)
+---@param callback fun(k: jet.Kernel)
 M.get_connected = function(filters, callback, silent)
 	filters = filters or {}
 	filters.status = { "connected" }
@@ -219,7 +219,7 @@ end
 ---
 ---@param filters jet.api.list_kernels.filters
 ---@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
----@param callback fun(k: jet.kernel)
+---@param callback fun(k: jet.Kernel)
 M.get_any = function(filters, init_opts, callback)
 	local choose = function(kernels)
 		if #kernels == 1 then

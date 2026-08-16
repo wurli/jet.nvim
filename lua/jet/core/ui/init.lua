@@ -72,7 +72,7 @@ local make_progress_spinner = function()
 	end
 end
 
----@param k jet.kernel
+---@param k jet.Kernel
 local kernel_info_line = function(k)
 	return line.new({ indent = 2, data = { kernel = k } }, {
 		{ k.spec.display_name },
@@ -81,7 +81,7 @@ local kernel_info_line = function(k)
 	})
 end
 
----@param k jet.kernel
+---@param k jet.Kernel
 local session_info_line = function(k)
 	assert(k.session_id, "Kernel must have a session_id")
 
@@ -188,7 +188,7 @@ local execution_in_progress_spinner = make_progress_spinner()
 ---@type table<string, boolean>
 local expanded_inactive_kernels = {}
 
----@param k jet.kernel
+---@param k jet.Kernel
 ---@return jet.ui.line[]
 local expand_inactive = function(k)
 	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path)] then
@@ -206,7 +206,7 @@ local expand_inactive = function(k)
 	}
 end
 
----@param k jet.kernel
+---@param k jet.Kernel
 ---@return jet.ui.line[]
 local expand_active = function(k)
 	if not k.ui_expand then
@@ -312,9 +312,9 @@ local expand_active = function(k)
 end
 
 ---@class jet.ui.kernel_group
----@field kernel jet.kernel
----@field external jet.kernel[]
----@field connected jet.kernel[]
+---@field kernel jet.Kernel
+---@field external jet.Kernel[]
+---@field connected jet.Kernel[]
 
 ---@param callback fun(kernels: jet.ui.kernel_group[])
 local list_kernel_groups = function(callback)
@@ -326,7 +326,7 @@ local list_kernel_groups = function(callback)
 			return a.spec_path < b.spec_path
 		end)
 
-		---@type table<string, { kernel: jet.kernel, external: jet.kernel[], connected: jet.kernel[] }>
+		---@type table<string, { kernel: jet.Kernel, external: jet.Kernel[], connected: jet.Kernel[] }>
 		local kernels_grouped = {}
 
 		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "inactive" })) do
@@ -481,7 +481,7 @@ M.show = function()
 	vim.keymap.set("n", "o", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel then
-			---@type jet.kernel
+			---@type jet.Kernel
 			local k = l.data.kernel
 			k:open_term(function(_, focus_gained)
 				if focus_gained then
@@ -494,7 +494,7 @@ M.show = function()
 	vim.keymap.set("n", "s", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel then
-			---@type jet.kernel
+			---@type jet.Kernel
 			local k = l.data.kernel
 			require("jet.core.kernel").init_owned({ spec_path = k.spec_path }):open_term()
 		end
@@ -503,7 +503,7 @@ M.show = function()
 	vim.keymap.set("n", "i", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel then
-			---@type jet.kernel
+			---@type jet.Kernel
 			local k = l.data.kernel
 			if k.client_id then
 				k:interrupt()
@@ -514,7 +514,7 @@ M.show = function()
 	vim.keymap.set("n", "x", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel then
-			---@type jet.kernel
+			---@type jet.Kernel
 			local k = l.data.kernel
 			if k.session_id then
 				k:close()
@@ -525,7 +525,7 @@ M.show = function()
 	vim.keymap.set("n", "r", function()
 		local l = ui.lines[vim.fn.line(".")]
 		if l and l.data and l.data.kernel and l.data.kernel.session_id then
-			---@type jet.kernel
+			---@type jet.Kernel
 			local k = l.data.kernel
 			vim.ui.input({
 				prompt = "Set session name: ",
@@ -543,7 +543,7 @@ M.show = function()
 
 	vim.keymap.set("n", "<cr>", function()
 		local l = ui.lines[vim.fn.line(".")]
-		local k = l and l.data and l.data.kernel --[[@as jet.kernel]]
+		local k = l and l.data and l.data.kernel --[[@as jet.Kernel]]
 		if k then
 			if k:status() == "inactive" then
 				local path = utils.path_normalise(k.spec_path)
