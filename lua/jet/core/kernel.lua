@@ -154,8 +154,6 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 ---@param callback? fun(k: jet.Kernel, focus_gained: boolean)
 ---@param win_config? vim.api.keyset.win_config
 function Kernel:open_term(callback, win_config)
-	local curr_win = vim.api.nvim_get_current_win()
-
 	local open = function()
 		assert(self.term, "kernel.term is nil")
 
@@ -171,13 +169,11 @@ function Kernel:open_term(callback, win_config)
 			local opts = vim.tbl_extend("keep", win_config or config.options.repl_win_opts or {}, {
 				split = "right",
 				style = "minimal",
+				win = -1,
 			})
 
 			---@type integer
-			term_win = vim.api.nvim_win_call(
-				vim.api.nvim_win_is_valid(curr_win) and curr_win or vim.api.nvim_get_current_win(),
-				function() return vim.api.nvim_open_win(self.term.buf, false, opts) end
-			)
+			term_win = vim.api.nvim_open_win(self.term.buf, false, opts)
 
 			vim.api.nvim_win_set_hl_ns(term_win, jet_hl_ns)
 
@@ -479,19 +475,18 @@ function Kernel:open_images()
 
 	---@param win integer
 	local open_above = function(win)
-		vim.api.nvim_win_call(win, function()
-			self.img = self.img or { buf = vim.api.nvim_create_buf(false, true) }
-			if not vim.api.nvim_buf_is_valid(self.img.buf) then
-				self.img.buf = vim.api.nvim_create_buf(false, true)
-			end
-			require("jet.core.image").show(self.img.buf, file)
-			if not utils.buf_get_win(self.img.buf) then
-				vim.api.nvim_open_win(self.img.buf, false, {
-					split = "above",
-					style = "minimal",
-				})
-			end
-		end)
+		self.img = self.img or { buf = vim.api.nvim_create_buf(false, true) }
+		if not vim.api.nvim_buf_is_valid(self.img.buf) then
+			self.img.buf = vim.api.nvim_create_buf(false, true)
+		end
+		require("jet.core.image").show(self.img.buf, file)
+		if not utils.buf_get_win(self.img.buf) then
+			vim.api.nvim_open_win(self.img.buf, false, {
+				split = "above",
+				style = "minimal",
+				win = win,
+			})
+		end
 	end
 
 	if term_win then
