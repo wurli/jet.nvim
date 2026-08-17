@@ -513,7 +513,8 @@ end
 ---@private
 ---@param msg jet.jupyter.msg
 function Kernel:handle_image_msg(msg)
-	local data = msg.channel == "iopub" and msg.header.msg_type == "display_data" and msg.content and msg.content.data
+	local img_messages = { display_data = true, execute_result = true } ---@type table<jet.msg_type, boolean>
+	local data = msg.channel == "iopub" and img_messages[msg.header.msg_type] and msg.content and msg.content.data
 
 	if not data then
 		return
@@ -521,7 +522,7 @@ function Kernel:handle_image_msg(msg)
 
 	for mime_text, content in pairs(data) do
 		local mime = utils.parse_mime(mime_text)
-		if mime.type == "image" then
+		if mime and mime.type == "image" then
 			local filepath = string.format(
 				"%s/%s_%s.%s",
 				self:image_dir(),

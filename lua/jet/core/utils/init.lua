@@ -18,7 +18,7 @@ M.buf_get_win = function(buf)
 end
 
 ---@param mime string
----@return jet.mime
+---@return jet.mime?
 ---@see https://en.wikipedia.org/wiki/Media_type
 M.parse_mime = function(mime)
 	if not mime_grammar then
@@ -37,7 +37,10 @@ M.parse_mime = function(mime)
 	end
 
 	local parsed = mime_grammar:match(mime)
-	assert(parsed, "Failed to parse MIME type: " .. mime)
+	if not parsed then
+		M.log_warn("Failed to parse MIME type '%s'", mime)
+		return
+	end
 
 	local params = {}
 	for _, p in ipairs(parsed.params) do
