@@ -9,6 +9,14 @@ local M = {}
 
 local mime_grammar ---@type vim.lpeg.Pattern?
 
+M.buf_get_win = function(buf)
+	if not vim.api.nvim_buf_is_valid(buf) then
+		return nil
+	end
+
+	return vim.tbl_filter(function(w) return vim.api.nvim_win_get_buf(w) == buf end, vim.api.nvim_tabpage_list_wins(0))[1]
+end
+
 ---@param mime string
 ---@return jet.mime
 ---@see https://en.wikipedia.org/wiki/Media_type

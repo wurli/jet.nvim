@@ -9,7 +9,8 @@
 	"workspace": {
 		"library": [
 			"$VIMRUNTIME",
-			"./deps"
+			"./deps",
+			"$HOME/.local/share/nvim/lazy/snacks.nvim/"
 		],
 		"ignoreDir": [ 
 		    "deps"
