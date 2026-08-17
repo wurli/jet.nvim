@@ -1,5 +1,50 @@
 local M = {}
 
+---@class jet.mime
+---@field type string
+---@field subtype string
+---@field tree? string
+---@field suffix? string
+---@field params table<string, string>
+
+local mime_grammar ---@type vim.lpeg.Pattern?
+
+---@param mime string
+---@return jet.mime
+---@see https://en.wikipedia.org/wiki/Media_type
+M.parse_mime = function(mime)
+	if not mime_grammar then
+		mime_grammar = vim.re.compile([[
+			mime    <- {| type '/' tree? subtype suffix? params |} !.
+			type    <- {:type: token :}
+			tree    <- {:tree: ('vnd' / 'prs' / 'x') :} '.'
+			subtype <- {:subtype: { token ('.' token)* } :}
+			suffix  <- '+' {:suffix: token :}
+			params  <- {:params: {| param* |} :}
+			param   <- space ';' space {| {:name: token :} '=' {:value: value :} |}
+			token   <- [a-zA-Z0-9!#$&%^_-]+
+			value   <- '"' { (!'"' .)* } '"' / { token }
+			space   <- %s*
+		]])
+	end
+
+	local parsed = mime_grammar:match(mime)
+	assert(parsed, "Failed to parse MIME type: " .. mime)
+
+	local params = {}
+	for _, p in ipairs(parsed.params) do
+		params[p.name:lower()] = p.value
+	end
+
+	return {
+		type = parsed.type:lower(),
+		tree = parsed.tree and parsed.tree:lower() or nil,
+		subtype = parsed.subtype:lower(),
+		suffix = parsed.suffix and parsed.suffix:lower() or nil,
+		params = params,
+	}
+end
+
 M.mkdir = function(dir)
 	if vim.fn.mkdir(dir, "p") ~= 1 then
 		error("Failed to create directory " .. dir)
