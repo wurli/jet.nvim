@@ -18,9 +18,10 @@ M.buf_get_win = function(buf)
 end
 
 ---@param mime string
+---@param quiet? boolean Suppress warnings on parse failures
 ---@return jet.mime?
 ---@see https://en.wikipedia.org/wiki/Media_type
-M.parse_mime = function(mime)
+M.parse_mime = function(mime, quiet)
 	if not mime_grammar then
 		mime_grammar = vim.re.compile([[
 			mime    <- {| type '/' tree? subtype suffix? params |} !.
@@ -36,22 +37,24 @@ M.parse_mime = function(mime)
 		]])
 	end
 
-	local parsed = mime_grammar:match(mime)
+	local parsed = mime_grammar:match(mime:lower())
 	if not parsed then
-		M.log_warn("Failed to parse MIME type '%s'", mime)
+		if not quiet then
+			M.log_warn("Failed to parse MIME type '%s'", mime)
+		end
 		return
 	end
 
 	local params = {}
 	for _, p in ipairs(parsed.params) do
-		params[p.name:lower()] = p.value
+		params[p.name] = p.value
 	end
 
 	return {
-		type = parsed.type:lower(),
-		tree = parsed.tree and parsed.tree:lower() or nil,
-		subtype = parsed.subtype:lower(),
-		suffix = parsed.suffix and parsed.suffix:lower() or nil,
+		type = parsed.type,
+		tree = parsed.tree,
+		subtype = parsed.subtype,
+		suffix = parsed.suffix,
 		params = params,
 	}
 end
