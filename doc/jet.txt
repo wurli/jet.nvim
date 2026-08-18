@@ -140,7 +140,8 @@ Lua API                                                                *lua-api*
         • {session_info}         (`jet.session_info?`)
         • {client_id}            (`string?`)
         • {lsp_port}             (`integer?`)
-        • {term}                 (`jet.term?`)
+        • {term}                 (`jet.Kernel.Term?`)
+        • {img}                  (`jet.Kernel.Img?`)
         • {cmd}                  (`string[]`)
         • {owned}                (`boolean`)
         • {filetype}             (`string?`)
@@ -222,6 +223,14 @@ Kernel:update_output_stream({msg})               *Kernel:update_output_stream()*
     Parameters: ~
 
         • {msg}         (`jet.jupyter.msg`)
+
+Kernel:image_dir()                                          *Kernel:image_dir()*
+
+    Return: ~
+
+        (`string`)
+
+Kernel:open_images()                                      *Kernel:open_images()*
 
 Kernel:start_lua_client({callback})                  *Kernel:start_lua_client()*
 
