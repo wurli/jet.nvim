@@ -1,5 +1,70 @@
 local M = {}
 
+---@class jet.mime
+---@field type string
+---@field subtype string
+---@field tree? string
+---@field suffix? string
+---@field params table<string, string>
+
+local mime_grammar ---@type vim.lpeg.Pattern?
+
+M.buf_get_win = function(buf)
+	if not vim.api.nvim_buf_is_valid(buf) then
+		return nil
+	end
+
+	return vim.tbl_filter(function(w) return vim.api.nvim_win_get_buf(w) == buf end, vim.api.nvim_tabpage_list_wins(0))[1]
+end
+
+---@param mime string
+---@param quiet? boolean Suppress warnings on parse failures
+---@return jet.mime?
+---@see https://en.wikipedia.org/wiki/Media_type
+M.parse_mime = function(mime, quiet)
+	if not mime_grammar then
+		mime_grammar = vim.re.compile([[
+			mime    <- {| type '/' tree? subtype suffix? params |} !.
+			type    <- {:type: token :}
+			tree    <- {:tree: ('vnd' / 'prs' / 'x') :} '.'
+			subtype <- {:subtype: { token ('.' token)* } :}
+			suffix  <- '+' {:suffix: token :}
+			params  <- {:params: {| param* |} :}
+			param   <- space ';' space {| {:name: token :} '=' {:value: value :} |}
+			token   <- [a-zA-Z0-9!#$&%^_-]+
+			value   <- '"' { (!'"' .)* } '"' / { token }
+			space   <- %s*
+		]])
+	end
+
+	local parsed = mime_grammar:match(mime:lower())
+	if not parsed then
+		if not quiet then
+			M.log_warn("Failed to parse MIME type '%s'", mime)
+		end
+		return
+	end
+
+	local params = {}
+	for _, p in ipairs(parsed.params) do
+		params[p.name] = p.value
+	end
+
+	return {
+		type = parsed.type,
+		tree = parsed.tree,
+		subtype = parsed.subtype,
+		suffix = parsed.suffix,
+		params = params,
+	}
+end
+
+M.mkdir = function(dir)
+	if vim.fn.mkdir(dir, "p") ~= 1 then
+		error("Failed to create directory " .. dir)
+	end
+end
+
 M.time = function(f, name)
 	local time = vim.uv.hrtime()
 	f()

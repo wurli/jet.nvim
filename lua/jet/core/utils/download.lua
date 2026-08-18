@@ -20,12 +20,6 @@ M.curl = function(args, callback)
 	end)
 end
 
-local mkdir = function(dir)
-	if vim.fn.mkdir(dir, "p") ~= 1 then
-		error("Failed to create directory " .. dir)
-	end
-end
-
 ---@param dir? string
 ---@return { dir: string, bin_path?: string, lib_path?: string }
 M.jet_resource_paths = function(dir)
@@ -34,13 +28,13 @@ M.jet_resource_paths = function(dir)
 	local lib_dir = dir .. "/lib/"
 
 	if not vim.uv.fs_stat(dir) then
-		mkdir(dir)
+		utils.mkdir(dir)
 	end
 	if not vim.uv.fs_stat(bin_dir) then
-		mkdir(bin_dir)
+		utils.mkdir(bin_dir)
 	end
 	if not vim.uv.fs_stat(lib_dir) then
-		mkdir(lib_dir)
+		utils.mkdir(lib_dir)
 	end
 
 	local jet_bin_path
@@ -180,7 +174,7 @@ local download_and_unpack = function(url, dest_dir, callback)
 		{ url, "-sL", "-o", download_path },
 		vim.schedule_wrap(function()
 			vim.fs.rm(dest_dir, { recursive = true, force = true })
-			mkdir(dest_dir)
+			utils.mkdir(dest_dir)
 			vim.system(
 				{ "tar", "-xzf", download_path, "-C", dest_dir, "--strip-components=1" },
 				{ text = true },

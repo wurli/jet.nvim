@@ -5,10 +5,13 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@class jet.term
+---@class jet.Kernel.Term
 ---@field job_id integer
 ---@field buf integer
 ---@field buf_name string
+
+---@class jet.Kernel.Img
+---@field buf integer
 
 ---@alias jet.kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
 ---@alias jet.kernel.paritalspec { display_name: string, language: string }
@@ -37,7 +40,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_info? jet.session_info
 ---@field client_id? string
 ---@field lsp_port? integer
----@field term? jet.term
+---@field term? jet.Kernel.Term
+---@field img? jet.Kernel.Img
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
@@ -127,21 +131,12 @@ end
 
 ---@private
 ---@return integer?
-function Kernel:get_win()
-	if not self.term or not self.term.buf then
-		return nil
-	end
-
-	return vim.tbl_filter(
-		function(w) return vim.api.nvim_win_get_buf(w) == self.term.buf end,
-		vim.api.nvim_tabpage_list_wins(0)
-	)[1]
-end
+function Kernel:get_term_win() return self.term and self.term.buf and utils.buf_get_win(self.term.buf) or nil end
 
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
 function Kernel:toggle_term()
-	local term_win = self:get_win()
+	local term_win = self:get_term_win()
 
 	if term_win then
 		vim.api.nvim_win_close(term_win, true)
@@ -159,12 +154,10 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 ---@param callback? fun(k: jet.Kernel, focus_gained: boolean)
 ---@param win_config? vim.api.keyset.win_config
 function Kernel:open_term(callback, win_config)
-	local curr_win = vim.api.nvim_get_current_win()
-
 	local open = function()
 		assert(self.term, "kernel.term is nil")
 
-		local term_win = self:get_win()
+		local term_win = self:get_term_win()
 
 		local focus_gained = false
 
@@ -176,13 +169,11 @@ function Kernel:open_term(callback, win_config)
 			local opts = vim.tbl_extend("keep", win_config or config.options.repl_win_opts or {}, {
 				split = "right",
 				style = "minimal",
+				win = -1,
 			})
 
 			---@type integer
-			term_win = vim.api.nvim_win_call(
-				vim.api.nvim_win_is_valid(curr_win) and curr_win or vim.api.nvim_get_current_win(),
-				function() return vim.api.nvim_open_win(self.term.buf, false, opts) end
-			)
+			term_win = vim.api.nvim_open_win(self.term.buf, false, opts)
 
 			vim.api.nvim_win_set_hl_ns(term_win, jet_hl_ns)
 
@@ -404,65 +395,153 @@ end
 ---@return boolean
 function Kernel:has_lua_client() return self.client_id ~= nil end
 
+local last_execute_id = ""
+
 ---@private
-function Kernel:handle_stream()
-	local last_execute_id = ""
+---@param msg jet.jupyter.msg
+function Kernel:update_execution_state(msg)
+	local header = msg.header
+	local parent = msg.parent_header or {}
 
-	---@param msg jet.jupyter.msg
-	local update_execution_state = function(msg)
-		local header = msg.header
-		local parent = msg.parent_header or {}
-
-		-- Execution is only officially started once we receive "busy" status,
-		-- so for now just save the executed code so we can include it when do
-		-- get the "busy" status.
-		if header.msg_type == "execute_input" and parent.msg_id == last_execute_id and self.last_execution then
-			self.last_execution.code = msg.content.code
-			self.last_execution.count = msg.content.execution_count
-			return
-		end
-
-		if header.msg_type == "error" and parent.msg_id == last_execute_id and self.last_execution then
-			self.last_execution.is_error = true
-			return
-		end
-
-		if header.msg_type ~= "status" then
-			return
-		end
-		local new_state = msg.content and msg.content.execution_state
-		if not vim.tbl_contains({ "idle", "busy", "starting" }, new_state) then
-			utils.log_warn("Kernel '%s' sent unknown execution state: %s", self.spec.display_name, new_state)
-			return
-		end
-
-		self.execution_state = new_state
-
-		if new_state == "busy" and parent.msg_type == "execute_request" then
-			last_execute_id = parent.msg_id or last_execute_id
-			local count = self.last_execution and self.last_execution.count or 0
-			self.last_execution = { start_time = os.time(), count = count + 1 }
-		elseif new_state == "idle" and parent.msg_id == last_execute_id and self.last_execution then
-			self.last_execution.end_time = os.time()
-		end
-
-		if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
-			local jet_b = vim.b[self.term.buf].jet or {}
-			jet_b.execution_state = self.execution_state
-			jet_b.last_execution = self.last_execution
-			vim.b[self.term.buf].jet = jet_b
-			vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
-		end
-
-		hooks.execution_state_changed(self, new_state)
+	-- Execution is only officially started once we receive "busy" status,
+	-- so for now just save the executed code so we can include it when do
+	-- get the "busy" status.
+	if header.msg_type == "execute_input" and parent.msg_id == last_execute_id and self.last_execution then
+		self.last_execution.code = msg.content.code
+		self.last_execution.count = msg.content.execution_count
+		return
 	end
 
+	if header.msg_type == "error" and parent.msg_id == last_execute_id and self.last_execution then
+		self.last_execution.is_error = true
+		return
+	end
+
+	if header.msg_type ~= "status" then
+		return
+	end
+	local new_state = msg.content and msg.content.execution_state
+	if not vim.tbl_contains({ "idle", "busy", "starting" }, new_state) then
+		utils.log_warn("Kernel '%s' sent unknown execution state: %s", self.spec.display_name, new_state)
+		return
+	end
+
+	self.execution_state = new_state
+
+	if new_state == "busy" and parent.msg_type == "execute_request" then
+		last_execute_id = parent.msg_id or last_execute_id
+		local count = self.last_execution and self.last_execution.count or 0
+		self.last_execution = { start_time = os.time(), count = count + 1 }
+	elseif new_state == "idle" and parent.msg_id == last_execute_id and self.last_execution then
+		self.last_execution.end_time = os.time()
+	end
+
+	if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
+		local jet_b = vim.b[self.term.buf].jet or {}
+		jet_b.execution_state = self.execution_state
+		jet_b.last_execution = self.last_execution
+		vim.b[self.term.buf].jet = jet_b
+		vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
+	end
+
+	hooks.execution_state_changed(self, new_state)
+end
+
+---@return string
+function Kernel:image_dir()
+	assert(self.session_id, "Kernel has no session id")
+	local dir = vim.fn.stdpath("data") .. "/images/" .. self.session_id
+	utils.mkdir(dir)
+	return dir
+end
+
+function Kernel:open_images()
+	local term_win = self:get_term_win()
+
+	local images = {}
+	local img_dir = self:image_dir()
+	for file, type in vim.fs.dir(img_dir) do
+		if type == "file" then
+			table.insert(images, img_dir .. "/" .. file)
+		end
+	end
+	table.sort(images)
+	local file = images[#images]
+
+	if not file then
+		utils.log_warn("No images found for kernel '%s'", self.spec.display_name)
+		return
+	end
+
+	---@param win integer
+	local open_above = function(win)
+		self.img = self.img or { buf = vim.api.nvim_create_buf(false, true) }
+		if not vim.api.nvim_buf_is_valid(self.img.buf) then
+			self.img.buf = vim.api.nvim_create_buf(false, true)
+		end
+		require("jet.core.image").show(self.img.buf, file)
+		if not utils.buf_get_win(self.img.buf) then
+			vim.api.nvim_open_win(self.img.buf, false, {
+				split = "above",
+				style = "minimal",
+				win = win,
+			})
+		end
+	end
+
+	if term_win then
+		open_above(term_win)
+	else
+		self:open_term(function()
+			term_win = self:get_term_win()
+
+			if not term_win then
+				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
+				return
+			end
+
+			open_above(term_win)
+		end)
+	end
+end
+
+---@private
+---@param msg jet.jupyter.msg
+function Kernel:handle_image_msg(msg)
+	local img_messages = { display_data = true, execute_result = true } ---@type table<jet.msg_type, boolean>
+	local data = msg.channel == "iopub" and img_messages[msg.header.msg_type] and msg.content and msg.content.data
+
+	if not data then
+		return
+	end
+
+	for mime_text, content in pairs(data) do
+		local mime = utils.parse_mime(mime_text)
+		if mime and mime.type == "image" then
+			local filepath = string.format(
+				"%s/%s_%s.%s",
+				self:image_dir(),
+				vim.fn.strftime("%Y%m%d_%H%M%S"),
+				msg.header.msg_id,
+				mime.subtype
+			)
+			if require("jet.core.image").base64_to_file(content, mime, filepath) then
+				self:open_images()
+			end
+		end
+	end
+end
+
+---@private
+function Kernel:handle_stream()
 	utils.poll(self.stream, function(res)
 		if not res then
 			return "exit"
 		elseif res.status == "busy" then
-			update_execution_state(res.msg)
+			self:update_execution_state(res.msg)
 			self:update_output_stream(res.msg)
+			self:handle_image_msg(res.msg)
+
 			hooks.message_received(self, res.msg)
 			for _, hook in pairs(self.on_message_received) do
 				hook(self, res.msg)
