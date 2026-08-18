@@ -64,7 +64,7 @@ M.show = function(buf, filepath)
 		return
 	end
 
-	Snacks.image.buf.attach(buf, {
+	_G.Snacks.image.buf.attach(buf, {
 		src = filepath,
 		inline = true,
 		type = "image",
