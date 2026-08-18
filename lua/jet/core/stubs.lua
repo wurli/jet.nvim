@@ -88,9 +88,7 @@
 ---@field metadata table
 ---@field content table
 
----@class jet.kernel.response
----@field status "busy" | "pending"
----@field msg jet.jupyter.msg
+---@alias jet.kernel.response { status: "pending" } | { status: "busy", msg: jet.jupyter.msg }
 
 ---@class jet.listen.opts
 ---@field channel? jet.channel | jet.channel[]
@@ -119,6 +117,8 @@
 
 ---@alias jet.list_sessions.callback fun(): jet.list_sessions.response?
 
+---@alias jet.kernel.callback fun(): jet.kernel.response?
+
 ---@class jet.session_info
 ---@field session_id string
 ---@field closed_at string?
@@ -141,15 +141,15 @@
 ---@field list_kernels fun(): { path: string, spec: jet.kernel.spec }[]
 ---@field show_spec fun(path: string): jet.kernel.spec
 ---@field show_session fun(session_id: string): { session: jet.session_info, spec: jet.kernel.spec }
----@field execute_code fun(client_id: string, code: string, silent: boolean, allow_stdin: boolean, user_expressions: table?): fun(): jet.kernel.response?
----@field is_complete fun(client_id: string, code: string): fun(): jet.kernel.response?
----@field get_completions fun(client_id: string, code: string): table?
----@field comm_open fun(client_id: string, comm_id: string, data: table): string, fun(): jet.kernel.response?
----@field comm_send fun(client_id: string, comm_id: string, data: table): fun(): jet.kernel.response?
----@field comm_info fun(client_id: string, target_name: string?): fun(): jet.kernel.response?
----@field comm_listen fun(client_id: string, comm_id: string): fun(): jet.kernel.response?
----@field listen fun(client_id: string, opts?: jet.listen.opts): fun(): jet.kernel.response?
----@field provide_stdin fun(client_id: string, parent_msg_id: string, value: string)
+---@field execute_code fun(client_id: string, code: string, silent: boolean, allow_stdin: boolean, user_expressions: table?): jet.kernel.callback, string
+---@field is_complete fun(client_id: string, code: string): jet.kernel.callback, string
+---@field get_completions fun(client_id: string, code: string): jet.kernel.callback, string
+---@field comm_open fun(client_id: string, target_name: string, data: table): jet.kernel.callback, string, string
+---@field comm_send fun(client_id: string, comm_id: string, data: table): jet.kernel.callback, string
+---@field comm_info fun(client_id: string, target_name: string?): jet.kernel.callback, string
+---@field comm_listen fun(client_id: string, comm_id: string): jet.kernel.callback
+---@field listen fun(client_id: string, opts?: jet.listen.opts): jet.kernel.callback
+---@field provide_stdin fun(client_id: string, parent_msg_id: string, value: string): string
 ---@field make_session_id fun(lang: string): string
 ---@field version fun(): string -- Get the current version of Jet
 

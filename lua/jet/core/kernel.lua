@@ -813,12 +813,13 @@ end
 ---@param name string
 ---@param data? table
 ---@param opts? jet.kernel.comm_open.opts
----@return string comm_id
+---@return string # Comm id
+---@return string # Message id
 ---@see |Kernel:comm_send()|
 ---@see https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 function Kernel:comm_open(name, data, opts)
 	assert(self.client_id, "Kernel has no client id")
-	local comm_id, _ = require("jet.core.engine").comm_open(self.client_id, name, data or {})
+	local _cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
 
 	self.comms[name] = comm_id
 
@@ -841,17 +842,19 @@ function Kernel:comm_open(name, data, opts)
 		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
 	end
 
-	return comm_id
+	return comm_id, msg_id
 end
 
 ---Send a message via a comm channel
 ---
 ---@param comm_id string
 ---@param data table
+---@return string # Message id
 ---@see |Kernel:comm_open()|
 function Kernel:comm_send(comm_id, data)
 	assert(self.client_id)
-	require("jet.core.engine").comm_send(self.client_id, comm_id, data)
+	local _cb, msg_id = require("jet.core.engine").comm_send(self.client_id, comm_id, data)
+	return msg_id
 end
 
 ---Send code to the kernel via the terminal repl
@@ -911,28 +914,29 @@ end
 ---@param code string | string[]
 ---@param silent boolean
 ---@param callback? fun(res: jet.kernel.response)
+---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
 	if type(code) == "table" then
 		code = table.concat(code, "\n")
 	end
-	local responder = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
+	local responder, msg_id = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
 
-	if not callback then
-		return
+	if callback then
+		utils.poll(responder, function(res)
+			if not res then
+				return "exit"
+			end
+			if res.status == "busy" then
+				callback(res)
+				return "continue"
+			else
+				return "wait"
+			end
+		end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
 	end
 
-	utils.poll(responder, function(res)
-		if not res then
-			return "exit"
-		end
-		if res.status == "busy" then
-			callback(res)
-			return "continue"
-		else
-			return "wait"
-		end
-	end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
+	return msg_id
 end
 
 ---Interrupt the current execution

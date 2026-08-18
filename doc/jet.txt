@@ -155,7 +155,7 @@ Lua API                                                                *lua-api*
         • {metadata}             (`table<string,any>`) Arbitrary data,
                                  e.g. for use by extensions
         • {lsp_name}             (`string`)
-        • {stream}               (`fun() -> jet.kernel.response?`)
+        • {stream}               (`fun() -> ({ status: "pending" }|{ msg: jet.jupyter.msg, status: "busy" })?`)
 
 Kernel:init_owned({opts})                                  *Kernel:init_owned()*
 
@@ -284,7 +284,8 @@ Kernel:comm_open({name}, {data}, {opts})                    *Kernel:comm_open()*
 
     Return: ~
 
-        (`string`)
+        (`string`) Comm id
+        (`string`) Message id
 
 Kernel:comm_send({comm_id}, {data})                         *Kernel:comm_send()*
 
@@ -294,6 +295,10 @@ Kernel:comm_send({comm_id}, {data})                         *Kernel:comm_send()*
 
         • {comm_id}     (`string`)
         • {data}        (`table`)
+
+    Return: ~
+
+        (`string`) Message id
 
 Kernel:send_repl({code}, {tabstop})                         *Kernel:send_repl()*
 
@@ -318,6 +323,10 @@ Kernel:send_lua({code}, {silent}, {callback})                *Kernel:send_lua()*
         • {code}        (`(string|string[])`)
         • {silent}      (`boolean`)
         • {callback}    (`(fun(res: jet.kernel.response))?`)
+
+    Return: ~
+
+        (`string`) Message id
 
 Kernel:interrupt()                                          *Kernel:interrupt()*
 
