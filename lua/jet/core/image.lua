@@ -31,8 +31,8 @@ M.base64_to_file = function(data, mime, filepath)
 	local supported_types = { png = true, jpeg = true }
 	if not supported_types[mime.subtype] then
 		utils.log_error(
-			"Unsupported MIME subtype % (should be one of %s)",
-			mime.type,
+			"Unsupported MIME subtype '%s' (should be one of %s)",
+			mime.subtype,
 			table.concat(vim.tbl_keys(supported_types), ", ")
 		)
 		return false
