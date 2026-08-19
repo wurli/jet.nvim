@@ -290,7 +290,10 @@ function Kernel:status()
 end
 
 function Kernel:set_as_filetype_primary()
-	assert(self.filetype, "Kernel has no filetype")
+	if not self.filetype then
+		return
+	end
+
 	manager.filetype_primary[self.filetype] = self.session_id
 end
 
@@ -555,11 +558,14 @@ end
 
 ---@private
 function Kernel:register_lsp_client()
+	if not self.filetype then
+		return
+	end
+
 	assert(self.lsp_port, "Kernel has no lsp port")
 	assert(self.client_id, "Kernel has no client id")
 	---@diagnostic disable-next-line: unnecessary-assert
 	assert(self.spec and self.spec.display_name, "Kernel has no display name")
-	assert(self.filetype, "Kernel has no filetype")
 
 	local clean_name = self.spec.display_name:gsub("%W", "_"):gsub("_+", "_"):gsub("^_+", ""):gsub("_+$", "")
 	self.lsp_name = "jet_" .. clean_name .. "_" .. self.client_id
