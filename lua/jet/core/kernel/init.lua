@@ -124,19 +124,13 @@ function Kernel.init_external(opts)
 	return out
 end
 
----@private
----@return integer?
-function Kernel:get_term_win() return self.term and self.term.buf and utils.buf_get_win(self.term.buf) or nil end
-
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
 function Kernel:toggle_term()
-	local term_win = self:get_term_win()
-
-	if term_win then
-		vim.api.nvim_win_close(term_win, true)
+	if not self.term then
+		self:create_term()
 	else
-		self:open_term()
+		self.term:toggle()
 	end
 end
 
@@ -147,39 +141,10 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 ---* If no terminal is active, one will be created and opened
 ---* If a terminal is already open, it will be focused
 ---@param callback? fun(k: jet.Kernel, focus_gained: boolean)
----@param win_config? vim.api.keyset.win_config
-function Kernel:open_term(callback, win_config)
+function Kernel:open_term(callback)
 	local open = function()
 		assert(self.term, "kernel.term is nil")
-
-		local term_win = self:get_term_win()
-
-		local focus_gained = false
-
-		if term_win then
-			vim.api.nvim_set_current_win(term_win)
-			vim.cmd.startinsert()
-			focus_gained = true
-		else
-			local opts = vim.tbl_extend("keep", win_config or config.options.repl_win_opts or {}, {
-				split = "right",
-				style = "minimal",
-				win = -1,
-			})
-
-			---@type integer
-			term_win = vim.api.nvim_open_win(self.term.buf, false, opts)
-
-			vim.api.nvim_win_set_hl_ns(term_win, jet_hl_ns)
-
-			-- When the cursor is at the bottom of the REPL you get aut-scroll when
-			-- new lines appear. This is a good state to start in.
-			vim.api.nvim_win_set_cursor(term_win, { vim.api.nvim_buf_line_count(self.term.buf), 0 })
-		end
-
-		vim.wo[term_win].number = false
-		vim.wo[term_win].relativenumber = false
-
+		local focus_gained = self.term:open()
 		if callback then
 			callback(self, focus_gained)
 		end
@@ -199,7 +164,11 @@ end
 function Kernel:create_term(callback)
 	local connect = function()
 		assert(self.session_id, "Kernel has no session id")
-		self.term = require("jet.core.kernel.term").init(self.session_id, self.spec.display_name)
+		self.term = require("jet.core.kernel.term").init({
+			session_id = self.session_id,
+			display_name = self.spec.display_name,
+			ns = jet_hl_ns,
+		})
 		self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
 		if config.options.stop_on_buf_wipeout then
 			self.term:create_autocmd("BufWipeout", function() self:close() end)
@@ -401,7 +370,7 @@ function Kernel:image_dir()
 end
 
 function Kernel:open_images()
-	local term_win = self:get_term_win()
+	local term_win = self.term and self.term:win()
 
 	local images = {}
 	local img_dir = self:image_dir()
@@ -438,7 +407,7 @@ function Kernel:open_images()
 		open_above(term_win)
 	else
 		self:open_term(function()
-			term_win = self:get_term_win()
+			term_win = self.term and self.term:win()
 
 			if not term_win then
 				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
