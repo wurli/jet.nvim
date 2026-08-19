@@ -119,7 +119,10 @@ M.data = {
 ---@type jet.Config
 M.options = nil
 
----@param options? Partial<jet.Config>
+---Sorry
+---@alias jet.DeepPartial<T> { [P in keyof T]?: T[P] extends any[] and T[P] or (T[P] extends table and jet.DeepPartial<T[P]> or T[P]) }
+
+---@param options? jet.DeepPartial<jet.Config>
 function M.set(options)
 	if options and options.binary_path then
 		local bin = vim.fs.abspath(options.binary_path)
