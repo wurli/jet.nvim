@@ -5,11 +5,6 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@class jet.Kernel.Term
----@field job_id integer
----@field buf integer
----@field buf_name string
-
 ---@class jet.Kernel.Img
 ---@field buf integer
 
@@ -200,68 +195,15 @@ end
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
 ---Lua API.
----@param callback? fun(k: jet.Kernel) Stuff to run once the terminal is created
+---@param callback? fun(k: jet.Kernel)
 function Kernel:create_term(callback)
 	local connect = function()
-		local term_buf = vim.api.nvim_create_buf(false, true)
-
-		--TODO: document this
-		vim.b[term_buf].jet = { session_id = self.session_id }
-
-		---@diagnostic disable-next-line: unnecessary-if
-		if config.options.stop_on_buf_wipeout and self.augroup then
-			vim.api.nvim_create_autocmd("BufWipeout", {
-				buffer = term_buf,
-				group = self.augroup,
-				callback = function() self:close() end,
-			})
+		assert(self.session_id, "Kernel has no session id")
+		self.term = require("jet.core.kernel.term").init(self.session_id, self.spec.display_name)
+		self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
+		if config.options.stop_on_buf_wipeout then
+			self.term:create_autocmd("BufWipeout", function() self:close() end)
 		end
-
-		-- buf_call since the buf is not yet attached to a window.
-		vim.api.nvim_buf_call(term_buf, function()
-			assert(self.session_id, "Kernel has no session id")
-			local term_job_id = vim.fn.jobstart({
-				config.data.binary_path,
-				"attach",
-				self.session_id,
-				"--banner",
-				"--session-name",
-				"nvim",
-				"--no-graphics",
-				config.options.send.send_by_expr and "--no-indent" or nil,
-			}, {
-				term = true,
-				on_exit = function()
-					-- TODO: perhaps we don't want this - e.g. a kernel crashes
-					-- and suddenly all the info from the console is gone. For
-					-- now it's convenient, but maybe review in future or add
-					-- config.
-					self:delete_term_buffer()
-				end,
-			})
-
-			-- It seems that jobstart() also sets the buf name, so this has to be
-			-- done afterwards.
-			local session_hash = (self.session_id or ""):match("_([^_]+)$")
-			local buf_name = self.spec.display_name
-			if session_hash then
-				buf_name = buf_name .. " (" .. session_hash .. ")"
-			end
-			vim.api.nvim_buf_set_name(term_buf, buf_name)
-
-			self.term = { job_id = term_job_id, buf = term_buf, buf_name = buf_name }
-		end)
-
-		-- On TermEnter, record this kernel as the last used
-		-- TODO: configure whether or not this should automatically happen
-		if config.options.auto_set_primary and self.term and self.augroup then
-			vim.api.nvim_create_autocmd("TermEnter", {
-				buffer = self.term.buf,
-				group = self.augroup,
-				callback = function() self:set_as_filetype_primary() end,
-			})
-		end
-
 		if callback then
 			callback(self)
 		end
@@ -724,17 +666,6 @@ function Kernel:try_resolve_filetype()
 	end
 end
 
----@private
-function Kernel:delete_term_buffer()
-	vim.schedule(function()
-		if self.term and self.term.buf then
-			if vim.api.nvim_buf_is_valid(self.term.buf) then
-				pcall(vim.api.nvim_buf_delete, self.term.buf, { force = true })
-			end
-		end
-	end)
-end
-
 ---Shut down the kernel and clean up any associated resources.
 ---
 ---If the kernel is `owned` it will be stopped, otherwise it will just be
@@ -754,7 +685,9 @@ function Kernel:close(quiet)
 	if self.augroup then
 		pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
 	end
-	self:delete_term_buffer()
+	if self.term then
+		self.term:delete()
+	end
 
 	if self.owned then
 		self:stop(function(success, failure_msg)
