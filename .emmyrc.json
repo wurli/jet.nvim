@@ -13,7 +13,8 @@
   },
   "workspace": {
     "ignoreDir": [
-      "deps"
+      "deps",
+	  ".venv"
     ],
     "ignoreGlobs": [
       "*.log"
