@@ -521,13 +521,8 @@ function Kernel:handle_image_msg(msg)
 	for mime_text, content in pairs(data) do
 		local mime = utils.parse_mime(mime_text)
 		if mime and mime.type == "image" then
-			local filepath = string.format(
-				"%s/%s_%s.%s",
-				self:image_dir(),
-				vim.fn.strftime("%Y%m%d_%H%M%S"),
-				msg.header.msg_id,
-				mime.subtype
-			)
+			local filepath =
+				string.format("%s/%s_%s.png", self:image_dir(), vim.fn.strftime("%Y%m%d_%H%M%S"), msg.header.msg_id)
 			if require("jet.core.image").base64_to_file(content, mime, filepath) then
 				self:open_images()
 			end
