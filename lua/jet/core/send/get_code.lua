@@ -1,10 +1,10 @@
----@class jet.send.filetype
+---@class jet.send.Filetype
 ---@field get_chunk? fun(): jet.send.Range?
 ---@field get_curr_expr? fun(): string[]?
 
----@class jet.getcode
+---@class jet.GetCode
 local M = {
-	---@type table<string, Partial<jet.getcode>>
+	---@type table<string, Partial<jet.GetCode>>
 	filetype = {
 		markdown = require("jet.core.send.markdown"),
 	},

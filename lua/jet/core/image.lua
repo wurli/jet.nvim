@@ -19,7 +19,7 @@ local base64_to_bytes = function(data)
 end
 
 ---@param data string Base64-encoded data
----@param mime jet.mime
+---@param mime jet.Mime
 ---@param filepath string
 ---@return boolean
 M.base64_to_file = function(data, mime, filepath)

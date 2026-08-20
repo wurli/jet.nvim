@@ -1,5 +1,5 @@
 ---@diagnostic disable-next-line: missing-fields
----@type jet.getcode
+---@type jet.GetCode
 local M = {}
 
 -- ---@param node TSNode

@@ -1,4 +1,4 @@
----@class jet.manager
+---@class jet.Manager
 ---@field kernels table<string, jet.Kernel>
 ---@field filetype_primary table<string, string> key=filetype, value=session_id
 local Manager = {

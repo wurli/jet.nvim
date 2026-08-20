@@ -5,11 +5,11 @@ local M = {}
 ---@field on_kernel_close table<any, fun(k: jet.Kernel)>
 ---@field on_kernel_init table<any, fun(k: jet.Kernel)>
 ---@field on_lua_client_start table<any, fun(k: jet.Kernel)>
----@field on_message_received table<any, fun(k: jet.Kernel, msg: jet.jupyter.msg)>
+---@field on_message_received table<any, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_send_pre table<any, fun(k: jet.Kernel, code: string[])>
 ---@field on_status_changed table<any, fun(k: jet.Kernel)>
 
----@class jet.Config
+---@class jet.Config.Opts
 M.defaults = {
 	binary_path = nil, ---@type string? Path to a custom Jet binary.
 	library_path = nil, ---@type string? Path to a custom Jet Lua library.
@@ -37,7 +37,7 @@ M.defaults = {
 		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
 	},
 	image = {
-		handlers = {}, ---@type table<string, fun(data: string, mime: jet.mime, filepath: string): boolean>
+		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): boolean>
 	},
 	--- Control how Jet displays how long stuff is taking:
 	--- ``` lua
@@ -108,21 +108,21 @@ M.defaults = {
 
 M.jet_nvim_version = "0.0.1"
 
----@class jet.data
+---@class jet.Config.Data
 M.data = {
-	jet_min_version = "0.0.5",
+	jet_min_version = "0.0.7",
 	binary_path = nil, ---@type string?
 	library_path = nil, ---@type string?
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",
 }
 
----@type jet.Config
+---@type jet.Config.Opts
 M.options = nil
 
 ---Sorry
 ---@alias jet.DeepPartial<T> { [P in keyof T]?: T[P] extends any[] and T[P] or (T[P] extends table and jet.DeepPartial<T[P]> or T[P]) }
 
----@param options? jet.DeepPartial<jet.Config>
+---@param options? jet.DeepPartial<jet.Config.Opts>
 function M.set(options)
 	if options and options.binary_path then
 		local bin = vim.fs.abspath(options.binary_path)

@@ -28,9 +28,9 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   ```
 ---@class jet.Kernel
 ---@field session_name? string
----@field spec jet.kernel.spec | jet.kernel.paritalspec
+---@field spec jupyter.KernelSpec | jet.kernel.paritalspec
 ---@field spec_path string
----@field kernel_info? jet.kernel.info
+---@field kernel_info? juypyter.KernelInfo
 ---@field session_id? string
 ---@field session_info? jet.SessionInfo
 ---@field client_id? string
@@ -44,8 +44,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
----@field output_stream { complete_lines: jet.utils.queue<string>, incomplete_line: string }
----@field on_message_received table<string, fun(k: jet.Kernel, msg: jet.jupyter.msg)>
+---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
+---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 ---@field private augroup? integer
@@ -68,15 +68,15 @@ local init_defaults = function()
 	}
 end
 
----@class jet.kernel.init_owned.opts
+---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jet.kernel.spec | jet.kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.kernel.paritalspec
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
 ---
----@param opts jet.kernel.init_owned.opts
+---@param opts jet.kernel.init_owned.Opts
 function Kernel.init_owned(opts)
 	if not opts.spec then
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
@@ -90,7 +90,7 @@ function Kernel.init_owned(opts)
 	return out
 end
 
----@class jet.kernel.init_external.opts
+---@class jet.kernel.init_external.Opts
 ---@field session_id string
 
 ---Initialise a connection to an kernel running externally
@@ -98,7 +98,7 @@ end
 ---opts:
 ---- `session_id`: The session ID of the kernel to connect to
 ---
----@param opts jet.kernel.init_external.opts
+---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
 function Kernel.init_external(opts)
 	---@diagnostic disable-next-line: unnecessary-assert
@@ -212,7 +212,7 @@ end
 split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
 ---@private
----@param msg jet.jupyter.msg
+---@param msg jupyter.Msg
 function Kernel:update_output_stream(msg)
 	local flush = function(allow_empty)
 		if allow_empty or self.output_stream.incomplete_line ~= "" then
@@ -306,7 +306,7 @@ function Kernel:has_lua_client() return self.client_id ~= nil end
 local last_execute_id = ""
 
 ---@private
----@param msg jet.jupyter.msg
+---@param msg jupyter.Msg
 function Kernel:update_execution_state(msg)
 	local header = msg.header
 	local parent = msg.parent_header or {}
@@ -414,9 +414,9 @@ function Kernel:open_images()
 end
 
 ---@private
----@param msg jet.jupyter.msg
+---@param msg jupyter.Msg
 function Kernel:handle_image_msg(msg)
-	local img_messages = { display_data = true, execute_result = true } ---@type table<jet.msg_type, boolean>
+	local img_messages = { display_data = true, execute_result = true } ---@type table<jupyter.msg_type, boolean>
 	local data = msg.channel == "iopub" and img_messages[msg.header.msg_type] and msg.content and msg.content.data
 
 	if not data then
@@ -691,8 +691,8 @@ function Kernel:stop(callback)
 	end, { alias = "Waiting for kernel stop response " .. self.session_id })
 end
 
----@class jet.kernel.comm_open.opts
----@field listener? fun(res: jet.jupyter.msg)
+---@class jet.kernel.comm_open.Opts
+---@field listener? fun(res: jupyter.Msg)
 ---@field listener_interval? integer In milliseconds, default 50ms
 
 ---Open a comm channel to the kernel
@@ -705,7 +705,7 @@ end
 ---
 ---@param name string
 ---@param data? table
----@param opts? jet.kernel.comm_open.opts
+---@param opts? jet.kernel.comm_open.Opts
 ---@return string # Comm id
 ---@return string # Message id
 ---@see |Kernel:comm_send()|
@@ -763,7 +763,7 @@ end
 ---
 ---@param code string | string[]
 ---@param silent boolean
----@param callback? fun(res: jet.jupyter.msg)
+---@param callback? fun(res: jupyter.Msg)
 ---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")

@@ -1,6 +1,6 @@
 local M = {}
 
----@class jet.kernelspec.install.opts
+---@class jet.kernelspec.install.Opts
 ---@field path? string
 ---@field name? string
 
@@ -10,7 +10,7 @@ end
 
 ---Install a kernelspec in Jet's Neovim data dir
 ---
----@param k jet.kernel.spec
+---@param k jupyter.KernelSpec
 ---@param path string Path to a kernel.json file
 M.install = function(k, path)
 	local json = vim.json.encode(k, { indent = "    ", sort_keys = true })

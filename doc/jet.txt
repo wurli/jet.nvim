@@ -111,7 +111,7 @@ Lua API                                                                *lua-api*
         • {on_kernel_close}             (`table<any,fun(k: jet.Kernel)>`)
         • {on_kernel_init}              (`table<any,fun(k: jet.Kernel)>`)
         • {on_lua_client_start}         (`table<any,fun(k: jet.Kernel)>`)
-        • {on_message_received}         (`table<any,fun(k: jet.Kernel, msg: jet.jupyter.msg)>`)
+        • {on_message_received}         (`table<any,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
         • {on_send_pre}                 (`table<any,fun(k: jet.Kernel, code: string[])>`)
         • {on_status_changed}           (`table<any,fun(k: jet.Kernel)>`)
 
@@ -131,11 +131,11 @@ Lua API                                                                *lua-api*
 
     Fields: ~
         • {session_name}         (`string?`)
-        • {spec}                 (`(jet.kernel.spec|jet.kernel.paritalspec)`)
+        • {spec}                 (`(jupyter.KernelSpec|jet.kernel.paritalspec)`)
         • {spec_path}            (`string`)
-        • {kernel_info}          (`jet.kernel.info?`)
+        • {kernel_info}          (`juypyter.KernelInfo?`)
         • {session_id}           (`string?`)
-        • {session_info}         (`jet.session_info?`)
+        • {session_info}         (`jet.SessionInfo?`)
         • {client_id}            (`string?`)
         • {lsp_port}             (`integer?`)
         • {term}                 (`jet.Kernel.Term?`)
@@ -148,12 +148,12 @@ Lua API                                                                *lua-api*
         • {ui_expand}            (`boolean`)
         • {comms}                (`table<string,string>`) comm_name -> id
         • {output_stream}        (`{ complete_lines: jet.utils.queue<string>, incomplete_line: string }`)
-        • {on_message_received}  (`table<string,fun(k: jet.Kernel, msg: jet.jupyter.msg)>`)
+        • {on_message_received}  (`table<string,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
         • {on_started}           (`table<string,fun(k: jet.Kernel)>`)
         • {metadata}             (`table<string,any>`) Arbitrary data,
                                  e.g. for use by extensions
         • {lsp_name}             (`string`)
-        • {stream}               (`fun() -> ({ status: "pending" }|{ msg: jet.jupyter.msg, status: "busy" })?`)
+        • {stream}               (`any`)
 
 Kernel:init_owned({opts})                                  *Kernel:init_owned()*
 
@@ -221,7 +221,7 @@ Kernel:start_lua_client({callback})                  *Kernel:start_lua_client()*
     Parameters: ~
         • {callback}  (`(fun(k: jet.Kernel))?`)
 
-Kernel:close({quiet})                                           *Kernel:close()*
+Kernel:close({reason})                                          *Kernel:close()*
 
     Shut down the kernel and clean up any associated resources.
 
@@ -229,7 +229,7 @@ Kernel:close({quiet})                                           *Kernel:close()*
     disconnected.
 
     Parameters: ~
-        • {quiet}     (`boolean?`) Set to `true` to suppress notifications
+        • {reason}    (`(boolean|string)?`)
 
 Kernel:stop({callback})                                          *Kernel:stop()*
 
@@ -242,7 +242,7 @@ Kernel:stop({callback})                                          *Kernel:stop()*
         • {callback}  (`fun(success: boolean, failure_msg: string?)`)
 
     See: ~
-        • Kernel:close
+        • |Kernel:close|
 
 Kernel:comm_open({name}, {data}, {opts})                    *Kernel:comm_open()*
 
@@ -301,7 +301,7 @@ Kernel:send_lua({code}, {silent}, {callback})                *Kernel:send_lua()*
     Parameters: ~
         • {code}      (`(string|string[])`)
         • {silent}    (`boolean`)
-        • {callback}  (`(fun(res: jet.kernel.response))?`)
+        • {callback}  (`(fun(res: jupyter.Msg))?`)
 
     Return: ~
         (`string`) Message id

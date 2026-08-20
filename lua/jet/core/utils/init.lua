@@ -1,6 +1,6 @@
 local M = {}
 
----@class jet.mime
+---@class jet.Mime
 ---@field type string
 ---@field subtype string
 ---@field tree? string
@@ -19,7 +19,7 @@ end
 
 ---@param mime string
 ---@param quiet? boolean Suppress warnings on parse failures
----@return jet.mime?
+---@return jet.Mime?
 ---@see https://en.wikipedia.org/wiki/Media_type
 M.parse_mime = function(mime, quiet)
 	if not mime_grammar then

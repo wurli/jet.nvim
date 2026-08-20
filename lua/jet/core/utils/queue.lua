@@ -1,5 +1,5 @@
 ---@generic T
----@class jet.utils.queue<T> : T[]
+---@class jet.utils.Queue<T> : T[]
 ---@field _items T[]
 ---@field first integer
 ---@field last integer
@@ -66,7 +66,7 @@ function Queue:count() return self.last - self.first + 1 end
 ---@generic U
 ---@param len integer
 ---@param items U[]
----@return jet.utils.queue<U>
+---@return jet.utils.Queue<U>
 Queue.new = function(len, items)
 	return setmetatable({
 		_items = items or {},

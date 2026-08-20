@@ -189,7 +189,7 @@ local execution_in_progress_spinner = make_progress_spinner()
 local expanded_inactive_kernels = {}
 
 ---@param k jet.Kernel
----@return jet.ui.line[]
+---@return jet.ui.Line[]
 local expand_inactive = function(k)
 	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path)] then
 		return {}
@@ -207,13 +207,13 @@ local expand_inactive = function(k)
 end
 
 ---@param k jet.Kernel
----@return jet.ui.line[]
+---@return jet.ui.Line[]
 local expand_active = function(k)
 	if not k.ui_expand then
 		return {}
 	end
 
-	---@type jet.ui.line<any>[]
+	---@type jet.ui.Line<any>[]
 	local out = {}
 
 	local status_hl = function()
@@ -311,12 +311,12 @@ local expand_active = function(k)
 	return out
 end
 
----@class jet.ui.kernel_group
+---@class jet.ui._KernelGroup
 ---@field kernel jet.Kernel
 ---@field external jet.Kernel[]
 ---@field connected jet.Kernel[]
 
----@param callback fun(kernels: jet.ui.kernel_group[])
+---@param callback fun(kernels: jet.ui._KernelGroup[])
 local list_kernel_groups = function(callback)
 	api.list_kernels({}, {}, function(kernel_list)
 		table.sort(kernel_list, function(a, b)
@@ -349,7 +349,7 @@ local list_kernel_groups = function(callback)
 		end
 
 		-- Makes sorting possible
-		---@type jet.ui.kernel_group[]
+		---@type jet.ui._KernelGroup[]
 		local out = vim.tbl_values(kernels_grouped)
 
 		table.sort(out, function(a, b)
@@ -380,7 +380,7 @@ local list_kernel_groups = function(callback)
 	end)
 end
 
----@param callback fun(groups: jet.ui.linegroup[])
+---@param callback fun(groups: jet.ui.Linegroup[])
 local make_kernel_linegroups = function(callback)
 	list_kernel_groups(function(kernel_groups)
 		local group_title = ""
