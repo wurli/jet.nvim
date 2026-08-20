@@ -126,24 +126,23 @@ end
 
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
-function Kernel:toggle_term()
+function Kernel:term_toggle()
 	if self.term then
 		self.term:toggle()
 	else
-		self:open_term()
+		self:term_open()
 	end
 end
 
 local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
 vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 
----Open a terminal window for the kernel
----* If no terminal is active, one will be created and opened
----* If a terminal is already open, it will be focused
+---Open a terminal window for the kernel.
+---If no terminal is active, one will be created and opened
 ---@param callback? fun(t: jet.Kernel.Term)
 ---@param focus? boolean
-function Kernel:open_term(callback, focus)
-	self:create_term(function()
+function Kernel:term_open(callback, focus)
+	self:term_create(function()
 		assert(self.term, "kernel.term is nil")
 		self.term:open(focus)
 		if callback then
@@ -157,7 +156,7 @@ end
 ---Lua API.
 ---@private
 ---@param callback? fun(k: jet.Kernel)
-function Kernel:create_term(callback)
+function Kernel:term_create(callback)
 	self:start_lua_client(function()
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
@@ -192,6 +191,8 @@ function Kernel:status()
 	end
 end
 
+---Set the kernel as the 'primary' kernel for its filetype. No-op if the kernel
+---has no filetype.
 function Kernel:set_as_filetype_primary()
 	if not self.filetype then
 		return
@@ -210,6 +211,7 @@ end
 ---@param s string
 split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
+---@private
 ---@param msg jet.jupyter.msg
 function Kernel:update_output_stream(msg)
 	local flush = function(allow_empty)
@@ -398,7 +400,7 @@ function Kernel:open_images()
 	if term_win then
 		open_above(term_win)
 	else
-		self:open_term(function(t)
+		self:term_open(function(t)
 			term_win = t:win()
 
 			if not term_win then
@@ -757,7 +759,7 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	self:open_term(function(t)
+	self:term_open(function(t)
 		t:send(code, tabstop, function(lines) hooks.send_pre(self, lines) end)
 	end, false)
 end
@@ -798,7 +800,7 @@ end
 
 ---Interrupt the current execution
 ---
----Can also be done using <c-c> in the terminal.
+---Can also be done using `<c-c>` in the terminal.
 function Kernel:interrupt()
 	assert(self.client_id, "Kernel has no client id")
 	require("jet.core.engine").interrupt(self.client_id)

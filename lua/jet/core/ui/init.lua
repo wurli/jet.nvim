@@ -484,7 +484,7 @@ M.show = function()
 			---@type jet.Kernel
 			local k = l.data.kernel
 			local should_focus = k.term and k.term:win()
-			k:open_term(function()
+			k:term_open(function()
 				if should_focus then
 					ui:close()
 				end
@@ -497,7 +497,7 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.Kernel
 			local k = l.data.kernel
-			require("jet.core.kernel").init_owned({ spec_path = k.spec_path }):open_term()
+			require("jet.core.kernel").init_owned({ spec_path = k.spec_path }):term_open()
 		end
 	end, { buf = ui.buf })
 

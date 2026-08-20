@@ -84,7 +84,7 @@ M.setup = function()
 
 	vim.api.nvim_create_user_command("Jet", function(opts)
 		local args = opts.fargs
-		local open = require("jet.core.kernel").open_term
+		local open = require("jet.core.kernel").term_open
 
 		if #args == 0 then
 			return ui.show()
