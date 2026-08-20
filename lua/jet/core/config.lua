@@ -32,7 +32,6 @@ M.defaults = {
 	---```
 	---@type table<string, string | fun(): string?>
 	default_kernels = {},
-	repl_win_opts = {}, ---@type vim.api.keyset.win_config
 	ui = {
 		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
 	},

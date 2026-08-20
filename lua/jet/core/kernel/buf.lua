@@ -1,4 +1,3 @@
-local config = require("jet.core.config")
 local utils = require("jet.core.utils")
 
 ---@class jet.Buf
@@ -6,36 +5,58 @@ local utils = require("jet.core.utils")
 ---@field name string
 ---@field augroup integer
 ---@field ns integer
+---@field open_opts vim.api.keyset.win_config | fun(): vim.api.keyset.win_config
 local Buf = {}
 Buf.__index = Buf ---@private
 
-function Buf:win()
-	--
-	return utils.buf_get_win(self.buf)
+---@class jet.Buf.init.Opts
+---@field name string
+---@field ns integer
+---@field open_opts vim.api.keyset.win_config | fun(): vim.api.keyset.win_config
+
+---@generic T
+---@param class? T
+---@param opts jet.Buf.init.Opts
+---@return T
+function Buf.init(class, opts)
+	return setmetatable({
+		ns = opts.ns,
+		name = opts.name,
+		open_opts = opts.open_opts,
+		augroup = vim.api.nvim_create_augroup(opts.name, { clear = true }),
+		buf = vim.api.nvim_create_buf(false, true),
+	}, class or Buf)
 end
 
+function Buf:win() return utils.buf_get_win(self.buf) end
+
 ---@param focus? boolean
-function Buf:open(focus)
+---@param opts? vim.api.keyset.win_config
+function Buf:open(focus, opts)
 	local win = self:win()
 
 	if win then
 		if focus then
 			vim.api.nvim_set_current_win(win)
-			vim.cmd.startinsert()
+			if vim.bo[self.buf].buftype == "terminal" then
+				vim.cmd.startinsert()
+			end
 		end
-	else
-		local opts = vim.tbl_extend("keep", config.options.repl_win_opts or {}, {
-			split = "right",
-			style = "minimal",
-			win = -1,
-		})
+		return
+	end
 
-		---@type integer
-		win = vim.api.nvim_open_win(self.buf, false, opts)
-		vim.api.nvim_win_set_hl_ns(win, self.ns)
+	local open_opts = opts
+		or type(self.open_opts) == "function" and self.open_opts()
+		or type(self.open_opts) == "table" and self.open_opts
+		or {}
 
-		-- When the cursor is at the bottom of the REPL you get aut-scroll when
-		-- new lines appear. This is a good state to start in.
+	---@type integer
+	win = vim.api.nvim_open_win(self.buf, false, open_opts)
+	vim.api.nvim_win_set_hl_ns(win, self.ns)
+
+	if vim.bo[self.buf].buftype == "terminal" then
+		-- When the cursor is at the bottom of the REPL you get auto-scroll
+		-- when new lines appear. This is a good state to start in.
 		vim.api.nvim_win_set_cursor(win, { vim.api.nvim_buf_line_count(self.buf), 0 })
 	end
 

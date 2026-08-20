@@ -5,9 +5,6 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@class jet.Kernel.Img
----@field buf integer
-
 ---@alias jet.kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
 ---@alias jet.kernel.paritalspec { display_name: string, language: string }
 ---@alias jet.kernel.execution_state "busy" | "idle" | "starting"
@@ -366,7 +363,6 @@ function Kernel:update_execution_state(msg)
 	hooks.execution_state_changed(self, new_state)
 end
 
----@return string
 function Kernel:image_dir()
 	assert(self.session_id, "Kernel has no session id")
 	local dir = vim.fn.stdpath("data") .. "/images/" .. self.session_id
@@ -375,53 +371,16 @@ function Kernel:image_dir()
 end
 
 function Kernel:open_images()
-	local term_win = self.term and self.term:win()
-
-	local images = {}
-	local img_dir = self:image_dir()
-	for file, type in vim.fs.dir(img_dir) do
-		if type == "file" then
-			table.insert(images, img_dir .. "/" .. file)
-		end
+	if not self.img then
+		assert(self.session_id, "Kernel has no session id")
+		self.img = require("jet.core.kernel.img").init({
+			session_id = self.session_id,
+			img_dir = self:image_dir(),
+			display_name = self.spec.display_name,
+			ns = jet_hl_ns,
+		})
 	end
-	table.sort(images)
-	local file = images[#images]
-
-	if not file then
-		utils.log_warn("No images found for kernel '%s'", self.spec.display_name)
-		return
-	end
-
-	---@param win integer
-	local open_above = function(win)
-		self.img = self.img or { buf = vim.api.nvim_create_buf(false, true) }
-		if not vim.api.nvim_buf_is_valid(self.img.buf) then
-			self.img.buf = vim.api.nvim_create_buf(false, true)
-		end
-		require("jet.core.image").show(self.img.buf, file)
-		if not utils.buf_get_win(self.img.buf) then
-			vim.api.nvim_open_win(self.img.buf, false, {
-				split = "above",
-				style = "minimal",
-				win = win,
-			})
-		end
-	end
-
-	if term_win then
-		open_above(term_win)
-	else
-		self:term_open(function(t)
-			term_win = t:win()
-
-			if not term_win then
-				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
-				return
-			end
-
-			open_above(term_win)
-		end)
-	end
+	self.img:open(false)
 end
 
 ---@private
@@ -441,6 +400,7 @@ function Kernel:handle_image_msg(msg)
 				string.format("%s/%s_%s.png", self:image_dir(), vim.fn.strftime("%Y%m%d_%H%M%S"), msg.header.msg_id)
 			if require("jet.core.image").base64_to_file(content, mime, filepath) then
 				self:open_images()
+				assert(self.img):display()
 			end
 		end
 	end

@@ -64,19 +64,4 @@ M.base64_to_file = function(data, mime, filepath)
 	return true
 end
 
----@param buf integer
----@param filepath string
-M.show = function(buf, filepath)
-	if not _G.Snacks then
-		return
-	end
-
-	_G.Snacks.image.buf.attach(buf, {
-		src = filepath,
-		inline = true,
-		type = "image",
-		pos = { 1, 0 },
-	})
-end
-
 return M

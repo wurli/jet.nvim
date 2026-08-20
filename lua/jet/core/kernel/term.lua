@@ -3,10 +3,6 @@ local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Term : jet.Buf
 ---@field job_id integer
----@field buf integer
----@field name string
----@field augroup integer
----@field ns integer
 local Term = setmetatable({}, { __index = buf })
 Term.__index = Term ---@private
 
@@ -24,12 +20,15 @@ function Term.init(opts)
 		buf_name = buf_name .. " (" .. session_hash .. ")"
 	end
 
-	local out = setmetatable({
-		augroup = vim.api.nvim_create_augroup(buf_name, { clear = true }),
-		ns = opts.ns,
-		buf = vim.api.nvim_create_buf(false, true),
+	local out = buf.init(Term, {
 		name = buf_name,
-	}, Term)
+		ns = opts.ns,
+		open_opts = {
+			split = "right",
+			win = -1,
+			style = "minimal",
+		},
+	})
 
 	--TODO: document this
 	vim.b[out.buf].jet = { session_id = opts.session_id }
