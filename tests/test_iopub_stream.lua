@@ -8,7 +8,9 @@ local T = new_set({
 	hooks = {
 		pre_case = function()
 			child.restart({ "-u", "scripts/minimal_init.lua" })
-			child.lua([[require("jet").setup({ ui = { stream_lines = 50 } })]])
+			child.lua([[require("jet").setup({
+			    ui = { stream_lines = 50 }
+			})]])
 		end,
 		post_once = child.stop,
 	},
@@ -45,7 +47,7 @@ T["kernel records stream from output in Kernel.output_stream"] = function()
 		return false
 	end)
 
-	assert(ok, "Kernel didn't record the expected output\noutput lines: \"", vim.inspect(lines))
+	assert(ok, "Kernel didn't record the expected output\noutput lines: " .. vim.inspect(lines))
 end
 
 return T
