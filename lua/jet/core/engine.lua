@@ -5,7 +5,7 @@ local loader = package.loadlib(lib_path, "luaopen_jet")
 
 assert(loader, "Could not load Jet library from " .. lib_path)
 
----@type jet.engine
+---@type jet.Engine
 local out = loader()
 
 return out

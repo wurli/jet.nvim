@@ -32,7 +32,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field spec_path string
 ---@field kernel_info? jet.kernel.info
 ---@field session_id? string
----@field session_info? jet.session_info
+---@field session_info? jet.SessionInfo
 ---@field client_id? string
 ---@field lsp_port? integer
 ---@field term? jet.Kernel.Term
@@ -167,7 +167,7 @@ function Kernel:term_create(callback)
 			})
 			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
 			if config.options.stop_on_buf_wipeout then
-				self.term:create_autocmd("BufWipeout", function() self:close() end)
+				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
 		end
 		if callback then
@@ -437,22 +437,22 @@ end
 
 ---@private
 function Kernel:handle_stream()
-	utils.poll(self.stream, function(res)
-		if not res then
-			return "exit"
-		elseif res.status == "busy" then
-			self:update_execution_state(res.msg)
-			self:update_output_stream(res.msg)
-			self:handle_image_msg(res.msg)
+	utils.poll(function()
+		local res = self.stream()
+		local msg = res.value
 
-			hooks.message_received(self, res.msg)
+		if msg then
+			self:update_execution_state(msg)
+			self:update_output_stream(msg)
+			self:handle_image_msg(msg)
+
+			hooks.message_received(self, msg)
 			for _, hook in pairs(self.on_message_received) do
-				hook(self, res.msg)
+				hook(self, msg)
 			end
-			return "continue"
-		else
-			return "wait"
 		end
+
+		return res.status
 	end, { alias = "Watch for kernel stream messages " .. self.session_id })
 end
 
@@ -541,31 +541,28 @@ function Kernel:start_lua_client(callback)
 	--TODO: stop poll on kernel close
 	utils.poll(function()
 		local ok, res = pcall(cb)
+
 		if not ok then
 			utils.log_error(
 				"Failed to start kernel '%s': %s",
 				self.spec.display_name,
 				vim.split(tostring(res), "\n")[1]
 			)
-			---@diagnostic disable-next-line: unnecessary-if
 			if self.session_id then
-				self:close()
+				self:close("Failed to start kernel: " .. tostring(res))
 			end
-			return nil
-		else
-			return res --[[@as jet.init.response?]]
+			return "done"
 		end
-	end, function(res)
-		if not res then
-			return "exit"
-		end
-		if res.status == "ready" then
+
+		local val = res.value
+
+		if val then
 			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self.session_id)
 
-			self.lsp_port = res.lsp_port
-			self.client_id = res.client_id
-			self.kernel_info = res.kernel_info
-			self.stream = res.stream
+			self.lsp_port = val.lsp_port
+			self.client_id = val.client_id
+			self.kernel_info = val.kernel_info
+			self.stream = val.stream
 
 			-- Try resolving filetype after kernel started autocmd so the user
 			-- has a chance to override it.
@@ -587,10 +584,9 @@ function Kernel:start_lua_client(callback)
 			for _, on_started_callback in pairs(self.on_started) do
 				on_started_callback(self)
 			end
-			return "exit"
-		else
-			return "wait"
 		end
+
+		return res.status
 	end, { interval = 30, alias = "Wait for kernel startup reply " .. self.session_id })
 end
 
@@ -634,8 +630,8 @@ end
 ---If the kernel is `owned` it will be stopped, otherwise it will just be
 ---disconnected.
 ---
----@param quiet? boolean Set to `true` to suppress notifications
-function Kernel:close(quiet)
+---@param reason? boolean | string
+function Kernel:close(reason)
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
@@ -658,8 +654,9 @@ function Kernel:close(quiet)
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
 				return
 			end
-			if not quiet then
-				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			if reason ~= false then
+				reason = reason and string.format(" (%s)", reason) or ""
+				utils.log_info("Stopped kernel '%s'%s", self.spec.display_name, reason)
 			end
 			hooks.kernel_close(self)
 			hooks.status_changed(self)
@@ -676,22 +673,21 @@ end
 ---resources on the nvim side.
 ---
 ---@param callback fun(success: boolean, failure_msg?: string)
----@see Kernel:close
+---@see |Kernel:close|
 function Kernel:stop(callback)
 	if not self.session_id then
 		return
 	end
 
-	utils.poll(require("jet.core.engine").stop(self.session_id), function(res)
-		if not res then
-			return "exit"
-		elseif res.status == "pending" then
-			return "wait"
-		else
+	local cb = require("jet.core.engine").stop(self.session_id)
+	utils.poll(function()
+		local res = cb()
+		if res.value then
 			self.client_id = nil
 			self.session_id = nil
-			callback(res.success, res.failure_msg)
+			callback(res.value.success, res.value.failure_msg)
 		end
+		return res.status
 	end, { alias = "Waiting for kernel stop response " .. self.session_id })
 end
 
@@ -725,17 +721,12 @@ function Kernel:comm_open(name, data, opts)
 	if opts.listener then
 		local get_comm_msg = require("jet.core.engine").comm_listen(self.client_id, comm_id)
 
-		---@param res? jet.kernel.response
-		utils.poll(get_comm_msg, function(res)
-			if not res then
-				-- The comm has been closed, so stop polling
-				return "exit"
-			elseif res.status == "busy" then
-				opts.listener(res.msg)
-				return "continue"
-			else
-				return "wait"
+		utils.poll(function()
+			local res = get_comm_msg()
+			if res.value then
+				opts.listener(res.value)
 			end
+			return res.status
 		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
 	end
 
@@ -772,7 +763,7 @@ end
 ---
 ---@param code string | string[]
 ---@param silent boolean
----@param callback? fun(res: jet.kernel.response)
+---@param callback? fun(res: jet.jupyter.msg)
 ---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
@@ -782,16 +773,12 @@ function Kernel:send_lua(code, silent, callback)
 	local responder, msg_id = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
 
 	if callback then
-		utils.poll(responder, function(res)
-			if not res then
-				return "exit"
+		utils.poll(function()
+			local res = responder()
+			if res.value then
+				callback(res.value)
 			end
-			if res.status == "busy" then
-				callback(res)
-				return "continue"
-			else
-				return "wait"
-			end
+			return res.status
 		end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
 	end
 

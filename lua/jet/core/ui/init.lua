@@ -518,7 +518,7 @@ M.show = function()
 			---@type jet.Kernel
 			local k = l.data.kernel
 			if k.session_id then
-				k:close()
+				k:close("UI command")
 			end
 		end
 	end, { buf = ui.buf })

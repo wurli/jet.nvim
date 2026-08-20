@@ -98,21 +98,20 @@ M.list_kernels = function(filters, init_opts, callback)
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
-		utils.poll(require("jet.core.engine").list_sessions(), function(res)
-			if not res then
-				return "exit"
-			elseif res.status == "pending" then
-				return "wait"
-			else
-				for _, k in ipairs(res.sessions) do
+		local cb = require("jet.core.engine").list_sessions()
+		utils.poll(function()
+			local res = cb()
+			if res.value then
+				for _, session in ipairs(res.value) do
 					-- Don't include sessions that are already connected to Neovim
-					if not manager.kernels[k.session_id] then
-						local init = vim.tbl_extend("keep", { session_id = k.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.opts]]
+					if not manager.kernels[session.session_id] then
+						local init = vim.tbl_extend("keep", { session_id = session.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.opts]]
 						table.insert(kernels, kernel.init_external(init))
 					end
 				end
 				callback(M.filter_kernels(kernels, filters))
 			end
+			return res.status
 		end, { interval = 20, alias = "Waiting for list_sessions output" })
 		return
 	end
