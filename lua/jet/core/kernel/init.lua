@@ -262,33 +262,43 @@ function Kernel:update_output_stream(msg)
 	end
 
 	if msg.header.msg_type == "error" then
+		local ename = msg.content.ename and msg.content.ename ~= "" and split(msg.content.ename, false) or {}
+		local evalue = msg.content.evalue and msg.content.evalue ~= "" and split(msg.content.evalue or "", false) or {}
+		local trace = {} --[[@as string[] ]]
+
+		for _, chunk in ipairs(msg.content.traceback or {}) do
+			for _, line in ipairs(split(chunk, false)) do
+				table.insert(trace, line)
+			end
+		end
+
+		local has_trace = #trace > 0
+		local has_ename = #ename > 0
+		local has_evalue = #evalue > 0
+
 		local lines = {}
-		if msg.content.traceback then
-			for _, traceback_segment in ipairs(msg.content.traceback) do
-				for _, line in ipairs(split(traceback_segment, true)) do
+
+		-- Yeah I know.
+		-- Reasoning: https://github.com/wurli/jet/blob/6e0ee17e3ad75be80d0ae6224466332d8601b930/crates/core/src/events.rs#L189-L233
+		if has_trace and has_ename and has_evalue then
+			lines = trace
+		elseif has_trace and has_evalue then
+			if vim.startswith(trace[1] or "", evalue[1] or "") then
+				lines = trace
+			else
+				lines = vim.list_extend({ evalue }, trace)
+			end
+		elseif has_ename and has_evalue then
+			lines = ename
+			for i, line in ipairs(evalue) do
+				if i == 1 then
+					lines[#lines] = lines[#lines] .. ": " .. line
+				else
 					table.insert(lines, line)
 				end
 			end
-		else
-			if msg.content.ename and msg.content.ename ~= "" then
-				lines = split(msg.content.ename, true)
-				---@diagnostic disable-next-line: unnecessary-if
-				if lines[#lines] and msg.content.evalue then
-					lines[#lines] = lines[#lines] .. ": "
-				end
-			end
-			if msg.content.evalue then
-				if #lines == 0 then
-					lines[1] = ""
-				end
-				for i, line in split(msg.content.evalue, true) do
-					if i == 1 then
-						lines[#lines] = lines[#lines] .. line
-					else
-						table.insert(lines, line)
-					end
-				end
-			end
+		elseif has_evalue then
+			lines = evalue
 		end
 
 		flush()
