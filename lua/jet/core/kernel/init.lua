@@ -128,7 +128,7 @@ end
 ---If no terminal is active, one will be created and opened.
 function Kernel:toggle_term()
 	if not self.term then
-		self:create_term()
+		self:open_term()
 	else
 		self.term:toggle()
 	end
@@ -140,13 +140,14 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 ---Open a terminal window for the kernel
 ---* If no terminal is active, one will be created and opened
 ---* If a terminal is already open, it will be focused
----@param callback? fun(k: jet.Kernel, focus_gained: boolean)
-function Kernel:open_term(callback)
+---@param callback? fun(t: jet.Kernel.Term)
+---@param focus? boolean
+function Kernel:open_term(callback, focus)
 	local open = function()
 		assert(self.term, "kernel.term is nil")
-		local focus_gained = self.term:open()
+		self.term:open(focus)
 		if callback then
-			callback(self, focus_gained)
+			callback(self.term)
 		end
 	end
 
@@ -406,8 +407,8 @@ function Kernel:open_images()
 	if term_win then
 		open_above(term_win)
 	else
-		self:open_term(function()
-			term_win = self.term and self.term:win()
+		self:open_term(function(t)
+			term_win = t:win()
 
 			if not term_win then
 				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
@@ -765,47 +766,9 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	tabstop = tabstop or vim.bo.tabstop or 4
-	assert(self.term and self.term.job_id, "Kernel has no repl job id")
-	if type(code) == "string" then
-		code = vim.split(code, "[\n\r]", { plain = false })
-	end
-
-	-- Remove trailing empty lines
-	for i = #code, 1, -1 do
-		if code[i] == "" then
-			table.remove(code, i)
-		else
-			break
-		end
-	end
-
-	-- Allow the user to modify the code before we send it. This is
-	-- particularly helpful, e.g. for ipython, which requires an extra newline
-	-- at the end of statements which end on an indented line in order to be
-	-- actually sent to the kernel (otherwise you get the continuation prompt
-	-- '+ ...').
-	hooks.send_pre(self, code)
-
-	-- Wrap in a bracketed-paste sequence so the REPL on the other end
-	-- accumulates the whole block as one cell instead of evaluating each
-	-- line separately, then submit with a single CR (Enter, in raw mode).
-	-- This is exactly what a terminal emits on Cmd/Ctrl+V — works with
-	-- any REPL that honors bracketed paste.
-	---@diagnostic disable-next-line: param-type-mismatch
-	code = table.concat(code, "\r")
-	code = code:gsub("\t", string.rep(" ", tabstop))
-
-	-- We use bracketed paste so the Jet REPL knows not to evaluate the code
-	-- until the end of the paste. This matches behaviour of Positron.
-	if not config.options.send.send_by_expr then
-		-- https://en.wikipedia.org/wiki/Bracketed-paste#Description_of_bracketed-paste
-		local bracketed_paste_start = "\x1b[200~"
-		local bracketed_paste_end = "\x1b[201~"
-		code = bracketed_paste_start .. code .. bracketed_paste_end
-	end
-
-	vim.fn.chansend(self.term.job_id, code .. "\r")
+	self:open_term(function(t)
+		t:send(code, tabstop, function(lines) hooks.send_pre(self, lines) end)
+	end, false)
 end
 
 ---Send code to the kernel via the Lua client

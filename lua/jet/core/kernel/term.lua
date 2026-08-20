@@ -73,15 +73,15 @@ function Term:win()
 	return utils.buf_get_win(self.buf)
 end
 
----@return boolean
-function Term:open()
+---@param focus? boolean
+function Term:open(focus)
 	local win = self:win()
-	local focus_gained = false
 
 	if win then
-		vim.api.nvim_set_current_win(win)
-		vim.cmd.startinsert()
-		focus_gained = true
+		if focus then
+			vim.api.nvim_set_current_win(win)
+			vim.cmd.startinsert()
+		end
 	else
 		local opts = vim.tbl_extend("keep", config.options.repl_win_opts or {}, {
 			split = "right",
@@ -100,8 +100,6 @@ function Term:open()
 
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
-
-	return focus_gained
 end
 
 function Term:toggle()
@@ -119,6 +117,57 @@ function Term:delete()
 			pcall(vim.api.nvim_buf_delete, self.buf, { force = true })
 		end
 	end)
+end
+
+---@param code string | string[] Code to be sent
+---@param tabstop? integer Optional; number of spaces to use for tab characters
+---@param on_send? fun(code: string[]) Optional; callback to be called after code is sent
+function Term:send(code, tabstop, on_send)
+	tabstop = tabstop or vim.bo.tabstop or 4
+	if type(code) == "string" then
+		code = vim.split(code, "[\n\r]", { plain = false })
+	end
+
+	-- Remove trailing empty lines
+	for i = #code, 1, -1 do
+		if code[i] == "" then
+			table.remove(code, i)
+		else
+			break
+		end
+	end
+
+	-- Wrap in a bracketed-paste sequence so the REPL on the other end
+	-- accumulates the whole block as one cell instead of evaluating each
+	-- line separately, then submit with a single CR (Enter, in raw mode).
+	-- This is exactly what a terminal emits on Cmd/Ctrl+V — works with
+	-- any REPL that honors bracketed paste.
+	---@diagnostic disable-next-line: param-type-mismatch
+	for i, line in ipairs(code) do
+		code[i] = line:gsub("\t", string.rep(" ", tabstop))
+	end
+
+	-- Allow the user to modify the code before we send it. This is
+	-- particularly helpful, e.g. for ipython, which requires an extra newline
+	-- at the end of statements which end on an indented line in order to be
+	-- actually sent to the kernel (otherwise you get the continuation prompt
+	-- '+ ...').
+	if on_send then
+		on_send(code)
+	end
+
+	code = table.concat(code, "\r")
+
+	-- We use bracketed paste so the Jet REPL knows not to evaluate the code
+	-- until the end of the paste. This matches behaviour of Positron.
+	if not config.options.send.send_by_expr then
+		-- https://en.wikipedia.org/wiki/Bracketed-paste#Description_of_bracketed-paste
+		local bracketed_paste_start = "\x1b[200~"
+		local bracketed_paste_end = "\x1b[201~"
+		code = bracketed_paste_start .. code .. bracketed_paste_end
+	end
+
+	vim.fn.chansend(self.job_id, code .. "\r")
 end
 
 ---@param event vim.api.keyset.events | vim.api.keyset.events[]

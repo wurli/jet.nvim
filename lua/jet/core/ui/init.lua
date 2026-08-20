@@ -483,11 +483,12 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.Kernel
 			local k = l.data.kernel
-			k:open_term(function(_, focus_gained)
-				if focus_gained then
+			local should_focus = k.term and k.term:win()
+			k:open_term(function()
+				if should_focus then
 					ui:close()
 				end
-			end)
+			end, true)
 		end
 	end, { buf = ui.buf })
 
