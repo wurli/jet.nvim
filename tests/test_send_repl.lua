@@ -18,7 +18,7 @@ local run_send = function()
 	child.lua([[
 			local Kernel = require("jet.core.kernel")
 			_G.kernel = Kernel.init_owned({ spec_path = "test-kernels/ark/kernel.json", session_name = "minitest" })
-			_G.kernel:open_term(function()
+			_G.kernel:term_open(function()
 				vim.uv.sleep(1000)
 				_G.kernel:send_repl({ "print('first line')", "print('second line')" })
 			end)

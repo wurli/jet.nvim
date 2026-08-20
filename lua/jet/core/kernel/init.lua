@@ -5,11 +5,6 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@class jet.Kernel.Term
----@field job_id integer
----@field buf integer
----@field buf_name string
-
 ---@class jet.Kernel.Img
 ---@field buf integer
 
@@ -33,11 +28,11 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   ```
 ---@class jet.Kernel
 ---@field session_name? string
----@field spec jet.kernel.spec | jet.kernel.paritalspec
+---@field spec jupyter.KernelSpec | jet.kernel.paritalspec
 ---@field spec_path string
----@field kernel_info? jet.kernel.info
+---@field kernel_info? jupyter.KernelInfo
 ---@field session_id? string
----@field session_info? jet.session_info
+---@field session_info? jet.SessionInfo
 ---@field client_id? string
 ---@field lsp_port? integer
 ---@field term? jet.Kernel.Term
@@ -49,10 +44,11 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
 ---@field comms table<string, string> comm_name -> id
----@field output_stream { complete_lines: jet.utils.queue<string>, incomplete_line: string }
----@field on_message_received table<string, fun(k: jet.Kernel, msg: jet.jupyter.msg)>
+---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
+---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
+---@field stream jet.callback<jupyter.Msg>
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
@@ -73,15 +69,15 @@ local init_defaults = function()
 	}
 end
 
----@class jet.kernel.init_owned.opts
+---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jet.kernel.spec | jet.kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.kernel.paritalspec
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
 ---
----@param opts jet.kernel.init_owned.opts
+---@param opts jet.kernel.init_owned.Opts
 function Kernel.init_owned(opts)
 	if not opts.spec then
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
@@ -95,7 +91,7 @@ function Kernel.init_owned(opts)
 	return out
 end
 
----@class jet.kernel.init_external.opts
+---@class jet.kernel.init_external.Opts
 ---@field session_id string
 
 ---Initialise a connection to an kernel running externally
@@ -103,7 +99,7 @@ end
 ---opts:
 ---- `session_id`: The session ID of the kernel to connect to
 ---
----@param opts jet.kernel.init_external.opts
+---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
 function Kernel.init_external(opts)
 	---@diagnostic disable-next-line: unnecessary-assert
@@ -129,149 +125,56 @@ function Kernel.init_external(opts)
 	return out
 end
 
----@private
----@return integer?
-function Kernel:get_term_win() return self.term and self.term.buf and utils.buf_get_win(self.term.buf) or nil end
-
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
-function Kernel:toggle_term()
-	local term_win = self:get_term_win()
-
-	if term_win then
-		vim.api.nvim_win_close(term_win, true)
+function Kernel:term_toggle()
+	if self.term then
+		self.term:toggle()
 	else
-		self:open_term()
+		self:term_open()
 	end
 end
 
 local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
 vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 
----Open a terminal window for the kernel
----* If no terminal is active, one will be created and opened
----* If a terminal is already open, it will be focused
----@param callback? fun(k: jet.Kernel, focus_gained: boolean)
----@param win_config? vim.api.keyset.win_config
-function Kernel:open_term(callback, win_config)
-	local open = function()
+---Open a terminal window for the kernel.
+---If no terminal is active, one will be created and opened
+---@param callback? fun(t: jet.Kernel.Term)
+---@param focus? boolean
+function Kernel:term_open(callback, focus)
+	self:term_create(function()
 		assert(self.term, "kernel.term is nil")
-
-		local term_win = self:get_term_win()
-
-		local focus_gained = false
-
-		if term_win then
-			vim.api.nvim_set_current_win(term_win)
-			vim.cmd.startinsert()
-			focus_gained = true
-		else
-			local opts = vim.tbl_extend("keep", win_config or config.options.repl_win_opts or {}, {
-				split = "right",
-				style = "minimal",
-				win = -1,
-			})
-
-			---@type integer
-			term_win = vim.api.nvim_open_win(self.term.buf, false, opts)
-
-			vim.api.nvim_win_set_hl_ns(term_win, jet_hl_ns)
-
-			-- When the cursor is at the bottom of the REPL you get aut-scroll when
-			-- new lines appear. This is a good state to start in.
-			vim.api.nvim_win_set_cursor(term_win, { vim.api.nvim_buf_line_count(self.term.buf), 0 })
-		end
-
-		vim.wo[term_win].number = false
-		vim.wo[term_win].relativenumber = false
-
+		self.term:open(focus)
 		if callback then
-			callback(self, focus_gained)
+			callback(self.term)
 		end
-	end
-
-	if self.term then
-		open()
-	else
-		self:create_term(open)
-	end
+	end)
 end
 
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
 ---Lua API.
----@param callback? fun(k: jet.Kernel) Stuff to run once the terminal is created
-function Kernel:create_term(callback)
-	local connect = function()
-		local term_buf = vim.api.nvim_create_buf(false, true)
-
-		--TODO: document this
-		vim.b[term_buf].jet = { session_id = self.session_id }
-
-		---@diagnostic disable-next-line: unnecessary-if
-		if config.options.stop_on_buf_wipeout and self.augroup then
-			vim.api.nvim_create_autocmd("BufWipeout", {
-				buffer = term_buf,
-				group = self.augroup,
-				callback = function() self:close() end,
-			})
-		end
-
-		-- buf_call since the buf is not yet attached to a window.
-		vim.api.nvim_buf_call(term_buf, function()
+---@private
+---@param callback? fun(k: jet.Kernel)
+function Kernel:term_create(callback)
+	self:start_lua_client(function()
+		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
-			local term_job_id = vim.fn.jobstart({
-				config.data.binary_path,
-				"attach",
-				self.session_id,
-				"--banner",
-				"--session-name",
-				"nvim",
-				"--no-graphics",
-				config.options.send.send_by_expr and "--no-indent" or nil,
-			}, {
-				term = true,
-				on_exit = function()
-					-- TODO: perhaps we don't want this - e.g. a kernel crashes
-					-- and suddenly all the info from the console is gone. For
-					-- now it's convenient, but maybe review in future or add
-					-- config.
-					self:delete_term_buffer()
-				end,
+			self.term = require("jet.core.kernel.term").init({
+				session_id = self.session_id,
+				display_name = self.spec.display_name,
+				ns = jet_hl_ns,
 			})
-
-			-- It seems that jobstart() also sets the buf name, so this has to be
-			-- done afterwards.
-			local session_hash = (self.session_id or ""):match("_([^_]+)$")
-			local buf_name = self.spec.display_name
-			if session_hash then
-				buf_name = buf_name .. " (" .. session_hash .. ")"
+			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
+			if config.options.stop_on_buf_wipeout then
+				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
-			vim.api.nvim_buf_set_name(term_buf, buf_name)
-
-			self.term = { job_id = term_job_id, buf = term_buf, buf_name = buf_name }
-		end)
-
-		-- On TermEnter, record this kernel as the last used
-		-- TODO: configure whether or not this should automatically happen
-		if config.options.auto_set_primary and self.term and self.augroup then
-			vim.api.nvim_create_autocmd("TermEnter", {
-				buffer = self.term.buf,
-				group = self.augroup,
-				callback = function() self:set_as_filetype_primary() end,
-			})
 		end
-
 		if callback then
 			callback(self)
 		end
-	end
-
-	if self.client_id then
-		connect()
-	else
-		self:start_lua_client(connect)
-	end
+	end)
 end
 
 ---@alias jet.kernel.status "connecting" | "connected" | "external" | "inactive"
@@ -289,8 +192,13 @@ function Kernel:status()
 	end
 end
 
+---Set the kernel as the 'primary' kernel for its filetype. No-op if the kernel
+---has no filetype.
 function Kernel:set_as_filetype_primary()
-	assert(self.filetype, "Kernel has no filetype")
+	if not self.filetype then
+		return
+	end
+
 	manager.filetype_primary[self.filetype] = self.session_id
 end
 
@@ -304,7 +212,8 @@ end
 ---@param s string
 split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
----@param msg jet.jupyter.msg
+---@private
+---@param msg jupyter.Msg
 function Kernel:update_output_stream(msg)
 	local flush = function(allow_empty)
 		if allow_empty or self.output_stream.incomplete_line ~= "" then
@@ -354,33 +263,43 @@ function Kernel:update_output_stream(msg)
 	end
 
 	if msg.header.msg_type == "error" then
+		local ename = msg.content.ename and msg.content.ename ~= "" and split(msg.content.ename, false) or {}
+		local evalue = msg.content.evalue and msg.content.evalue ~= "" and split(msg.content.evalue or "", false) or {}
+		local trace = {} --[[@as string[] ]]
+
+		for _, chunk in ipairs(msg.content.traceback or {}) do
+			for _, line in ipairs(split(chunk, false)) do
+				table.insert(trace, line)
+			end
+		end
+
+		local has_trace = #trace > 0
+		local has_ename = #ename > 0
+		local has_evalue = #evalue > 0
+
 		local lines = {}
-		if msg.content.traceback then
-			for _, traceback_segment in ipairs(msg.content.traceback) do
-				for _, line in ipairs(split(traceback_segment, true)) do
+
+		-- Yeah I know.
+		-- Reasoning: https://github.com/wurli/jet/blob/6e0ee17e3ad75be80d0ae6224466332d8601b930/crates/core/src/events.rs#L189-L233
+		if has_trace and has_ename and has_evalue then
+			lines = trace
+		elseif has_trace and has_evalue then
+			if vim.startswith(trace[1] or "", evalue[1] or "") then
+				lines = trace
+			else
+				lines = vim.list_extend({ evalue }, trace)
+			end
+		elseif has_ename and has_evalue then
+			lines = ename
+			for i, line in ipairs(evalue) do
+				if i == 1 then
+					lines[#lines] = lines[#lines] .. ": " .. line
+				else
 					table.insert(lines, line)
 				end
 			end
-		else
-			if msg.content.ename and msg.content.ename ~= "" then
-				lines = split(msg.content.ename, true)
-				---@diagnostic disable-next-line: unnecessary-if
-				if lines[#lines] and msg.content.evalue then
-					lines[#lines] = lines[#lines] .. ": "
-				end
-			end
-			if msg.content.evalue then
-				if #lines == 0 then
-					lines[1] = ""
-				end
-				for i, line in split(msg.content.evalue, true) do
-					if i == 1 then
-						lines[#lines] = lines[#lines] .. line
-					else
-						table.insert(lines, line)
-					end
-				end
-			end
+		elseif has_evalue then
+			lines = evalue
 		end
 
 		flush()
@@ -398,7 +317,7 @@ function Kernel:has_lua_client() return self.client_id ~= nil end
 local last_execute_id = ""
 
 ---@private
----@param msg jet.jupyter.msg
+---@param msg jupyter.Msg
 function Kernel:update_execution_state(msg)
 	local header = msg.header
 	local parent = msg.parent_header or {}
@@ -456,7 +375,7 @@ function Kernel:image_dir()
 end
 
 function Kernel:open_images()
-	local term_win = self:get_term_win()
+	local term_win = self.term and self.term:win()
 
 	local images = {}
 	local img_dir = self:image_dir()
@@ -492,8 +411,8 @@ function Kernel:open_images()
 	if term_win then
 		open_above(term_win)
 	else
-		self:open_term(function()
-			term_win = self:get_term_win()
+		self:term_open(function(t)
+			term_win = t:win()
 
 			if not term_win then
 				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
@@ -506,9 +425,9 @@ function Kernel:open_images()
 end
 
 ---@private
----@param msg jet.jupyter.msg
+---@param msg jupyter.Msg
 function Kernel:handle_image_msg(msg)
-	local img_messages = { display_data = true, execute_result = true } ---@type table<jet.msg_type, boolean>
+	local img_messages = { display_data = true, execute_result = true } ---@type table<jupyter.msg_type, boolean>
 	local data = msg.channel == "iopub" and img_messages[msg.header.msg_type] and msg.content and msg.content.data
 
 	if not data then
@@ -518,13 +437,8 @@ function Kernel:handle_image_msg(msg)
 	for mime_text, content in pairs(data) do
 		local mime = utils.parse_mime(mime_text)
 		if mime and mime.type == "image" then
-			local filepath = string.format(
-				"%s/%s_%s.%s",
-				self:image_dir(),
-				vim.fn.strftime("%Y%m%d_%H%M%S"),
-				msg.header.msg_id,
-				mime.subtype
-			)
+			local filepath =
+				string.format("%s/%s_%s.png", self:image_dir(), vim.fn.strftime("%Y%m%d_%H%M%S"), msg.header.msg_id)
 			if require("jet.core.image").base64_to_file(content, mime, filepath) then
 				self:open_images()
 			end
@@ -532,34 +446,67 @@ function Kernel:handle_image_msg(msg)
 	end
 end
 
+---@param msg jupyter.Msg
+function Kernel:handle_input_request(msg)
+	if msg.header.msg_type ~= "input_request" then
+		return
+	end
+
+	if not msg.parent_header then
+		utils.log_warn(
+			"Received an input_request message without a parent_header from kernel '%s'",
+			self.spec.display_name
+		)
+		return
+	end
+
+	assert(self.client_id, "Kernel has no client id")
+
+	local prompt = msg.content.prompt or ""
+	-- local password = msg.content.password or false
+
+	vim.schedule(function()
+		vim.ui.input(
+			{ prompt = string.format("[%s] %s", self.spec.display_name, prompt) },
+			function(input)
+				require("jet.core.engine").provide_stdin(self.client_id, msg.parent_header.msg_id, input or "")
+			end
+		)
+	end)
+end
+
 ---@private
 function Kernel:handle_stream()
-	utils.poll(self.stream, function(res)
-		if not res then
-			return "exit"
-		elseif res.status == "busy" then
-			self:update_execution_state(res.msg)
-			self:update_output_stream(res.msg)
-			self:handle_image_msg(res.msg)
+	utils.poll(function()
+		local res = self.stream()
+		local msg = res.value
 
-			hooks.message_received(self, res.msg)
+		if msg then
+			self:update_execution_state(msg)
+			self:update_output_stream(msg)
+			self:handle_image_msg(msg)
+			self:handle_input_request(msg)
+
+			hooks.message_received(self, msg)
 			for _, hook in pairs(self.on_message_received) do
-				hook(self, res.msg)
+				hook(self, msg)
 			end
-			return "continue"
-		else
-			return "wait"
 		end
+
+		return res.status
 	end, { alias = "Watch for kernel stream messages " .. self.session_id })
 end
 
 ---@private
 function Kernel:register_lsp_client()
+	if not self.filetype then
+		return
+	end
+
 	assert(self.lsp_port, "Kernel has no lsp port")
 	assert(self.client_id, "Kernel has no client id")
 	---@diagnostic disable-next-line: unnecessary-assert
 	assert(self.spec and self.spec.display_name, "Kernel has no display name")
-	assert(self.filetype, "Kernel has no filetype")
 
 	local clean_name = self.spec.display_name:gsub("%W", "_"):gsub("_+", "_"):gsub("^_+", ""):gsub("_+$", "")
 	self.lsp_name = "jet_" .. clean_name .. "_" .. self.client_id
@@ -635,31 +582,28 @@ function Kernel:start_lua_client(callback)
 	--TODO: stop poll on kernel close
 	utils.poll(function()
 		local ok, res = pcall(cb)
+
 		if not ok then
 			utils.log_error(
 				"Failed to start kernel '%s': %s",
 				self.spec.display_name,
 				vim.split(tostring(res), "\n")[1]
 			)
-			---@diagnostic disable-next-line: unnecessary-if
 			if self.session_id then
-				self:close()
+				self:close("Failed to start kernel: " .. tostring(res))
 			end
-			return nil
-		else
-			return res --[[@as jet.init.response?]]
+			return "done"
 		end
-	end, function(res)
-		if not res then
-			return "exit"
-		end
-		if res.status == "ready" then
+
+		local val = res.value
+
+		if val then
 			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self.session_id)
 
-			self.lsp_port = res.lsp_port
-			self.client_id = res.client_id
-			self.kernel_info = res.kernel_info
-			self.stream = res.stream
+			self.lsp_port = val.lsp_port
+			self.client_id = val.client_id
+			self.kernel_info = val.kernel_info
+			self.stream = val.stream
 
 			-- Try resolving filetype after kernel started autocmd so the user
 			-- has a chance to override it.
@@ -681,10 +625,9 @@ function Kernel:start_lua_client(callback)
 			for _, on_started_callback in pairs(self.on_started) do
 				on_started_callback(self)
 			end
-			return "exit"
-		else
-			return "wait"
 		end
+
+		return res.status
 	end, { interval = 30, alias = "Wait for kernel startup reply " .. self.session_id })
 end
 
@@ -723,24 +666,13 @@ function Kernel:try_resolve_filetype()
 	end
 end
 
----@private
-function Kernel:delete_term_buffer()
-	vim.schedule(function()
-		if self.term and self.term.buf then
-			if vim.api.nvim_buf_is_valid(self.term.buf) then
-				pcall(vim.api.nvim_buf_delete, self.term.buf, { force = true })
-			end
-		end
-	end)
-end
-
 ---Shut down the kernel and clean up any associated resources.
 ---
 ---If the kernel is `owned` it will be stopped, otherwise it will just be
 ---disconnected.
 ---
----@param quiet? boolean Set to `true` to suppress notifications
-function Kernel:close(quiet)
+---@param reason? boolean | string
+function Kernel:close(reason)
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
@@ -753,7 +685,9 @@ function Kernel:close(quiet)
 	if self.augroup then
 		pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
 	end
-	self:delete_term_buffer()
+	if self.term then
+		self.term:delete()
+	end
 
 	if self.owned then
 		self:stop(function(success, failure_msg)
@@ -761,8 +695,9 @@ function Kernel:close(quiet)
 				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
 				return
 			end
-			if not quiet then
-				utils.log_info("Stopped kernel '%s'", self.spec.display_name)
+			if reason ~= false then
+				reason = reason and string.format(" (%s)", reason) or ""
+				utils.log_info("Stopped kernel '%s'%s", self.spec.display_name, reason)
 			end
 			hooks.kernel_close(self)
 			hooks.status_changed(self)
@@ -779,27 +714,26 @@ end
 ---resources on the nvim side.
 ---
 ---@param callback fun(success: boolean, failure_msg?: string)
----@see Kernel:close
+---@see |Kernel:close|
 function Kernel:stop(callback)
 	if not self.session_id then
 		return
 	end
 
-	utils.poll(require("jet.core.engine").stop(self.session_id), function(res)
-		if not res then
-			return "exit"
-		elseif res.status == "pending" then
-			return "wait"
-		else
+	local cb = require("jet.core.engine").stop(self.session_id)
+	utils.poll(function()
+		local res = cb()
+		if res.value then
 			self.client_id = nil
 			self.session_id = nil
-			callback(res.success, res.failure_msg)
+			callback(res.value.success, res.value.failure_msg)
 		end
+		return res.status
 	end, { alias = "Waiting for kernel stop response " .. self.session_id })
 end
 
----@class jet.kernel.comm_open.opts
----@field listener? fun(res: jet.jupyter.msg)
+---@class jet.kernel.comm_open.Opts
+---@field listener? fun(res: jupyter.Msg)
 ---@field listener_interval? integer In milliseconds, default 50ms
 
 ---Open a comm channel to the kernel
@@ -812,13 +746,14 @@ end
 ---
 ---@param name string
 ---@param data? table
----@param opts? jet.kernel.comm_open.opts
----@return string comm_id
+---@param opts? jet.kernel.comm_open.Opts
+---@return string # Comm id
+---@return string # Message id
 ---@see |Kernel:comm_send()|
 ---@see https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 function Kernel:comm_open(name, data, opts)
 	assert(self.client_id, "Kernel has no client id")
-	local comm_id, _ = require("jet.core.engine").comm_open(self.client_id, name, data or {})
+	local _cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
 
 	self.comms[name] = comm_id
 
@@ -827,31 +762,28 @@ function Kernel:comm_open(name, data, opts)
 	if opts.listener then
 		local get_comm_msg = require("jet.core.engine").comm_listen(self.client_id, comm_id)
 
-		---@param res? jet.kernel.response
-		utils.poll(get_comm_msg, function(res)
-			if not res then
-				-- The comm has been closed, so stop polling
-				return "exit"
-			elseif res.status == "busy" then
-				opts.listener(res.msg)
-				return "continue"
-			else
-				return "wait"
+		utils.poll(function()
+			local res = get_comm_msg()
+			if res.value then
+				opts.listener(res.value)
 			end
+			return res.status
 		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
 	end
 
-	return comm_id
+	return comm_id, msg_id
 end
 
 ---Send a message via a comm channel
 ---
 ---@param comm_id string
 ---@param data table
+---@return string # Message id
 ---@see |Kernel:comm_open()|
 function Kernel:comm_send(comm_id, data)
 	assert(self.client_id)
-	require("jet.core.engine").comm_send(self.client_id, comm_id, data)
+	local _cb, msg_id = require("jet.core.engine").comm_send(self.client_id, comm_id, data)
+	return msg_id
 end
 
 ---Send code to the kernel via the terminal repl
@@ -859,47 +791,9 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	tabstop = tabstop or vim.bo.tabstop or 4
-	assert(self.term and self.term.job_id, "Kernel has no repl job id")
-	if type(code) == "string" then
-		code = vim.split(code, "[\n\r]", { plain = false })
-	end
-
-	-- Remove trailing empty lines
-	for i = #code, 1, -1 do
-		if code[i] == "" then
-			table.remove(code, i)
-		else
-			break
-		end
-	end
-
-	-- Allow the user to modify the code before we send it. This is
-	-- particularly helpful, e.g. for ipython, which requires an extra newline
-	-- at the end of statements which end on an indented line in order to be
-	-- actually sent to the kernel (otherwise you get the continuation prompt
-	-- '+ ...').
-	hooks.send_pre(self, code)
-
-	-- Wrap in a bracketed-paste sequence so the REPL on the other end
-	-- accumulates the whole block as one cell instead of evaluating each
-	-- line separately, then submit with a single CR (Enter, in raw mode).
-	-- This is exactly what a terminal emits on Cmd/Ctrl+V — works with
-	-- any REPL that honors bracketed paste.
-	---@diagnostic disable-next-line: param-type-mismatch
-	code = table.concat(code, "\r")
-	code = code:gsub("\t", string.rep(" ", tabstop))
-
-	-- We use bracketed paste so the Jet REPL knows not to evaluate the code
-	-- until the end of the paste. This matches behaviour of Positron.
-	if not config.options.send.send_by_expr then
-		-- https://en.wikipedia.org/wiki/Bracketed-paste#Description_of_bracketed-paste
-		local bracketed_paste_start = "\x1b[200~"
-		local bracketed_paste_end = "\x1b[201~"
-		code = bracketed_paste_start .. code .. bracketed_paste_end
-	end
-
-	vim.fn.chansend(self.term.job_id, code .. "\r")
+	self:term_open(function(t)
+		t:send(code, tabstop, function(lines) hooks.send_pre(self, lines) end)
+	end, false)
 end
 
 ---Send code to the kernel via the Lua client
@@ -910,34 +804,31 @@ end
 ---
 ---@param code string | string[]
 ---@param silent boolean
----@param callback? fun(res: jet.kernel.response)
+---@param callback? fun(res: jupyter.Msg)
+---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
 	if type(code) == "table" then
 		code = table.concat(code, "\n")
 	end
-	local responder = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
+	local responder, msg_id = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
 
-	if not callback then
-		return
+	if callback then
+		utils.poll(function()
+			local res = responder()
+			if res.value then
+				callback(res.value)
+			end
+			return res.status
+		end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
 	end
 
-	utils.poll(responder, function(res)
-		if not res then
-			return "exit"
-		end
-		if res.status == "busy" then
-			callback(res)
-			return "continue"
-		else
-			return "wait"
-		end
-	end, { interval = 30, alias = "Wait for execute_code response: " .. self.session_id .. ": " .. code })
+	return msg_id
 end
 
 ---Interrupt the current execution
 ---
----Can also be done using <c-c> in the terminal.
+---Can also be done using `<c-c>` in the terminal.
 function Kernel:interrupt()
 	assert(self.client_id, "Kernel has no client id")
 	require("jet.core.engine").interrupt(self.client_id)

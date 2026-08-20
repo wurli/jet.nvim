@@ -8,7 +8,9 @@ local T = new_set({
 	hooks = {
 		pre_case = function()
 			child.restart({ "-u", "scripts/minimal_init.lua" })
-			child.lua([[require("jet").setup({ ui = { stream_lines = 50 } })]])
+			child.lua([[require("jet").setup({
+			    ui = { stream_lines = 50 }
+			})]])
 		end,
 		post_once = child.stop,
 	},
@@ -18,7 +20,7 @@ T["kernel records stream from output in Kernel.output_stream"] = function()
 	child.lua([[
 		_G.k = require("jet.core.kernel").init_owned({ spec_path = "test-kernels/ark/kernel.json" })
 
-		_G.k:open_term(function()
+		_G.k:term_open(function()
 			-- Give the Jet CLI a chance to start up
 			vim.uv.sleep(500)
 
@@ -45,7 +47,7 @@ T["kernel records stream from output in Kernel.output_stream"] = function()
 		return false
 	end)
 
-	assert(ok, "Kernel didn't record the expected output\noutput lines: \"", vim.inspect(lines))
+	assert(ok, "Kernel didn't record the expected output\noutput lines: " .. vim.inspect(lines))
 end
 
 return T

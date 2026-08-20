@@ -6,9 +6,9 @@ local jet_quit_augroup = vim.api.nvim_create_augroup("jet.quit", { clear = true 
 
 vim.api.nvim_create_autocmd({ "VimLeave", "UILeave" }, {
 	group = jet_quit_augroup,
-	callback = function()
+	callback = function(e)
 		for _, kernel in pairs(require("jet.core.manager").kernels) do
-			kernel:close()
+			kernel:close(e.event)
 		end
 	end,
 })
@@ -21,7 +21,7 @@ local modify_jupyter_path = function()
 	vim.env.JUPYTER_PATH = table.concat({ config.data.jet_nvim_data_dir, vim.env.JUPYTER_PATH }, pathsep)
 end
 
----@param opts Partial<jet.Config>
+---@param opts jet.DeepPartial<jet.Config.Opts>
 M.setup = function(opts)
 	modify_jupyter_path()
 	config.set(opts)

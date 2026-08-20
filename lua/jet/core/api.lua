@@ -4,7 +4,7 @@ local manager = require("jet.core.manager")
 
 local M = {}
 
----@class jet.api.list_kernels.filters
+---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
 ---@field spec_path? string
 ---@field filetype? string | boolean `true` gets the filetype at the current position
@@ -14,7 +14,7 @@ local M = {}
 ---@field status? jet.kernel.status | jet.kernel.status[]
 
 ---@param kernels jet.Kernel[]
----@param opts? jet.api.list_kernels.filters
+---@param opts? jet.api.Filters
 ---@return jet.Kernel[]
 M.filter_kernels = function(kernels, opts)
 	opts = opts or {}
@@ -56,7 +56,7 @@ M.filter_kernels = function(kernels, opts)
 				if type(spec_path) == "function" then
 					spec_path = spec_path()
 				end
-				if not spec_path or not utils.path_eq(k.spec_path, spec_path) then
+				if not spec_path or not utils.path_eq((k.spec_path or ""), spec_path) then
 					return false
 				end
 			end
@@ -73,8 +73,8 @@ M.filter_kernels = function(kernels, opts)
 	end, kernels)
 end
 
----@param filters jet.api.list_kernels.filters
----@param init_opts? {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
+---@param filters jet.api.Filters
+---@param init_opts? {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(kernels: jet.Kernel[])
 M.list_kernels = function(filters, init_opts, callback)
 	filters = filters or {}
@@ -92,27 +92,26 @@ M.list_kernels = function(filters, init_opts, callback)
 
 	if vim.tbl_contains(filters.status, "inactive") then
 		for _, k in ipairs(require("jet.core.engine").list_kernels()) do
-			local init = vim.tbl_extend("keep", { spec_path = k.path, spec = k.spec }, init_opts or {}) --[[@as jet.kernel.init_owned.opts]]
+			local init = vim.tbl_extend("keep", { spec_path = k.path, spec = k.spec }, init_opts or {}) --[[@as jet.kernel.init_owned.Opts]]
 			table.insert(kernels, kernel.init_owned(init))
 		end
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
-		utils.poll(require("jet.core.engine").list_sessions(), function(res)
-			if not res then
-				return "exit"
-			elseif res.status == "pending" then
-				return "wait"
-			else
-				for _, k in ipairs(res.sessions) do
+		local cb = require("jet.core.engine").list_sessions()
+		utils.poll(function()
+			local res = cb()
+			if res.value then
+				for _, session in ipairs(res.value) do
 					-- Don't include sessions that are already connected to Neovim
-					if not manager.kernels[k.session_id] then
-						local init = vim.tbl_extend("keep", { session_id = k.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.opts]]
+					if not manager.kernels[session.session_id] then
+						local init = vim.tbl_extend("keep", { session_id = session.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.Opts]]
 						table.insert(kernels, kernel.init_external(init))
 					end
 				end
 				callback(M.filter_kernels(kernels, filters))
 			end
+			return res.status
 		end, { interval = 20, alias = "Waiting for list_sessions output" })
 		return
 	end
@@ -140,8 +139,8 @@ end
 
 ---Run `callback()` on a kernel which is not yet running
 ---
----@param filters jet.api.list_kernels.filters
----@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
+---@param filters jet.api.Filters
+---@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(k: jet.Kernel)
 M.get_inactive = function(filters, init_opts, callback)
 	filters = filters or {}
@@ -161,8 +160,8 @@ end
 
 ---Run `callback()` on a kernel which is running but not connected to Neovim
 ---
----@param filters jet.api.list_kernels.filters
----@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
+---@param filters jet.api.Filters
+---@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(k: jet.Kernel)
 M.get_external = function(filters, init_opts, callback)
 	filters = filters or {}
@@ -180,7 +179,7 @@ end
 
 ---Run `callback()` on a kernel which is running and connected to Neovim
 ---
----@param filters? jet.api.list_kernels.filters
+---@param filters? jet.api.Filters
 ---@param callback fun(k: jet.Kernel)
 M.get_connected = function(filters, callback, silent)
 	filters = filters or {}
@@ -217,8 +216,8 @@ end
 ---
 ---TODO: document available filters here
 ---
----@param filters jet.api.list_kernels.filters
----@param init_opts {} | jet.kernel.init_owned.opts | jet.kernel.init_external.opts
+---@param filters jet.api.Filters
+---@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(k: jet.Kernel)
 M.get_any = function(filters, init_opts, callback)
 	local choose = function(kernels)

@@ -1,19 +1,19 @@
----@class jet.ui.page
+---@class jet.ui.Page
 ---@field buf integer
 ---@field ns integer
----@field groups jet.ui.linegroup[]
----@field lines jet.ui.line[]
+---@field groups jet.ui.Linegroup[]
+---@field lines jet.ui.Line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[]
----@field make_groups fun(callback: fun(groups: jet.ui.linegroup[]))
+---@field make_groups fun(callback: fun(groups: jet.ui.Linegroup[]))
 ---@field timer uv.uv_timer_t
 ---@field interval integer
 local Page = {}
 Page.__index = Page
 
----@param opts Partial<jet.ui.page>
----@param make_groups fun(callback: fun(groups: jet.ui.linegroup[]))
----@return jet.ui.page
+---@param opts Partial<jet.ui.Page>
+---@param make_groups fun(callback: fun(groups: jet.ui.Linegroup[]))
+---@return jet.ui.Page
 Page.new = function(opts, make_groups)
 	local out = setmetatable({
 		make_groups = make_groups,
@@ -74,7 +74,7 @@ function Page:redraw()
 end
 
 function Page:resolve()
-	local lines = {} ---@type jet.ui.line[]
+	local lines = {} ---@type jet.ui.Line[]
 	local text = {} ---@type string[]
 	local marks = {} ---@type jet.ui.line.extmark[]
 	local lnum = 0

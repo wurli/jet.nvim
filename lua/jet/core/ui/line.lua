@@ -2,7 +2,7 @@
 ---@alias jet.ui.line.extmark_shorthand string | vim.api.keyset.set_extmark | (string | vim.api.keyset.set_extmark)[]
 ---@alias jet.ui.line.extmark { mark: vim.api.keyset.set_extmark, start_col?: integer, start_row?: integer }}
 
----@class jet.ui.line
+---@class jet.ui.Line
 ---@field indent integer
 ---@field parts jet.ui.line.parts
 ---@field make_parts? fun(): jet.ui.line.parts Reset `parts`
@@ -10,11 +10,11 @@
 ---@field lnum? integer
 ---@field marks jet.ui.line.extmark[]
 ---@field data table<string, any>
----@field on_resolve? fun(self: jet.ui.line)
+---@field on_resolve? fun(self: jet.ui.Line)
 local Line = {}
 Line.__index = Line
 
----@param opts? Partial<jet.ui.line>
+---@param opts? Partial<jet.ui.Line>
 ---@param parts? jet.ui.line.parts | fun(): jet.ui.line.parts Reset `parts`
 Line.new = function(opts, parts)
 	opts = opts or {}

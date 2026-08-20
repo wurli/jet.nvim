@@ -1,6 +1,6 @@
 local M = {}
 
----@class jet.mime
+---@class jet.Mime
 ---@field type string
 ---@field subtype string
 ---@field tree? string
@@ -19,7 +19,7 @@ end
 
 ---@param mime string
 ---@param quiet? boolean Suppress warnings on parse failures
----@return jet.mime?
+---@return jet.Mime?
 ---@see https://en.wikipedia.org/wiki/Media_type
 M.parse_mime = function(mime, quiet)
 	if not mime_grammar then
@@ -130,14 +130,11 @@ M.open_polls = {}
 ---
 ---Opts:
 ---	- interval: number (default: 50) - polling interval in milliseconds
----	- handler: function(result) - called with the result of the callback, should return
----	    either "exit", "continue", or "wait" to control the polling behavior
 ---
 ---@generic T
----@param callback fun(): T
----@param handler fun(res: T): nil | "wait" | "continue" | "exit"
+---@param callback fun(): nil | "pending" | "ready" | "done"
 ---@param opts? { interval?: integer, alias?: string }
-M.poll = function(callback, handler, opts)
+M.poll = function(callback, opts)
 	opts = opts or {}
 	opts.interval = opts.interval or 50
 
@@ -151,9 +148,11 @@ M.poll = function(callback, handler, opts)
 
 	local timer_callback = function()
 		while true do
-			local action = handler(callback()) or "wait"
+			local action = callback() or "pending"
 
-			if action == "exit" then
+			if action == "pending" then
+				return
+			elseif action == "done" then
 				timer:stop()
 				if not timer:is_closing() then
 					timer:close(function()
@@ -163,10 +162,7 @@ M.poll = function(callback, handler, opts)
 					end)
 				end
 				return
-			elseif action == "wait" then
-				return
-				---@diagnostic disable-next-line: unnecessary-if
-			elseif action ~= "continue" then
+			elseif action ~= "ready" then
 				-- If we've got a valid result, process it and then and then
 				-- immediately (i.e. with no delay) poll again.
 				error(("Unexpected action '%s'"):format(tostring(action)))

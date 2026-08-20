@@ -19,7 +19,7 @@ local base64_to_bytes = function(data)
 end
 
 ---@param data string Base64-encoded data
----@param mime jet.mime
+---@param mime jet.Mime
 ---@param filepath string
 ---@return boolean
 M.base64_to_file = function(data, mime, filepath)
@@ -28,12 +28,19 @@ M.base64_to_file = function(data, mime, filepath)
 		return false
 	end
 
-	local supported_types = { png = true, jpeg = true }
+	local handlers = require("jet.core.config").options.image.handlers
+	local handler = handlers[mime.subtype]
+
+	if handler then
+		return handler(data, mime, filepath)
+	end
+
+	local supported_types = { png = true }
 	if not supported_types[mime.subtype] then
 		utils.log_error(
-			"Unsupported MIME subtype % (should be one of %s)",
-			mime.type,
-			table.concat(vim.tbl_keys(supported_types), ", ")
+			"Unsupported MIME subtype '%s' (should be one of %s)",
+			mime.subtype,
+			table.concat(vim.list_extend(vim.tbl_keys(supported_types), vim.tbl_keys(handlers)), ", ")
 		)
 		return false
 	end

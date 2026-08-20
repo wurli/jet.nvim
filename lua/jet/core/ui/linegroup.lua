@@ -1,12 +1,12 @@
----@class jet.ui.linegroup
----@field make_lines? fun(): jet.ui.line[]
----@field lines jet.ui.line[]
+---@class jet.ui.Linegroup
+---@field make_lines? fun(): jet.ui.Line[]
+---@field lines jet.ui.Line[]
 ---@field text string[]
 ---@field marks jet.ui.line.extmark[][]
 local Linegroup = {}
 Linegroup.__index = Linegroup
 
----@param lines jet.ui.line[] | fun(): jet.ui.line[]
+---@param lines jet.ui.Line[] | fun(): jet.ui.Line[]
 Linegroup.new = function(lines)
 	return setmetatable({
 		make_lines = type(lines) == "function" and lines or nil,
