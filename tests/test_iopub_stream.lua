@@ -18,7 +18,7 @@ T["kernel records stream from output in Kernel.output_stream"] = function()
 	child.lua([[
 		_G.k = require("jet.core.kernel").init_owned({ spec_path = "test-kernels/ark/kernel.json" })
 
-		_G.k:open_term(function()
+		_G.k:term_open(function()
 			-- Give the Jet CLI a chance to start up
 			vim.uv.sleep(500)
 
