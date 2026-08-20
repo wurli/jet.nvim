@@ -30,7 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_name? string
 ---@field spec jupyter.KernelSpec | jet.kernel.paritalspec
 ---@field spec_path string
----@field kernel_info? juypyter.KernelInfo
+---@field kernel_info? jupyter.KernelInfo
 ---@field session_id? string
 ---@field session_info? jet.SessionInfo
 ---@field client_id? string
@@ -445,6 +445,35 @@ function Kernel:handle_image_msg(msg)
 	end
 end
 
+---@param msg jupyter.Msg
+function Kernel:handle_input_request(msg)
+	if msg.header.msg_type ~= "input_request" then
+		return
+	end
+
+	if not msg.parent_header then
+		utils.log_warn(
+			"Received an input_request message without a parent_header from kernel '%s'",
+			self.spec.display_name
+		)
+		return
+	end
+
+	assert(self.client_id, "Kernel has no client id")
+
+	local prompt = msg.content.prompt or ""
+	-- local password = msg.content.password or false
+
+	vim.schedule(function()
+		vim.ui.input(
+			{ prompt = string.format("[%s] %s", self.spec.display_name, prompt) },
+			function(input)
+				require("jet.core.engine").provide_stdin(self.client_id, msg.parent_header.msg_id, input or "")
+			end
+		)
+	end)
+end
+
 ---@private
 function Kernel:handle_stream()
 	utils.poll(function()
@@ -455,6 +484,7 @@ function Kernel:handle_stream()
 			self:update_execution_state(msg)
 			self:update_output_stream(msg)
 			self:handle_image_msg(msg)
+			self:handle_input_request(msg)
 
 			hooks.message_received(self, msg)
 			for _, hook in pairs(self.on_message_received) do
