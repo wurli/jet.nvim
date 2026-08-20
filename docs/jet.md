@@ -6,7 +6,7 @@ jet.nvim is a Jupyter client/API for Neovim, built on top of the
 ## Lua API
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Config
+python3 scripts/emmylua-to-md.py --type jet.Config.Opts
 ```
 
 ```{.sh include=true}
