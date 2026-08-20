@@ -152,8 +152,8 @@ Lua API                                                                *lua-api*
         • {on_started}           (`table<string,fun(k: jet.Kernel)>`)
         • {metadata}             (`table<string,any>`) Arbitrary data,
                                  e.g. for use by extensions
-        • {lsp_name}             (`string`)
         • {stream}               (`jet.callback<jupyter.Msg>`)
+        • {lsp_name}             (`string`)
 
 Kernel:init_owned({opts})                                  *Kernel:init_owned()*
 

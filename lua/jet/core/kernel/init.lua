@@ -48,6 +48,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
+---@field stream jet.callback<jupyter.Msg>
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
