@@ -127,10 +127,10 @@ end
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
 function Kernel:toggle_term()
-	if not self.term then
-		self:open_term()
-	else
+	if self.term then
 		self.term:toggle()
+	else
+		self:open_term()
 	end
 end
 
@@ -143,47 +143,38 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 ---@param callback? fun(t: jet.Kernel.Term)
 ---@param focus? boolean
 function Kernel:open_term(callback, focus)
-	local open = function()
+	self:create_term(function()
 		assert(self.term, "kernel.term is nil")
 		self.term:open(focus)
 		if callback then
 			callback(self.term)
 		end
-	end
-
-	if self.term then
-		open()
-	else
-		self:create_term(open)
-	end
+	end)
 end
 
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
 ---Lua API.
+---@private
 ---@param callback? fun(k: jet.Kernel)
 function Kernel:create_term(callback)
-	local connect = function()
-		assert(self.session_id, "Kernel has no session id")
-		self.term = require("jet.core.kernel.term").init({
-			session_id = self.session_id,
-			display_name = self.spec.display_name,
-			ns = jet_hl_ns,
-		})
-		self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
-		if config.options.stop_on_buf_wipeout then
-			self.term:create_autocmd("BufWipeout", function() self:close() end)
+	self:start_lua_client(function()
+		if not self.term then
+			assert(self.session_id, "Kernel has no session id")
+			self.term = require("jet.core.kernel.term").init({
+				session_id = self.session_id,
+				display_name = self.spec.display_name,
+				ns = jet_hl_ns,
+			})
+			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
+			if config.options.stop_on_buf_wipeout then
+				self.term:create_autocmd("BufWipeout", function() self:close() end)
+			end
 		end
 		if callback then
 			callback(self)
 		end
-	end
-
-	if self.client_id then
-		connect()
-	else
-		self:start_lua_client(connect)
-	end
+	end)
 end
 
 ---@alias jet.kernel.status "connecting" | "connected" | "external" | "inactive"
