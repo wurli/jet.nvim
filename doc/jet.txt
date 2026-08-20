@@ -12,7 +12,6 @@ Lua API                                                                *lua-api*
 *jet.Config*
 
     Fields: ~
-
         • {binary_path}          (`string?`) Path to a custom Jet binary.
         • {library_path}         (`string?`) Path to a custom Jet Lua library.
         • {stop_on_buf_wipeout}  (`boolean`) Set to `false` to keep the kernel
@@ -37,6 +36,7 @@ Lua API                                                                *lua-api*
 <
         • {repl_win_opts}        (`vim.api.keyset.win_config`)
         • {ui}                   (`{ stream_lines = 3 }`)
+        • {image}                (`{ handlers = table<string,fun(data: string, mime: jet.mime, filepath: string) -> boolean>, ... }`)
         • {time_formatter}       (`(fun(hh: integer, mm: integer, ss: integer) -> string)?`)
                                  Control how Jet displays how long stuff is
                                  taking: >lua
@@ -107,7 +107,6 @@ Lua API                                                                *lua-api*
 *jet.Config.Hooks*
 
     Fields: ~
-
         • {on_execution_state_changed}  (`table<any,fun(k: jet.Kernel, state: jet.kernel.execution_state)>`)
         • {on_kernel_close}             (`table<any,fun(k: jet.Kernel)>`)
         • {on_kernel_init}              (`table<any,fun(k: jet.Kernel)>`)
@@ -131,7 +130,6 @@ Lua API                                                                *lua-api*
 <
 
     Fields: ~
-
         • {session_name}         (`string?`)
         • {spec}                 (`(jet.kernel.spec|jet.kernel.paritalspec)`)
         • {spec_path}            (`string`)
@@ -163,11 +161,9 @@ Kernel:init_owned({opts})                                  *Kernel:init_owned()*
     kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
 
     Parameters: ~
-
-        • {opts}        (`jet.kernel.init_owned.opts`)
+        • {opts}      (`jet.kernel.init_owned.opts`)
 
     Return: ~
-
         (`jet.Kernel`)
 
 Kernel:init_external({opts})                            *Kernel:init_external()*
@@ -177,57 +173,39 @@ Kernel:init_external({opts})                            *Kernel:init_external()*
     opts: - `session_id`: The session ID of the kernel to connect to
 
     Parameters: ~
-
-        • {opts}        (`jet.kernel.init_external.opts`)
+        • {opts}      (`jet.kernel.init_external.opts`)
 
     Return: ~
-
         (`jet.Kernel`)
 
-Kernel:toggle_term()                                      *Kernel:toggle_term()*
+Kernel:term_toggle()                                      *Kernel:term_toggle()*
 
     Toggle the terminal window for the kernel. If no terminal is active, one
     will be created and opened.
 
-Kernel:open_term({callback}, {win_config})                  *Kernel:open_term()*
+Kernel:term_open({callback}, {focus})                       *Kernel:term_open()*
 
-    Open a terminal window for the kernel * If no terminal is active, one will
-    be created and opened * If a terminal is already open, it will be focused
-
-    Parameters: ~
-
-        • {callback}    (`(fun(k: jet.Kernel, focus_gained: boolean))?`)
-        • {win_config}  (`vim.api.keyset.win_config?`)
-
-Kernel:create_term({callback})                            *Kernel:create_term()*
-
-    Connect a Jet repl using nvim's built-in terminal. Internally uses
-    `jet attach` to connect to a session started using the Lua API.
+    Open a terminal window for the kernel. If no terminal is active, one will
+    be created and opened
 
     Parameters: ~
-
-        • {callback}    (`(fun(k: jet.Kernel))?`) Stuff to run once the
-                        terminal is created
+        • {callback}  (`(fun(t: jet.Kernel.Term))?`)
+        • {focus}     (`boolean?`)
 
 Kernel:status()                                                *Kernel:status()*
 
     Return: ~
-
         (`jet.kernel.status`)
         (`string`)
 
 Kernel:set_as_filetype_primary()              *Kernel:set_as_filetype_primary()*
 
-Kernel:update_output_stream({msg})               *Kernel:update_output_stream()*
-
-    Parameters: ~
-
-        • {msg}         (`jet.jupyter.msg`)
+    Set the kernel as the 'primary' kernel for its filetype. No-op if the
+    kernel has no filetype.
 
 Kernel:image_dir()                                          *Kernel:image_dir()*
 
     Return: ~
-
         (`string`)
 
 Kernel:open_images()                                      *Kernel:open_images()*
@@ -241,8 +219,7 @@ Kernel:start_lua_client({callback})                  *Kernel:start_lua_client()*
     (possibly freshly started) kernel session.
 
     Parameters: ~
-
-        • {callback}    (`(fun(k: jet.Kernel))?`)
+        • {callback}  (`(fun(k: jet.Kernel))?`)
 
 Kernel:close({quiet})                                           *Kernel:close()*
 
@@ -252,8 +229,7 @@ Kernel:close({quiet})                                           *Kernel:close()*
     disconnected.
 
     Parameters: ~
-
-        • {quiet}       (`boolean?`) Set to `true` to suppress notifications
+        • {quiet}     (`boolean?`) Set to `true` to suppress notifications
 
 Kernel:stop({callback})                                          *Kernel:stop()*
 
@@ -263,8 +239,10 @@ Kernel:stop({callback})                                          *Kernel:stop()*
     any resources on the nvim side.
 
     Parameters: ~
+        • {callback}  (`fun(success: boolean, failure_msg: string?)`)
 
-        • {callback}    (`fun(success: boolean, failure_msg: string?)`)
+    See: ~
+        • Kernel:close
 
 Kernel:comm_open({name}, {data}, {opts})                    *Kernel:comm_open()*
 
@@ -277,38 +255,40 @@ Kernel:comm_open({name}, {data}, {opts})                    *Kernel:comm_open()*
     jet.nvim!
 
     Parameters: ~
-
-        • {name}        (`string`)
-        • {data}        (`table?`)
-        • {opts}        (`jet.kernel.comm_open.opts?`)
+        • {name}      (`string`)
+        • {data}      (`table?`)
+        • {opts}      (`jet.kernel.comm_open.opts?`)
 
     Return: ~
-
         (`string`) Comm id
         (`string`) Message id
+
+    See: ~
+        • |Kernel:comm_send()|
+        • https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 
 Kernel:comm_send({comm_id}, {data})                         *Kernel:comm_send()*
 
     Send a message via a comm channel
 
     Parameters: ~
-
-        • {comm_id}     (`string`)
-        • {data}        (`table`)
+        • {comm_id}   (`string`)
+        • {data}      (`table`)
 
     Return: ~
-
         (`string`) Message id
+
+    See: ~
+        • |Kernel:comm_open()|
 
 Kernel:send_repl({code}, {tabstop})                         *Kernel:send_repl()*
 
     Send code to the kernel via the terminal repl
 
     Parameters: ~
-
-        • {code}        (`(string|string[])`) Code to be sent
-        • {tabstop}     (`integer?`) Optional; number of spaces to use for tab
-                        characters
+        • {code}      (`(string|string[])`) Code to be sent
+        • {tabstop}   (`integer?`) Optional; number of spaces to use for tab
+                      characters
 
 Kernel:send_lua({code}, {silent}, {callback})                *Kernel:send_lua()*
 
@@ -319,19 +299,17 @@ Kernel:send_lua({code}, {silent}, {callback})                *Kernel:send_lua()*
     be sent to the terminal.
 
     Parameters: ~
-
-        • {code}        (`(string|string[])`)
-        • {silent}      (`boolean`)
-        • {callback}    (`(fun(res: jet.kernel.response))?`)
+        • {code}      (`(string|string[])`)
+        • {silent}    (`boolean`)
+        • {callback}  (`(fun(res: jet.kernel.response))?`)
 
     Return: ~
-
         (`string`) Message id
 
 Kernel:interrupt()                                          *Kernel:interrupt()*
 
     Interrupt the current execution
 
-    Can also be done using in the terminal.
+    Can also be done using `<c-c>` in the terminal.
 
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

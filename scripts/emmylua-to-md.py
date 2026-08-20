@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -36,6 +37,12 @@ class Generic:
     base: str | None
 
 
+@dataclass
+class Tag:
+    tag_name: str
+    content: str
+
+
 # ---------- Members (of modules and classes) ----------
 
 
@@ -48,7 +55,7 @@ class Base:
     visibility: str | None
     deprecated: bool
     deprecation_reason: str | None
-    tag_content: Any  # varies; keep raw
+    tag_content: list[Tag] | None
 
 
 @dataclass
@@ -120,6 +127,12 @@ class Doc:
 # ---------- Parsing ----------
 
 
+def _tags(d: dict | None) -> list[Tag] | None:
+    if d is None:
+        return None
+    return [Tag(tag_name=t["tag_name"], content=t["content"]) for t in d]
+
+
 def _common(d: dict) -> dict:
     return {
         "name": d["name"],
@@ -127,7 +140,7 @@ def _common(d: dict) -> dict:
         "visibility": d.get("visibility"),
         "deprecated": d.get("deprecated", False),
         "deprecation_reason": d.get("deprecation_reason"),
-        "tag_content": d.get("tag_content"),
+        "tag_content": _tags(d.get("tag_content")),
     }
 
 
@@ -205,6 +218,27 @@ def parse(raw: dict) -> Doc:
 # ---------- Render ---------------------------
 
 
+def _render_tags(tags: list[Tag] | None) -> list[str]:
+    grouped: dict[str, list[str]] = OrderedDict()
+
+    for tag in tags or []:
+        name = tag.tag_name.capitalize()
+        grouped[name] = grouped.get(name, [])
+        grouped[name].append(tag.content)
+
+    tag_blocks = [
+        [
+            f"###### {tag_name}:",
+            "",
+            *[f"- {line}" for line in tag_lines],
+            "",
+        ]
+        for tag_name, tag_lines in grouped.items()
+    ]
+
+    return [line for block in tag_blocks for line in block]
+
+
 def _render_fn(x: Fn, parent=None):
     name = x.name if parent is None else f"{parent}:{x.name}"
     params = ", ".join([f"{{{param.name}}}" for param in x.params])
@@ -248,6 +282,7 @@ def _render_fn(x: Fn, parent=None):
             else ["", "###### Return:", "::: {#args}", *return_lines, ":::"]
         )
         + [""]
+        + _render_tags(x.tag_content)
     )
 
 
@@ -280,6 +315,7 @@ def _render_class(x: Class):
         + (x.description or "").split("\n")
         + [""]
         + ([] if len(field_lines) == 0 else ["###### Fields:", "", *field_lines])
+        + _render_tags(x.tag_content)
         + [line for block in method_lines for line in block]
     )
 
