@@ -2,20 +2,22 @@ local config = require("jet.core.config")
 local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Term : jet.Buf
+---@field kernel jet.Kernel
 ---@field job_id integer
 local Term = setmetatable({}, { __index = buf })
 Term.__index = Term ---@private
 
 ---@class jet.Kernel.Term.init.Opts
----@field session_id string
----@field display_name string
+---@field kernel jet.Kernel
 ---@field ns integer
 
 ---@param opts jet.Kernel.Term.init.Opts
 ---@return jet.Kernel.Term
 function Term.init(opts)
-	local session_hash = (opts.session_id or ""):match("_([^_]+)$")
-	local buf_name = opts.display_name
+	assert(opts.kernel.session_id, "Kernel session_id is required")
+
+	local session_hash = opts.kernel.session_id:match("_([^_]+)$")
+	local buf_name = opts.kernel.spec.display_name
 	if session_hash then
 		buf_name = buf_name .. " (" .. session_hash .. ")"
 	end
@@ -30,15 +32,18 @@ function Term.init(opts)
 		},
 	})
 
+	out.kernel = opts.kernel
+	vim.bo[out.buf].filetype = "jetrepl"
+
 	--TODO: document this
-	vim.b[out.buf].jet = { session_id = opts.session_id }
+	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 
 	-- buf_call since the buf is not yet attached to a window.
 	vim.api.nvim_buf_call(out.buf, function()
 		out.job_id = vim.fn.jobstart({
 			config.data.binary_path,
 			"attach",
-			opts.session_id,
+			out.kernel.session_id,
 			"--banner",
 			"--session-name",
 			"nvim",
@@ -54,11 +59,11 @@ function Term.init(opts)
 				out:delete()
 			end,
 		})
-
-		-- It seems that jobstart() also sets the buf name, so this has to be
-		-- done afterwards.
-		vim.api.nvim_buf_set_name(out.buf, out.name)
 	end)
+
+	-- It seems that jobstart() also sets the buf name, so this has to be done
+	-- afterwards.
+	vim.api.nvim_buf_set_name(out.buf, out.name)
 
 	return out
 end

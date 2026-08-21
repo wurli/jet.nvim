@@ -1,32 +1,31 @@
 local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Img : jet.Buf
----@field img_dir string
+---@field kernel jet.Kernel
 ---@field img_file? string
 local Img = setmetatable({}, { __index = buf })
 Img.__index = Img ---@private
 
 ---@class jet.Kernel.Img.init.Opts
----@field session_id string
----@field display_name string
+---@field kernel jet.Kernel
 ---@field ns integer
----@field img_dir string
 
 ---@param opts jet.Kernel.Img.init.Opts
 ---@return jet.Kernel.Img
 function Img.init(opts)
-	local session_hash = (opts.session_id or ""):match("_([^_]+)$")
-	local buf_name = opts.display_name
+	assert(opts.kernel.session_id, "Kernel session_id is required")
+
+	local session_hash = opts.kernel.session_id:match("_([^_]+)$")
+	local buf_name = opts.kernel.spec.display_name
 	if session_hash then
-		buf_name = buf_name .. " Images (" .. session_hash .. ")"
+		buf_name = buf_name .. " (" .. session_hash .. ") - Images"
 	end
 
 	local out = buf.init(Img, {
-		ns = opts.ns,
 		name = buf_name,
+		ns = opts.ns,
 		open_opts = function()
-			local k = require("jet.core.manager").kernels[opts.session_id]
-			local term_win = k and k.term and k.term:win()
+			local term_win = opts.kernel.term and opts.kernel.term:win()
 			return term_win and {
 				split = "above",
 				win = term_win,
@@ -39,7 +38,11 @@ function Img.init(opts)
 		end,
 	})
 
-	out.img_dir = opts.img_dir
+	out.kernel = opts.kernel
+	vim.bo[out.buf].filetype = "jetimg"
+	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
+
+	out:create_autocmd("BufWinEnter", function() out:display() end)
 
 	vim.keymap.set("n", "<c-n>", function() out:display(1) end, { buffer = out.buf })
 	vim.keymap.set("n", "<c-p>", function() out:display(-1) end, { buffer = out.buf })
@@ -65,7 +68,7 @@ function Img:display(file)
 	else
 		local files = {}
 		local curr_file_index
-		for name, type in vim.fs.dir(self.img_dir) do
+		for name, type in vim.fs.dir(self.kernel:image_dir()) do
 			if type == "file" then
 				table.insert(files, name)
 				if name == self.img_file then
@@ -94,7 +97,7 @@ function Img:display(file)
 	end
 
 	_G.Snacks.image.buf.attach(self.buf, {
-		src = vim.fs.joinpath(self.img_dir, filepath),
+		src = vim.fs.joinpath(self.kernel:image_dir(), filepath),
 		inline = true,
 		type = "image",
 		pos = { 1, 0 },

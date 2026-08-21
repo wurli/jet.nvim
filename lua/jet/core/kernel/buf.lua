@@ -19,13 +19,17 @@ Buf.__index = Buf ---@private
 ---@param opts jet.Buf.init.Opts
 ---@return T
 function Buf.init(class, opts)
-	return setmetatable({
+	local out = setmetatable({
 		ns = opts.ns,
 		name = opts.name,
 		open_opts = opts.open_opts,
 		augroup = vim.api.nvim_create_augroup(opts.name, { clear = true }),
 		buf = vim.api.nvim_create_buf(false, true),
 	}, class or Buf)
+
+	vim.api.nvim_buf_set_name(out.buf, out.name)
+
+	return out
 end
 
 function Buf:win() return utils.buf_get_win(self.buf) end

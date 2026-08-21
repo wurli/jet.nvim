@@ -158,11 +158,7 @@ function Kernel:term_create(callback)
 	self:start_lua_client(function()
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
-			self.term = require("jet.core.kernel.term").init({
-				session_id = self.session_id,
-				display_name = self.spec.display_name,
-				ns = jet_hl_ns,
-			})
+			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
 			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
 			if config.options.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
@@ -373,12 +369,7 @@ end
 function Kernel:open_images()
 	if not self.img then
 		assert(self.session_id, "Kernel has no session id")
-		self.img = require("jet.core.kernel.img").init({
-			session_id = self.session_id,
-			img_dir = self:image_dir(),
-			display_name = self.spec.display_name,
-			ns = jet_hl_ns,
-		})
+		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
 	end
 	self.img:open(false)
 end
