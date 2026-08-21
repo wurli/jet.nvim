@@ -1,5 +1,26 @@
 local M = {}
 
+---E.g:
+---* In:
+---  `"text/plain"`
+---* Out:
+---  ```
+---  { type = "text", subtype = "plain", params = {} }
+---  ```
+---
+---* In:
+---  `"application/vnd.jupyter.widget-view+json; version="2.0"; encoding=utf-8"`
+---* Out:
+---  ```
+---  {
+---      type = "application",
+---      tree = "vnd",
+---      subtype = "jupyter.widget-view",
+---      suffix = "json",
+---      params = { version = "2.0", encoding = "utf-8" },
+---  }
+---  ```
+---
 ---@class jet.Mime
 ---@field type string
 ---@field subtype string
