@@ -374,6 +374,16 @@ function Kernel:open_images()
 	self.img:open(false)
 end
 
+---@return string
+function Kernel:friendly_name()
+	local session_hash = (self.session_id or ""):match("_([^_]+)$")
+	local name = self.spec.display_name
+	if session_hash then
+		name = name .. " (" .. session_hash .. ")"
+	end
+	return name
+end
+
 ---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_image_msg(msg)

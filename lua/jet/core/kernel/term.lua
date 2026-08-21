@@ -16,14 +16,8 @@ Term.__index = Term ---@private
 function Term.init(opts)
 	assert(opts.kernel.session_id, "Kernel session_id is required")
 
-	local session_hash = opts.kernel.session_id:match("_([^_]+)$")
-	local buf_name = opts.kernel.spec.display_name
-	if session_hash then
-		buf_name = buf_name .. " (" .. session_hash .. ")"
-	end
-
 	local out = buf.init(Term, {
-		name = buf_name,
+		name = opts.kernel:friendly_name(),
 		ns = opts.ns,
 		open_opts = {
 			split = "right",

@@ -15,14 +15,8 @@ Img.__index = Img ---@private
 function Img.init(opts)
 	assert(opts.kernel.session_id, "Kernel session_id is required")
 
-	local session_hash = opts.kernel.session_id:match("_([^_]+)$")
-	local buf_name = opts.kernel.spec.display_name
-	if session_hash then
-		buf_name = buf_name .. " (" .. session_hash .. ") - Images"
-	end
-
 	local out = buf.init(Img, {
-		name = buf_name,
+		name = opts.kernel:friendly_name() .. " - Images",
 		ns = opts.ns,
 		open_opts = function()
 			local term_win = opts.kernel.term and opts.kernel.term:win()
@@ -50,10 +44,54 @@ function Img.init(opts)
 	return out
 end
 
+function Img.get_winbar()
+	local session_id = vim.b.jet and vim.b.jet.session_id
+	local kernel = session_id and require("jet.core.manager").kernels[session_id]
+
+	if not kernel then
+		return "Jet Images"
+	end
+
+	if not kernel.img then
+		return kernel:friendly_name() .. " - Images"
+	end
+
+	local files, curr_file_index = kernel.img:list_files()
+
+	if #files == 0 or not curr_file_index then
+		return kernel:friendly_name() .. " - Images"
+	end
+
+	return string.format("%s - Images (%d/%d)", kernel:friendly_name(), curr_file_index, #files, files[curr_file_index])
+end
+
 ---@param focus? boolean
 function Img:open(focus)
 	buf.open(self, focus)
+
+	local win = self:win()
+	if win then
+		vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
+	end
+
 	self:display(self.img_file)
+end
+
+---@return string[]
+---@return integer?
+function Img:list_files()
+	local files = {}
+	local curr_file_index
+	for name, type in vim.fs.dir(self.kernel:image_dir()) do
+		if type == "file" then
+			table.insert(files, name)
+			if name == self.img_file then
+				curr_file_index = #files
+			end
+		end
+	end
+
+	return files, curr_file_index
 end
 
 ---@param file? string | 1 | -1
@@ -66,17 +104,7 @@ function Img:display(file)
 	if type(file) == "string" then
 		filepath = file
 	else
-		local files = {}
-		local curr_file_index
-		for name, type in vim.fs.dir(self.kernel:image_dir()) do
-			if type == "file" then
-				table.insert(files, name)
-				if name == self.img_file then
-					curr_file_index = #files
-				end
-			end
-		end
-
+		local files, curr_file_index = self:list_files()
 		if not curr_file_index or not file then
 			filepath = files[#files]
 		elseif file == 1 then
@@ -92,7 +120,9 @@ function Img:display(file)
 
 	self.img_file = vim.fs.basename(filepath)
 
-	if not self:win() then
+	local win = self:win()
+
+	if not win then
 		return
 	end
 
@@ -102,6 +132,8 @@ function Img:display(file)
 		type = "image",
 		pos = { 1, 0 },
 	})
+
+	vim.api.nvim__redraw({ win = win, winbar = true })
 end
 
 return Img
