@@ -49,7 +49,7 @@ function Img.get_winbar()
 	local kernel = session_id and require("jet.core.manager").kernels[session_id]
 
 	if not kernel then
-		return "Jet Images"
+		return "Jet - Images"
 	end
 
 	if not kernel.img then
@@ -62,19 +62,19 @@ function Img.get_winbar()
 		return kernel:friendly_name() .. " - Images"
 	end
 
-	return string.format("%s - Images (%d/%d)", kernel:friendly_name(), curr_file_index, #files, files[curr_file_index])
+	return string.format("%s - Image %d/%d", kernel:friendly_name(), curr_file_index, #files, files[curr_file_index])
 end
 
 ---@param focus? boolean
-function Img:open(focus)
-	buf.open(self, focus)
-
-	local win = self:win()
-	if win then
-		vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
+---@param latest? boolean
+function Img:open(focus, latest)
+	if latest == nil then
+		latest = true
 	end
 
-	self:display(self.img_file)
+	local win = buf.open(self, focus)
+	vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
+	self:display(latest ~= true and self.img_file or nil)
 end
 
 ---@return string[]

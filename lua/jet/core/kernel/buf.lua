@@ -36,6 +36,7 @@ function Buf:win() return utils.buf_get_win(self.buf) end
 
 ---@param focus? boolean
 ---@param opts? vim.api.keyset.win_config
+---@return integer # The opened window
 function Buf:open(focus, opts)
 	local win = self:win()
 
@@ -46,7 +47,7 @@ function Buf:open(focus, opts)
 				vim.cmd.startinsert()
 			end
 		end
-		return
+		return win
 	end
 
 	local open_opts = opts
@@ -66,6 +67,8 @@ function Buf:open(focus, opts)
 
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
+
+	return win
 end
 
 function Buf:toggle()

@@ -384,6 +384,44 @@ function Kernel:friendly_name()
 	return name
 end
 
+---@param content string
+---@param mime jet.Mime Describes the format of the `content`
+---@param name string
+---@return boolean
+function Kernel:save_image(content, mime, name)
+	local path =
+		string.format("%s/%s_%s.%s", self:image_dir(), vim.fn.strftime("%Y-%m-%d_%H-%M-%S"), name, mime.subtype)
+
+	if mime.type ~= "image" then
+		utils.log_error("MIME type is not an image: %s/%s", mime.type, mime.subtype)
+		return false
+	end
+
+	local handlers = require("jet.core.config").options.image.handlers
+	local handler = handlers[mime.subtype]
+
+	if handler then
+		local res = handler(content, mime, path)
+		if res == nil then
+			utils.log_warn("Image handler for MIME subtype '%s' returned nil, assuming success", mime.subtype)
+			res = true
+		end
+		return res
+	end
+
+	local supported_types = { png = true }
+	if not supported_types[mime.subtype] then
+		utils.log_error(
+			"Unsupported MIME subtype '%s' (should be one of %s)",
+			mime.subtype,
+			table.concat(vim.list_extend(vim.tbl_keys(supported_types), vim.tbl_keys(handlers)), ", ")
+		)
+		return false
+	end
+
+	return require("jet.core.image").base64_to_file(content, path)
+end
+
 ---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_image_msg(msg)
@@ -397,11 +435,15 @@ function Kernel:handle_image_msg(msg)
 	for mime_text, content in pairs(data) do
 		local mime = utils.parse_mime(mime_text)
 		if mime and mime.type == "image" then
-			local filepath =
-				string.format("%s/%s_%s.png", self:image_dir(), vim.fn.strftime("%Y%m%d_%H%M%S"), msg.header.msg_id)
-			if require("jet.core.image").base64_to_file(content, mime, filepath) then
+			if self:save_image(content, mime, msg.header.msg_id) then
 				self:open_images()
-				assert(self.img):display()
+			else
+				utils.log_error(
+					"Failed to save image from kernel '%s' with MIME type '%s/%s'",
+					self.spec.display_name,
+					mime.type,
+					mime.subtype
+				)
 			end
 		end
 	end
