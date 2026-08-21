@@ -421,7 +421,7 @@ function Kernel:save_image(content, mime, name)
 		return false
 	end
 
-	return require("lua.jet.core.utils.base64").base64_to_file(content, path)
+	return require("jet.core.utils.base64").base64_to_file(content, path)
 end
 
 ---@private
