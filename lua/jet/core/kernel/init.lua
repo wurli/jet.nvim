@@ -387,10 +387,14 @@ function Kernel:friendly_name()
 end
 
 ---@param content string
----@param mime jet.Mime Describes the format of the `content`
+---@param mime string | jet.Mime Describes the format of the `content`
 ---@param name string
 ---@return boolean
 function Kernel:save_image(content, mime, name)
+	if type(mime) == "string" then
+		mime = assert(utils.parse_mime(mime), "Failed to parse MIME type: " .. mime)
+	end
+
 	local path =
 		string.format("%s/%s_%s.%s", self:image_dir(), vim.fn.strftime("%Y-%m-%d_%H-%M-%S"), name, mime.subtype)
 
