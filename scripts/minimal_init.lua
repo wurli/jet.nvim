@@ -20,7 +20,29 @@ if #vim.api.nvim_list_uis() == 0 then
 		},
 	})
 
+	-- Look for jet bin and lib based on the jet binary in PATH - if found, use it.
+	local lib_path, bin_path
+	if vim.fn.exepath("jet") ~= "" then
+		bin_path = vim.fn.exepath("jet")
+	end
+	if bin_path then
+		local bin_dir = vim.fs.dirname(bin_path)
+		for entry, type in vim.fs.dir(bin_dir) do
+			if type == "file" and entry == "libjet_lua.dylib" then
+				lib_path = bin_dir .. "/" .. entry
+				break
+			end
+		end
+	end
+
+	require("jet").setup({
+		binary_path = lib_path and bin_path,
+		library_path = bin_path and lib_path,
+		ui = { stream_lines = 50 },
+	})
+
 	local dl = require("jet.core.utils.download")
+
 	local has_jet = function()
 		local paths = dl.get_jet_paths()
 		return paths.bin and paths.lib
@@ -31,8 +53,6 @@ if #vim.api.nvim_list_uis() == 0 then
 		assert(vim.wait(30000, has_jet), "Could not download Jet CLI/lib")
 		vim.uv.sleep(500) -- Seems to avoid some flakes in CI?
 	end
-
-	require("jet").setup({})
 
 	local paths = dl.get_jet_paths()
 
