@@ -40,7 +40,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field last_execution? jet.kernel.last_execution
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
----@field comms table<string, string> comm_name -> id
+---@field known_comms table<string, fun(comm_id: string, data: table)>
+---@field open_comms table<string, { id: string, data: table }>
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
 ---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
@@ -54,7 +55,8 @@ Kernel.__index = Kernel ---@private
 local init_defaults = function()
 	local queue = require("jet.core.utils.queue")
 	return {
-		comms = {},
+		open_comms = {},
+		known_comms = {},
 		ui_expand = false,
 		output_stream = {
 			complete_lines = queue.new(config.options.ui.stream_lines, {}),
@@ -478,6 +480,37 @@ function Kernel:handle_input_request(msg)
 	end)
 end
 
+---@param msg jupyter.Msg
+function Kernel:handle_comm_open(msg)
+	if msg.header.msg_type ~= "comm_open" then
+		return
+	end
+
+	if not msg.content then
+		utils.log_warn("Received a comm_open message without content from kernel '%s'", self.spec.display_name)
+		return
+	end
+
+	if not msg.content.comm_id or not msg.content.target_name then
+		utils.log_warn(
+			"Received invalid comm_open message from kernel '%s'.\nExpected both `comm_id` and `target_name` in content;\nGot: `%s`",
+			self.spec.display_name,
+			vim.inspect(msg.content)
+		)
+		return
+	end
+
+	if not self.known_comms[msg.content.target_name] then
+		utils.log_warn(
+			"Received a comm_open message for unknown target '%s' from kernel '%s'; replying with `comm_close`",
+			msg.content.target_name,
+			self.spec.display_name
+		)
+		require("jet.core.engine").comm_close(assert(self.client_id, "Kernel has no client id"), msg.content.comm_id)
+		return
+	end
+end
+
 ---@private
 function Kernel:handle_stream()
 	utils.poll(function()
@@ -489,6 +522,7 @@ function Kernel:handle_stream()
 			self:update_output_stream(msg)
 			self:handle_image_msg(msg)
 			self:handle_input_request(msg)
+			self:handle_comm_open(msg)
 
 			hooks.message_received(self, msg)
 			for _, hook in pairs(self.on_message_received) do
@@ -758,7 +792,7 @@ function Kernel:comm_open(name, data, opts)
 	assert(self.client_id, "Kernel has no client id")
 	local _cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
 
-	self.comms[name] = comm_id
+	self.open_comms[name] = { id = comm_id, data = data or {} }
 
 	opts = opts or {}
 
