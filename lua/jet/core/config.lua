@@ -82,6 +82,7 @@ M.defaults = {
 		on_message_received = {},
 		on_send_pre = {},
 		on_status_changed = {},
+		on_image_display_pre = {},
 	},
 	---* `send.send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending

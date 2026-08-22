@@ -363,7 +363,7 @@ end
 
 function Kernel:image_dir()
 	assert(self.session_id, "Kernel has no session id")
-	local dir = vim.fn.stdpath("data") .. "/images/" .. self.session_id
+	local dir = vim.fn.stdpath("data") .. "/jet/images/" .. self.session_id
 	utils.mkdir(dir)
 	return dir
 end

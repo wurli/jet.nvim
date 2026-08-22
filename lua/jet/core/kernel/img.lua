@@ -1,3 +1,4 @@
+local utils = require("jet.core.utils")
 local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Img : jet.Buf
@@ -94,10 +95,6 @@ end
 
 ---@param which? string | integer
 function Img:display(which)
-	if not _G.Snacks then
-		return
-	end
-
 	local files, curr_file_index = self:list_files()
 
 	local jet = vim.b[self.buf].jet or {}
@@ -126,16 +123,47 @@ function Img:display(which)
 	end
 
 	self.img_file = vim.fs.basename(filepath)
-	require("jet.core.hooks").image_display_pre(self.kernel, filepath)
-
-	_G.Snacks.image.buf.attach(self.buf, {
-		src = vim.fs.joinpath(self.kernel:image_dir(), filepath),
-		inline = true,
-		type = "image",
-		pos = { 1, 0 },
-	})
-
+	local src = vim.fs.joinpath(self.kernel:image_dir(), filepath)
 	vim.api.nvim__redraw({ win = win, winbar = true })
+
+	require("jet.core.hooks").image_display_pre(self.kernel, src)
+
+	-- First try Snacks
+	if _G.Snacks and _G.Snacks.image and _G.Snacks.image.config then
+		if not _G.Snacks.image.config.enabled then
+			utils.log_warn("Snacks.image is not enabled. Please enable Snacks.image to view images.")
+			return
+		end
+		_G.Snacks.image.buf.attach(self.buf, {
+			src = src,
+			inline = true,
+			type = "image",
+			pos = { 1, 0 },
+		})
+		return
+	end
+
+	-- ...Then fall back to image.nvim. Unfortunately this plugin seems to
+	-- struggle with some jet.nvim stuff. In particular it has issues with
+	-- jet.ark, which replaces image files if the user resizes the image
+	-- window in nvim. When image.nvim tries to display an image, it seems
+	-- there is a delay before imagemagick picks up the file, during which
+	-- time the file might get deleted, causing an error.
+	local ok, image_api = pcall(require, "image")
+	if ok and image_api then
+		local img = image_api.from_file(src, {
+			buffer = self.buf,
+			window = win,
+		})
+		if img then
+			img:render()
+		else
+			utils.log_warn("[image.nvim]: Failed to render image: " .. src)
+		end
+		return
+	end
+
+	utils.log_warn("Image support is not available. Please install Snacks.nvim or image.nvim to view images.")
 end
 
 return Img
