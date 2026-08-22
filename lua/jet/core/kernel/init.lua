@@ -40,8 +40,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field last_execution? jet.kernel.last_execution
 ---@field execution_state? jet.kernel.execution_state
 ---@field ui_expand boolean
----@field known_comms table<string, fun(comm_id: string, data: table)>
----@field open_comms table<string, { id: string, data: table }>
+---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
+---@field open_comms table<string, { name: string, data?: table }>
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
 ---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
@@ -368,12 +368,13 @@ function Kernel:image_dir()
 	return dir
 end
 
+---@return integer # Win number
 function Kernel:open_images()
 	if not self.img then
 		assert(self.session_id, "Kernel has no session id")
 		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
 	end
-	self.img:open(false)
+	return self.img:open(false)
 end
 
 ---@return string
@@ -386,6 +387,12 @@ function Kernel:friendly_name()
 	return name
 end
 
+---Write an image to the kernel's `image_dir()`.
+---
+---* If the `name` doesn't start with a data prefix, one will be prepended.
+---* If the `name` doesn't have an extension, one will be appended based on the
+---  MIME type.
+---
 ---@param content string
 ---@param mime string | jet.Mime Describes the format of the `content`
 ---@param name string
@@ -395,8 +402,13 @@ function Kernel:save_image(content, mime, name)
 		mime = assert(utils.parse_mime(mime), "Failed to parse MIME type: " .. mime)
 	end
 
-	local path =
-		string.format("%s/%s_%s.%s", self:image_dir(), vim.fn.strftime("%Y-%m-%d_%H-%M-%S"), name, mime.subtype)
+	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
+	local extension_pattern = "%.(%w+)$"
+	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
+	local extension = name:match("%.(%w+)$") or mime.subtype
+	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
+
+	local path = string.format("%s/%s_%s.%s", self:image_dir(), timestamp, base_name, extension)
 
 	if mime.type ~= "image" then
 		utils.log_error("MIME type is not an image: %s/%s", mime.type, mime.subtype)
@@ -504,13 +516,18 @@ function Kernel:handle_comm_open(msg)
 		return
 	end
 
-	if not self.known_comms[msg.content.target_name] then
+	local handle_comm = self.known_comms[msg.content.target_name]
+
+	if handle_comm then
+		self.open_comms[msg.content.comm_id] = { name = msg.content.target_name, data = msg.content.data }
+		handle_comm(self, msg.content.comm_id, msg.content.data)
+	else
 		utils.log_warn(
-			"Received a comm_open message for unknown target '%s' from kernel '%s'; replying with `comm_close`",
+			"Received a comm_open message for unknown comm '%s' from kernel '%s'; replying with `comm_close`",
 			msg.content.target_name,
 			self.spec.display_name
 		)
-		require("jet.core.engine").comm_close(assert(self.client_id, "Kernel has no client id"), msg.content.comm_id)
+		self:comm_close(msg.content.comm_id)
 		return
 	end
 end
@@ -776,6 +793,7 @@ end
 ---@class jet.kernel.comm_open.Opts
 ---@field listener? fun(res: jupyter.Msg)
 ---@field listener_interval? integer In milliseconds, default 50ms
+---@field callback? fun(msg: jupyter.Msg)
 
 ---Open a comm channel to the kernel
 ---
@@ -794,11 +812,21 @@ end
 ---@see https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 function Kernel:comm_open(name, data, opts)
 	assert(self.client_id, "Kernel has no client id")
-	local _cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
+	local cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
 
-	self.open_comms[name] = { id = comm_id, data = data or {} }
+	self.open_comms[comm_id] = { name = name, data = data }
 
 	opts = opts or {}
+
+	if opts.callback then
+		utils.poll(function()
+			local res = cb()
+			if res.value then
+				opts.callback(res.value)
+			end
+			return res.status
+		end, { alias = "Polling comm_open callback" })
+	end
 
 	if opts.listener then
 		local get_comm_msg = require("jet.core.engine").comm_listen(self.client_id, comm_id)
@@ -809,7 +837,7 @@ function Kernel:comm_open(name, data, opts)
 				opts.listener(res.value)
 			end
 			return res.status
-		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
+		end, { interval = opts.listener_interval, alias = "Waiting for comm open reply " .. self.session_id })
 	end
 
 	return comm_id, msg_id
@@ -824,6 +852,15 @@ end
 function Kernel:comm_send(comm_id, data)
 	assert(self.client_id)
 	local _cb, msg_id = require("jet.core.engine").comm_send(self.client_id, comm_id, data)
+	return msg_id
+end
+
+---@param comm_id string
+---@return string # Message id
+function Kernel:comm_close(comm_id)
+	assert(self.client_id)
+	local _cb, msg_id = require("jet.core.engine").comm_close(self.client_id, comm_id)
+	self.open_comms[comm_id] = nil
 	return msg_id
 end
 
