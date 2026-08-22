@@ -67,6 +67,7 @@ end
 
 ---@param focus? boolean
 ---@param latest? boolean
+---@return integer # Win number
 function Img:open(focus, latest)
 	if latest == nil then
 		latest = true
@@ -75,6 +76,7 @@ function Img:open(focus, latest)
 	local win = buf.open(self, focus)
 	vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
 	self:display(latest ~= true and self.img_file or nil)
+	return win
 end
 
 ---@return string[]
