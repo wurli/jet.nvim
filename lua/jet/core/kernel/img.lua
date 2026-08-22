@@ -33,7 +33,7 @@ function Img.init(opts)
 	})
 
 	out.kernel = opts.kernel
-	vim.bo[out.buf].filetype = "jetimg"
+	vim.bo[out.buf].filetype = "jetimg" -- Note: Snacks.image overrides to "image"
 	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 
 	out:create_autocmd("BufWinEnter", function() out:display() end)
@@ -98,18 +98,21 @@ function Img:display(which)
 		return
 	end
 
+	local files, curr_file_index = self:list_files()
+
+	local jet = vim.b[self.buf].jet or {}
+	jet.n_images = #files
+	jet.curr_image_index = curr_file_index
+
 	local filepath
-	if which == nil and self.img_file then
-		filepath = self.img_file
+	if not which then
+		filepath = self.img_file or curr_file_index and files[curr_file_index] or files[#files]
 	elseif type(which) == "string" then
 		filepath = which
+	elseif type(which) == "number" and curr_file_index then
+		filepath = files[curr_file_index + which] or which > 0 and files[1] or which < 0 and files[#files]
 	else
-		local files, curr_file_index = self:list_files()
-		if which == nil or not curr_file_index then
-			filepath = files[#files]
-		elseif type(which) == "number" then
-			filepath = files[curr_file_index + which] or which > 0 and files[1] or which < 0 and files[#files]
-		end
+		filepath = files[#files]
 	end
 
 	if not filepath then
