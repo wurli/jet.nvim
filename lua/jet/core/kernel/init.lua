@@ -368,13 +368,14 @@ function Kernel:image_dir()
 	return dir
 end
 
+---@param which? string | integer
 ---@return integer # Win number
-function Kernel:open_images()
+function Kernel:open_images(which)
 	if not self.img then
 		assert(self.session_id, "Kernel has no session id")
 		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
 	end
-	return self.img:open(false)
+	return self.img:open(false, which)
 end
 
 ---@return string
@@ -396,7 +397,7 @@ end
 ---@param content string
 ---@param mime string | jet.Mime Describes the format of the `content`
 ---@param name string
----@return boolean
+---@return string | false Returns the path to the saved file, or `false` on failure.
 function Kernel:save_image(content, mime, name)
 	if type(mime) == "string" then
 		mime = assert(utils.parse_mime(mime), "Failed to parse MIME type: " .. mime)
@@ -422,7 +423,7 @@ function Kernel:save_image(content, mime, name)
 		local res = handler(content, mime, path)
 		if res == nil then
 			utils.log_warn("Image handler for MIME subtype '%s' returned nil, assuming success", mime.subtype)
-			res = true
+			res = path
 		end
 		return res
 	end
@@ -453,8 +454,9 @@ function Kernel:handle_image_msg(msg)
 	for mime_text, content in pairs(data) do
 		local mime = utils.parse_mime(mime_text)
 		if mime and mime.type == "image" then
-			if self:save_image(content, mime, msg.header.msg_id) then
-				self:open_images()
+			local res = self:save_image(content, mime, msg.header.msg_id)
+			if res then
+				self:open_images(vim.fs.basename(res))
 			else
 				utils.log_error(
 					"Failed to save image from kernel '%s' with MIME type '%s/%s'",

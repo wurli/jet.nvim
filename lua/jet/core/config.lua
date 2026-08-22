@@ -36,7 +36,7 @@ M.defaults = {
 		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
 	},
 	image = {
-		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): boolean>
+		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
 	},
 	--- Control how Jet displays how long stuff is taking:
 	--- ``` lua

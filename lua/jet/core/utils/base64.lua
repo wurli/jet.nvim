@@ -20,7 +20,7 @@ end
 
 ---@param data string Base64-encoded data
 ---@param filepath string
----@return boolean
+---@return string | false
 M.base64_to_file = function(data, filepath)
 	local bytes = base64_to_bytes(data)
 
@@ -38,7 +38,7 @@ M.base64_to_file = function(data, filepath)
 		return false
 	end
 
-	return true
+	return filepath
 end
 
 return M
