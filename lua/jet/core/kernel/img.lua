@@ -119,13 +119,14 @@ function Img:display(which)
 		return
 	end
 
-	self.img_file = vim.fs.basename(filepath)
-
 	local win = self:win()
 
 	if not win then
 		return
 	end
+
+	self.img_file = vim.fs.basename(filepath)
+	require("jet.core.hooks").image_display_pre(self.kernel, filepath)
 
 	_G.Snacks.image.buf.attach(self.buf, {
 		src = vim.fs.joinpath(self.kernel:image_dir(), filepath),

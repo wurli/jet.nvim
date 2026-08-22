@@ -8,6 +8,7 @@ local M = {}
 ---@field on_message_received table<any, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_send_pre table<any, fun(k: jet.Kernel, code: string[])>
 ---@field on_status_changed table<any, fun(k: jet.Kernel)>
+---@field on_image_display_pre table<any, fun(k: jet.Kernel, file: string)>
 
 ---@class jet.Config.Opts
 M.defaults = {

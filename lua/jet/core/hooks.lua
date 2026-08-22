@@ -21,6 +21,7 @@ M.lua_client_start        = make_caller(h.on_lua_client_start)
 M.message_received        = make_caller(h.on_message_received)
 M.send_pre                = make_caller(h.on_send_pre)
 M.status_changed          = make_caller(h.on_status_changed)
+M.image_display_pre       = make_caller(h.on_image_display_pre)
 -- stylua: ignore end
 
 return M
