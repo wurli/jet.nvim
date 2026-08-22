@@ -19,11 +19,14 @@ function Term.init(opts)
 	local out = buf.init(Term, {
 		name = opts.kernel:friendly_name(),
 		ns = opts.ns,
-		open_opts = {
-			split = "right",
-			win = -1,
-			style = "minimal",
-		},
+		open_opts = function()
+			local img_win = opts.kernel.img and opts.kernel.img:win()
+			return {
+				split = img_win and "below" or "right",
+				win = img_win or -1,
+				style = "minimal",
+			}
+		end,
 	})
 
 	out.kernel = opts.kernel

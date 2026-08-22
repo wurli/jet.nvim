@@ -21,13 +21,9 @@ function Img.init(opts)
 		ns = opts.ns,
 		open_opts = function()
 			local term_win = opts.kernel.term and opts.kernel.term:win()
-			return term_win and {
-				split = "above",
-				win = term_win,
-				style = "minimal",
-			} or {
-				split = "right",
-				win = -1,
+			return {
+				split = term_win and "above" or "right",
+				win = term_win or -1,
 				style = "minimal",
 			}
 		end,
