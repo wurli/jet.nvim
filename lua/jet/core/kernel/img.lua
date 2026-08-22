@@ -66,16 +66,12 @@ function Img.get_winbar()
 end
 
 ---@param focus? boolean
----@param latest? boolean
+---@param which? string | integer
 ---@return integer # Win number
-function Img:open(focus, latest)
-	if latest == nil then
-		latest = true
-	end
-
+function Img:open(focus, which)
 	local win = buf.open(self, focus)
 	vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
-	self:display(latest ~= true and self.img_file or nil)
+	self:display(which)
 	return win
 end
 
@@ -96,23 +92,23 @@ function Img:list_files()
 	return files, curr_file_index
 end
 
----@param file? string | 1 | -1
-function Img:display(file)
+---@param which? string | integer
+function Img:display(which)
 	if not _G.Snacks then
 		return
 	end
 
 	local filepath
-	if type(file) == "string" then
-		filepath = file
+	if which == nil and self.img_file then
+		filepath = self.img_file
+	elseif type(which) == "string" then
+		filepath = which
 	else
 		local files, curr_file_index = self:list_files()
-		if not curr_file_index or not file then
+		if which == nil or not curr_file_index then
 			filepath = files[#files]
-		elseif file == 1 then
-			filepath = files[curr_file_index + 1] or files[1]
-		elseif file == -1 then
-			filepath = files[curr_file_index - 1] or files[#files]
+		elseif type(which) == "number" then
+			filepath = files[curr_file_index + which] or which > 0 and files[1] or which < 0 and files[#files]
 		end
 	end
 
