@@ -4,7 +4,7 @@ local child = MiniTest.new_child_neovim()
 local T = new_set({ hooks = { post_once = child.stop } })
 
 T["Valid MIME types can be parsed"] = function()
-	local parse = require("jet.core.utils").parse_mime
+	local parse = require("jet.core.utils.mime").parse
 	local cases = {
 		["text/plain"] = { type = "text", subtype = "plain", params = {} },
 		["image/png"] = { type = "image", subtype = "png", params = {} },
@@ -125,7 +125,7 @@ T["Invalid MIME types fail to parse"] = function()
 	}
 
 	for _, mime_str in ipairs(should_fail) do
-		local parsed = require("jet.core.utils").parse_mime(mime_str, true)
+		local parsed = require("jet.core.utils.mime").parse(mime_str, true)
 		assert(parsed == nil, "Expected parsing to fail for: " .. mime_str)
 	end
 end

@@ -400,7 +400,7 @@ end
 ---@return string | false Returns the path to the saved file, or `false` on failure.
 function Kernel:save_image(content, mime, name)
 	if type(mime) == "string" then
-		mime = assert(utils.parse_mime(mime), "Failed to parse MIME type: " .. mime)
+		mime = assert(require("jet.core.utils.mime").parse(mime), "Failed to parse MIME type: " .. mime)
 	end
 
 	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
@@ -452,7 +452,7 @@ function Kernel:handle_image_msg(msg)
 	end
 
 	for mime_text, content in pairs(data) do
-		local mime = utils.parse_mime(mime_text)
+		local mime = require("jet.core.utils.mime").parse(mime_text)
 		if mime and mime.type == "image" then
 			local res = self:save_image(content, mime, msg.header.msg_id)
 			if res then
