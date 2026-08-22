@@ -361,16 +361,24 @@ function Kernel:update_execution_state(msg)
 	hooks.execution_state_changed(self, new_state)
 end
 
-function Kernel:image_dir()
+function Kernel:img_dir()
 	assert(self.session_id, "Kernel has no session id")
 	local dir = vim.fn.stdpath("data") .. "/jet/images/" .. self.session_id
 	utils.mkdir(dir)
 	return dir
 end
 
+function Kernel:img_toggle()
+	if self.img then
+		self.img:toggle()
+	else
+		self:img_open()
+	end
+end
+
 ---@param which? string | integer
 ---@return integer # Win number
-function Kernel:open_images(which)
+function Kernel:img_open(which)
 	if not self.img then
 		assert(self.session_id, "Kernel has no session id")
 		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
@@ -398,7 +406,7 @@ end
 ---@param mime string | jet.Mime Describes the format of the `content`
 ---@param name string
 ---@return string | false Returns the path to the saved file, or `false` on failure.
-function Kernel:save_image(content, mime, name)
+function Kernel:img_save(content, mime, name)
 	if type(mime) == "string" then
 		mime = assert(require("jet.core.utils.mime").parse(mime), "Failed to parse MIME type: " .. mime)
 	end
@@ -409,7 +417,7 @@ function Kernel:save_image(content, mime, name)
 	local extension = name:match("%.(%w+)$") or mime.subtype
 	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
 
-	local path = string.format("%s/%s_%s.%s", self:image_dir(), timestamp, base_name, extension)
+	local path = string.format("%s/%s_%s.%s", self:img_dir(), timestamp, base_name, extension)
 
 	if mime.type ~= "image" then
 		utils.log_error("MIME type is not an image: %s/%s", mime.type, mime.subtype)
@@ -454,9 +462,9 @@ function Kernel:handle_image_msg(msg)
 	for mime_text, content in pairs(data) do
 		local mime = require("jet.core.utils.mime").parse(mime_text)
 		if mime and mime.type == "image" then
-			local res = self:save_image(content, mime, msg.header.msg_id)
+			local res = self:img_save(content, mime, msg.header.msg_id)
 			if res then
-				self:open_images(vim.fs.basename(res))
+				self:img_open(vim.fs.basename(res))
 			else
 				utils.log_error(
 					"Failed to save image from kernel '%s' with MIME type '%s/%s'",

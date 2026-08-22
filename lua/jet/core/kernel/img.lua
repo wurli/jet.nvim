@@ -77,7 +77,7 @@ end
 function Img:list_files()
 	local files = {}
 	local curr_file_index
-	for name, type in vim.fs.dir(self.kernel:image_dir()) do
+	for name, type in vim.fs.dir(self.kernel:img_dir()) do
 		if type == "file" then
 			table.insert(files, name)
 			if name == self.img_file then
@@ -119,7 +119,7 @@ function Img:display(which)
 	end
 
 	self.img_file = vim.fs.basename(filepath)
-	local src = vim.fs.joinpath(self.kernel:image_dir(), filepath)
+	local src = vim.fs.joinpath(self.kernel:img_dir(), filepath)
 	vim.api.nvim__redraw({ win = win, winbar = true })
 
 	require("jet.core.hooks").image_display_pre(self.kernel, src)
