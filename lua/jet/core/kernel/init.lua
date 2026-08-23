@@ -1,5 +1,5 @@
 local manager = require("jet.core.manager")
-local config = require("jet.core.config")
+local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
@@ -58,7 +58,7 @@ local init_defaults = function()
 		known_comms = {},
 		ui_expand = false,
 		output_stream = {
-			complete_lines = require("jet.core.utils.queue").new(config.options.ui.stream_lines, {}),
+			complete_lines = require("jet.core.utils.queue").new(cfg.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
 		on_message_received = {},
@@ -140,7 +140,7 @@ end
 ---@return T
 local function make_hook_caller(hooks)
 	local hook_name
-	for name, hookset in pairs(config.options.hooks) do
+	for name, hookset in pairs(cfg.hooks) do
 		if hookset == hooks then
 			hook_name = name
 		end
@@ -160,14 +160,14 @@ local function make_hook_caller(hooks)
 end
 
 -- stylua: ignore start
-Kernel.do_execution_state_changed = make_hook_caller(config.options.hooks.on_execution_state_changed)
-Kernel.do_kernel_close            = make_hook_caller(config.options.hooks.on_kernel_close)
-Kernel.do_kernel_init             = make_hook_caller(config.options.hooks.on_kernel_init)
-Kernel.do_lua_client_start        = make_hook_caller(config.options.hooks.on_lua_client_start)
-Kernel.do_message_received        = make_hook_caller(config.options.hooks.on_message_received)
-Kernel.do_send_pre                = make_hook_caller(config.options.hooks.on_send_pre)
-Kernel.do_status_changed          = make_hook_caller(config.options.hooks.on_status_changed)
-Kernel.do_image_display_pre       = make_hook_caller(config.options.hooks.on_image_display_pre)
+Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed)
+Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close)
+Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init)
+Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start)
+Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received)
+Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre)
+Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed)
+Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre)
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
@@ -208,7 +208,7 @@ function Kernel:term_create(callback)
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
 			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
-			if config.options.stop_on_buf_wipeout then
+			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
 		end
@@ -755,7 +755,7 @@ function Kernel:try_resolve_filetype()
 		return
 	end
 	local shorten = require("jet.core.utils").path_shorten
-	for ft, default_spec in pairs(config.options.default_kernels) do
+	for ft, default_spec in pairs(cfg.default_kernels) do
 		local s = type(default_spec) == "string" and default_spec or default_spec()
 		if s and shorten(s) == shorten(self.spec_path) then
 			self.filetype = ft
