@@ -91,24 +91,12 @@ M.setup = function()
 		end
 
 		if args[1] == "repl" then
-			return api.get_any(parse_args(args, FILTER_ARGSPEC, 2), {}, open)
-		end
-
-		if args[1] == "open" then
-			return api.get_external({}, {}, open)
-		end
-
-		if args[1] == "start" then
-			return api.get_inactive({ spec_path = args[2] }, {}, open)
-		end
-
-		if args[1] == "attach" then
-			return api.get_external({}, {}, open)
+			return api.get(parse_args(args, FILTER_ARGSPEC, 2), {}, open)
 		end
 
 		if args[1] == "send" and args[2] then
 			---@param k jet.Kernel
-			return api.get_any({}, {}, function(k) k:send_lua(args[2], false) end)
+			return api.get({}, {}, function(k) k:send_lua(args[2], false) end)
 		end
 
 		if args[1] == "install" then

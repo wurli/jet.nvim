@@ -137,67 +137,6 @@ local select_kernel = function(kernels, msg, callback)
 	end)
 end
 
----Run `callback()` on a kernel which is not yet running
----
----@param filters jet.api.Filters
----@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
----@param callback fun(k: jet.Kernel)
-M.get_inactive = function(filters, init_opts, callback)
-	filters = filters or {}
-	filters.status = { "inactive" }
-
-	M.list_kernels(filters, init_opts, function(kernels)
-		if #kernels == 0 then
-			vim.notify("Could not find any kernels on the system", vim.log.levels.WARN)
-			return
-		end
-
-		-- Show user the choices even if only 1 kernel available
-		---@param k jet.Kernel
-		select_kernel(kernels, "Select a kernel to start", function(k) callback(k) end)
-	end)
-end
-
----Run `callback()` on a kernel which is running but not connected to Neovim
----
----@param filters jet.api.Filters
----@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
----@param callback fun(k: jet.Kernel)
-M.get_external = function(filters, init_opts, callback)
-	filters = filters or {}
-	filters.status = { "external" }
-
-	M.list_kernels(filters, init_opts, function(kernels)
-		if #kernels == 0 then
-			vim.notify("No external running kernels to attach to", vim.log.levels.WARN)
-			return
-		end
-
-		select_kernel(kernels, "Select an external kernel to open", callback)
-	end)
-end
-
----Run `callback()` on a kernel which is running and connected to Neovim
----
----@param filters? jet.api.Filters
----@param callback fun(k: jet.Kernel)
-M.get_connected = function(filters, callback, silent)
-	filters = filters or {}
-	filters.status = { "connected" }
-
-	M.list_kernels(filters, {}, function(kernels)
-		if #kernels == 0 then
-			if not silent then
-				vim.notify("No running kernels to attach to", vim.log.levels.WARN)
-			end
-		elseif #kernels == 1 then
-			callback(kernels[1])
-		else
-			select_kernel(kernels, "Select a running kernel to open", callback)
-		end
-	end)
-end
-
 ---Perform some action on a kernel
 ---
 ---The kernel may be running in Neovim already, running in a Jet session
@@ -219,7 +158,7 @@ end
 ---@param filters jet.api.Filters
 ---@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(k: jet.Kernel)
-M.get_any = function(filters, init_opts, callback)
+M.get = function(filters, init_opts, callback)
 	local choose = function(kernels)
 		if #kernels == 1 then
 			callback(kernels[1])
