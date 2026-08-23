@@ -122,7 +122,7 @@ function Img:display(which)
 	local src = vim.fs.joinpath(self.kernel:img_dir(), filepath)
 	vim.api.nvim__redraw({ win = win, winbar = true })
 
-	require("jet.core.hooks").image_display_pre(self.kernel, src)
+	self.kernel:do_image_display_pre(src)
 
 	-- First try Snacks
 	if _G.Snacks and _G.Snacks.image and _G.Snacks.image.config then

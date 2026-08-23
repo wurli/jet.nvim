@@ -1,7 +1,6 @@
 local manager = require("jet.core.manager")
 local config = require("jet.core.config")
 local utils = require("jet.core.utils")
-local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -47,24 +46,34 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 ---@field stream jet.callback<jupyter.Msg>
+---@field hooks jet.Config.Hooks
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
 
 ---@return Partial<jet.Kernel>
 local init_defaults = function()
-	local queue = require("jet.core.utils.queue")
 	return {
 		open_comms = {},
 		known_comms = {},
 		ui_expand = false,
 		output_stream = {
-			complete_lines = queue.new(config.options.ui.stream_lines, {}),
+			complete_lines = require("jet.core.utils.queue").new(config.options.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
 		on_message_received = {},
 		on_started = {},
 		metadata = {},
+		hooks = {
+			on_execution_state_changed = {},
+			on_kernel_close = {},
+			on_kernel_init = {},
+			on_lua_client_start = {},
+			on_message_received = {},
+			on_send_pre = {},
+			on_status_changed = {},
+			on_image_display_pre = {},
+		},
 	}
 end
 
@@ -85,7 +94,7 @@ function Kernel.init_owned(opts)
 	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
 	out:try_resolve_filetype()
 
-	hooks.kernel_init(out)
+	out:do_kernel_init()
 
 	return out
 end
@@ -119,10 +128,47 @@ function Kernel.init_external(opts)
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
 
-	hooks.kernel_init(out)
+	out:do_kernel_init()
 
 	return out
 end
+
+---A rather grim implementation, but it gives type hints _and_ calls both the
+---kernel-specific hooks and the global hooks.
+---@generic T
+---@param hooks table<string | integer, T>
+---@return T
+local function make_hook_caller(hooks)
+	local hook_name
+	for name, hookset in pairs(config.options.hooks) do
+		if hookset == hooks then
+			hook_name = name
+		end
+	end
+
+	---@param k jet.Kernel
+	return function(k, ...)
+		if hook_name and k.hooks[hook_name] then
+			for _, hook in pairs(k.hooks[hook_name]) do
+				hook(k, ...)
+			end
+		end
+		for _, hook in pairs(hooks) do
+			hook(k, ...)
+		end
+	end
+end
+
+-- stylua: ignore start
+Kernel.do_execution_state_changed = make_hook_caller(config.options.hooks.on_execution_state_changed)
+Kernel.do_kernel_close            = make_hook_caller(config.options.hooks.on_kernel_close)
+Kernel.do_kernel_init             = make_hook_caller(config.options.hooks.on_kernel_init)
+Kernel.do_lua_client_start        = make_hook_caller(config.options.hooks.on_lua_client_start)
+Kernel.do_message_received        = make_hook_caller(config.options.hooks.on_message_received)
+Kernel.do_send_pre                = make_hook_caller(config.options.hooks.on_send_pre)
+Kernel.do_status_changed          = make_hook_caller(config.options.hooks.on_status_changed)
+Kernel.do_image_display_pre       = make_hook_caller(config.options.hooks.on_image_display_pre)
+-- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
@@ -358,7 +404,7 @@ function Kernel:update_execution_state(msg)
 		vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 	end
 
-	hooks.execution_state_changed(self, new_state)
+	self:do_execution_state_changed(new_state)
 end
 
 function Kernel:img_dir()
@@ -555,7 +601,7 @@ function Kernel:handle_stream()
 			self:handle_input_request(msg)
 			self:handle_comm_open(msg)
 
-			hooks.message_received(self, msg)
+			self:do_message_received(msg)
 			for _, hook in pairs(self.on_message_received) do
 				hook(self, msg)
 			end
@@ -636,7 +682,7 @@ function Kernel:start_lua_client(callback)
 
 		self.client_id = STARTING_KERNEL_SENTINEL
 
-		hooks.status_changed(self)
+		self:do_status_changed()
 
 		---@diagnostic disable-next-line: unnecessary-assert
 		assert(self.session_id, "Kernel did not return a session id")
@@ -687,8 +733,8 @@ function Kernel:start_lua_client(callback)
 			self:handle_stream()
 			self:register_lsp_client()
 
-			hooks.lua_client_start(self)
-			hooks.status_changed(self)
+			self:do_lua_client_start()
+			self:do_status_changed()
 
 			for _, on_started_callback in pairs(self.on_started) do
 				on_started_callback(self)
@@ -767,13 +813,13 @@ function Kernel:close(reason)
 				reason = reason and string.format(" (%s)", reason) or ""
 				utils.log_info("Stopped kernel '%s'%s", self.spec.display_name, reason)
 			end
-			hooks.kernel_close(self)
-			hooks.status_changed(self)
+			self:do_kernel_close()
+			self:do_status_changed()
 		end)
 		return
 	end
 
-	hooks.status_changed(self)
+	self:do_status_changed()
 end
 
 ---Stop the kernel if it is owned
@@ -880,7 +926,7 @@ end
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
 	self:term_open(function(t)
-		t:send(code, tabstop, function(lines) hooks.send_pre(self, lines) end)
+		t:send(code, tabstop, function(lines) self:do_send_pre(lines) end)
 	end, false)
 end
 
