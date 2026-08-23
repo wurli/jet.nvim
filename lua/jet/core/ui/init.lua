@@ -318,7 +318,7 @@ end
 
 ---@param callback fun(kernels: jet.ui._KernelGroup[])
 local list_kernel_groups = function(callback)
-	api.list_kernels({}, {}, function(kernel_list)
+	api.list_kernels({}, function(kernel_list)
 		table.sort(kernel_list, function(a, b)
 			if a:status() == "inactive" and b:status() ~= "inactive" then
 				return true

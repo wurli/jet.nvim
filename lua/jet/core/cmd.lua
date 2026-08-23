@@ -91,12 +91,12 @@ M.setup = function()
 		end
 
 		if args[1] == "repl" then
-			return api.get(parse_args(args, FILTER_ARGSPEC, 2), {}, open)
+			return api.choose(parse_args(args, FILTER_ARGSPEC, 2), {}, open)
 		end
 
 		if args[1] == "send" and args[2] then
 			---@param k jet.Kernel
-			return api.get({}, {}, function(k) k:send_lua(args[2], false) end)
+			return api.choose({}, {}, function(k) k:send_lua(args[2], false) end)
 		end
 
 		if args[1] == "install" then

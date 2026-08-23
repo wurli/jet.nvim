@@ -74,9 +74,8 @@ M.filter_kernels = function(kernels, opts)
 end
 
 ---@param filters? jet.api.Filters
----@param init_opts? {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback? fun(kernels: jet.Kernel[])
-M.list_kernels = function(filters, init_opts, callback)
+M.list_kernels = function(filters, callback)
 	filters = filters or {}
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
 	filters.status = type(filters.status) == "string" and { filters.status } or filters.status
@@ -92,8 +91,7 @@ M.list_kernels = function(filters, init_opts, callback)
 
 	if vim.tbl_contains(filters.status, "inactive") then
 		for _, k in ipairs(require("jet.core.engine").list_kernels()) do
-			local init = vim.tbl_extend("keep", { spec_path = k.path, spec = k.spec }, init_opts or {}) --[[@as jet.kernel.init_owned.Opts]]
-			table.insert(kernels, kernel.init_owned(init))
+			table.insert(kernels, kernel.init_owned({ spec_path = k.path, spec = k.spec }))
 		end
 	end
 
@@ -103,8 +101,7 @@ M.list_kernels = function(filters, init_opts, callback)
 			for _, session in ipairs(sessions) do
 				-- Don't include sessions that are already connected to Neovim
 				if not manager.kernels[session.session_id] then
-					local init = vim.tbl_extend("keep", { session_id = session.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.Opts]]
-					table.insert(kernels, kernel.init_external(init))
+					table.insert(kernels, kernel.init_external({ session_id = session.session_id }))
 				end
 			end
 		end
@@ -159,28 +156,19 @@ local select_kernel = function(kernels, msg, callback)
 	end)
 end
 
----Perform some action on a kernel
+---Get a kernel and do some stuff with it
 ---
----The kernel may be running in Neovim already, running in a Jet session
----outside of Neovim, or not yet running.
+---Looks for kernels which match `filters` in the following order:
+---1. Connected (or connecting) kernels
+---2. Inactive kernels which are marked as 'default'
+---3. Other inactive kernels
 ---
----1. Starts with a list of all kernels, including those connected to nvim,
----   inactive kernels, and kernels running externally (e.g. in tmux or in
----   another nvim session in the same directory).
----2. If the list contains only one *running* kernel, this is passed to
----   `callback`.
----3. If the list contains only one *inactive* kernel and this kernel is marked
----   as 'default' for its filetype (see `config.default_kernels`), this kernel
----   is passed to `callback`.
----4. If neither 2 or 3 apply, the user is prompted to select a kernel via
----   `vim.ui.select()`.
----
----TODO: document available filters here
+---If any of the above steps match a single kernel it is passed to
+---`callback()`. If multiple kernels match, the user is prompted to select one.
 ---
 ---@param filters jet.api.Filters
----@param init_opts {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
 ---@param callback fun(k: jet.Kernel)
-M.get = function(filters, init_opts, callback)
+M.get = function(filters, callback)
 	local choose = function(kernels)
 		if #kernels == 1 then
 			callback(kernels[1])
@@ -191,13 +179,13 @@ M.get = function(filters, init_opts, callback)
 
 	local get_filters = function(f) return vim.tbl_extend("keep", f, filters) end
 
-	M.list_kernels(get_filters({ status = { "connected", "connecting" } }), init_opts, function(matches1)
+	M.list_kernels(get_filters({ status = { "connected", "connecting" } }), function(matches1)
 		if #matches1 > 0 then
 			choose(matches1)
 			return
 		end
 
-		M.list_kernels({ status = { "inactive" } }, init_opts, function(inactive_kernels)
+		M.list_kernels({ status = { "inactive" } }, function(inactive_kernels)
 			local matches2 =
 				M.filter_kernels(inactive_kernels, get_filters({ status = { "inactive" }, default = true }))
 			if #matches2 > 0 then
@@ -217,7 +205,7 @@ M.get = function(filters, init_opts, callback)
 			end
 
 			-- If we reach this point, there are multiple kernels to choose from.
-			M.list_kernels({}, init_opts, function(kernels) select_kernel(kernels, "Select a kernel", callback) end)
+			M.list_kernels({}, function(kernels) select_kernel(kernels, "Select a kernel", callback) end)
 		end)
 	end)
 end
