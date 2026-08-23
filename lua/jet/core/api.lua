@@ -73,9 +73,9 @@ M.filter_kernels = function(kernels, opts)
 	end, kernels)
 end
 
----@param filters jet.api.Filters
+---@param filters? jet.api.Filters
 ---@param init_opts? {} | jet.kernel.init_owned.Opts | jet.kernel.init_external.Opts
----@param callback fun(kernels: jet.Kernel[])
+---@param callback? fun(kernels: jet.Kernel[])
 M.list_kernels = function(filters, init_opts, callback)
 	filters = filters or {}
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
@@ -98,25 +98,47 @@ M.list_kernels = function(filters, init_opts, callback)
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
-		local cb = require("jet.core.engine").list_sessions()
-		utils.poll(function()
-			local res = cb()
-			if res.value then
-				for _, session in ipairs(res.value) do
-					-- Don't include sessions that are already connected to Neovim
-					if not manager.kernels[session.session_id] then
-						local init = vim.tbl_extend("keep", { session_id = session.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.Opts]]
-						table.insert(kernels, kernel.init_external(init))
-					end
+		---@param sessions jet.SessionInfo[]
+		local collect = function(sessions)
+			for _, session in ipairs(sessions) do
+				-- Don't include sessions that are already connected to Neovim
+				if not manager.kernels[session.session_id] then
+					local init = vim.tbl_extend("keep", { session_id = session.session_id }, init_opts or {}) --[[@as jet.kernel.init_external.Opts]]
+					table.insert(kernels, kernel.init_external(init))
 				end
-				callback(M.filter_kernels(kernels, filters))
 			end
-			return res.status
-		end, { interval = 20, alias = "Waiting for list_sessions output" })
-		return
+		end
+
+		local cb = require("jet.core.engine").list_sessions()
+
+		if callback then
+			utils.poll(function()
+				local res = cb()
+				if res.value then
+					collect(res.value)
+					callback(M.filter_kernels(kernels, filters))
+				end
+				return res.status
+			end, { interval = 20, alias = "Waiting for list_sessions output" })
+			return
+		else
+			while true do
+				local res = cb()
+				if res.value then
+					collect(res.value)
+					break
+				end
+			end
+		end
 	end
 
-	callback(M.filter_kernels(kernels, filters))
+	local out = M.filter_kernels(kernels, filters)
+
+	if callback then
+		callback(out)
+	else
+		return out
+	end
 end
 
 ---@param kernels jet.Kernel[]
