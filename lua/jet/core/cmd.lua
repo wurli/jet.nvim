@@ -80,7 +80,7 @@ end
 
 M.setup = function()
 	local ui = require("jet.core.ui")
-	local api = require("jet.core.api")
+	local manager = require("jet.core.manager")
 
 	vim.api.nvim_create_user_command("Jet", function(opts)
 		local args = opts.fargs
@@ -91,12 +91,12 @@ M.setup = function()
 		end
 
 		if args[1] == "repl" then
-			return api.choose(parse_args(args, FILTER_ARGSPEC, 2), {}, open)
+			return manager.get(parse_args(args, FILTER_ARGSPEC, 2), open)
 		end
 
 		if args[1] == "send" and args[2] then
 			---@param k jet.Kernel
-			return api.choose({}, {}, function(k) k:send_lua(args[2], false) end)
+			return manager.get({}, function(k) k:send_lua(args[2], false) end)
 		end
 
 		if args[1] == "install" then
