@@ -1,7 +1,7 @@
 local M = {}
 
 ---@class jet.Config.Hooks
----@field on_execution_state_changed table<any, fun(k: jet.Kernel, state: jet.kernel.execution_state)>
+---@field on_execution_state_changed table<any, fun(k: jet.Kernel, state: jet.Kernel.execution_state)>
 ---@field on_kernel_close table<any, fun(k: jet.Kernel)>
 ---@field on_kernel_init table<any, fun(k: jet.Kernel)>
 ---@field on_lua_client_start table<any, fun(k: jet.Kernel)>

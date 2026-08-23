@@ -4,9 +4,9 @@ local utils = require("jet.core.utils")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@alias jet.kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
----@alias jet.kernel.paritalspec { display_name: string, language: string }
----@alias jet.kernel.execution_state "busy" | "idle" | "starting"
+---@alias jet.Kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
+---@alias jet.Kernel.paritalspec { display_name: string, language: string }
+---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
 ---The `Kernel` class is jet.nvim's central abstraction for working with
 ---Jupyter kernels using Jet. You can create a new instance using two
@@ -24,7 +24,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   ```
 ---@class jet.Kernel
 ---@field session_name? string
----@field spec jupyter.KernelSpec | jet.kernel.paritalspec
+---@field spec jupyter.KernelSpec | jet.Kernel.paritalspec
 ---@field spec_path string
 ---@field kernel_info? jupyter.KernelInfo
 ---@field session_id? string
@@ -36,8 +36,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
----@field last_execution? jet.kernel.last_execution
----@field execution_state? jet.kernel.execution_state
+---@field last_execution? jet.Kernel.last_execution
+---@field execution_state? jet.Kernel.execution_state
 ---@field ui_expand boolean
 ---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
 ---@field open_comms table<string, { name: string, data?: table }>
@@ -80,7 +80,7 @@ end
 ---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jupyter.KernelSpec | jet.kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
