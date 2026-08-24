@@ -17,7 +17,7 @@ end
 ---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
 ---@field spec_path? string
----@field filetype? string | boolean `true` gets the filetype at the current position
+---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field display_name? string
 ---@field primary? boolean Implies `status` = "connected"
 ---@field default? boolean Only gets the default kernel for `filetype` (see `config.default_kernels`)
@@ -166,6 +166,16 @@ local select_kernel = function(kernels, msg, callback)
 	end)
 end
 
+---Get a running kernel by its session id
+---
+---This can be useful, e.g. if you want to get the running `Kernel` object
+---powering the repl:
+---
+---``` lua
+---local jet = require("jet")
+---local kernel = jet.get_by_id(vim.b.jet.session_id)
+---```
+---
 ---@param session_id string
 ---@return jet.Kernel?
 Manager.get_by_id = function(session_id)
