@@ -397,10 +397,6 @@ function Kernel:update_execution_state(msg)
 	end
 
 	if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
-		local jet_b = vim.b[self.term.buf].jet or {}
-		jet_b.execution_state = self.execution_state
-		jet_b.last_execution = self.last_execution
-		vim.b[self.term.buf].jet = jet_b
 		vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 	end
 
