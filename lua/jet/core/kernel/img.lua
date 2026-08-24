@@ -41,34 +41,14 @@ function Img.init(opts)
 	return out
 end
 
-function Img.get_winbar()
-	local session_id = vim.b.jet and vim.b.jet.session_id
-	local kernel = session_id and require("jet.core.manager").kernels[session_id]
-
-	if not kernel then
-		return "Jet - Images"
-	end
-
-	if not kernel.img then
-		return kernel:friendly_name() .. " - Images"
-	end
-
-	local files, curr_file_index = kernel.img:list_files()
-
-	if #files == 0 or not curr_file_index then
-		return kernel:friendly_name() .. " - Images"
-	end
-
-	return string.format("%s - Image %d/%d", kernel:friendly_name(), curr_file_index, #files, files[curr_file_index])
-end
-
 ---@param focus? boolean
 ---@param which? string | integer
 ---@return integer # Win number
 function Img:open(focus, which)
 	local win = buf.open(self, focus)
-	vim.wo[win].winbar = "%{%v:lua.require'jet.core.kernel.img'.get_winbar()%}"
 	self:display(which)
+	-- For folks who want to display image stuff in the winbar/statusline
+	vim.api.nvim__redraw({ win = win, winbar = true, statusline = true })
 	return win
 end
 
@@ -120,7 +100,6 @@ function Img:display(which)
 
 	self.img_file = vim.fs.basename(filepath)
 	local src = vim.fs.joinpath(self.kernel:img_dir(), filepath)
-	vim.api.nvim__redraw({ win = win, winbar = true })
 
 	self.kernel:do_image_display_pre(src)
 
