@@ -328,7 +328,7 @@ function Kernel:update_output_stream(msg)
 			if vim.startswith(trace[1] or "", evalue[1] or "") then
 				lines = trace
 			else
-				lines = vim.list_extend({ evalue }, trace)
+				lines = vim.list_extend(evalue, trace)
 			end
 		elseif has_ename and has_evalue then
 			lines = ename
@@ -405,7 +405,7 @@ end
 
 function Kernel:img_dir()
 	assert(self.session_id, "Kernel has no session id")
-	local dir = vim.fn.stdpath("data") .. "/jet/images/" .. self.session_id
+	local dir = require("jet.core.config").data.jet_nvim_data_dir .. "/images/" .. self.session_id
 	utils.mkdir(dir)
 	return dir
 end

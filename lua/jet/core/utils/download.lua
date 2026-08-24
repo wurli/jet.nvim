@@ -23,7 +23,7 @@ end
 ---@param dir? string
 ---@return { dir: string, bin_path?: string, lib_path?: string }
 M.jet_resource_paths = function(dir)
-	dir = dir or (vim.fn.stdpath("data") .. "/jet")
+	dir = dir or require("jet.core.config").data.jet_nvim_data_dir
 	local bin_dir = dir .. "/bin/"
 	local lib_dir = dir .. "/lib/"
 
