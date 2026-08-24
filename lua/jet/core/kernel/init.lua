@@ -160,14 +160,14 @@ local function make_hook_caller(hooks)
 end
 
 -- stylua: ignore start
-Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed)
-Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close)
-Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init)
-Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start)
-Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received)
-Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre)
-Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed)
-Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre)
+Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed) ---@private
+Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close) ---@private
+Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init) ---@private
+Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start) ---@private
+Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received) ---@private
+Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre) ---@private
+Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed) ---@private
+Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre) ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.

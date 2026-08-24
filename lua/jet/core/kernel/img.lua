@@ -100,6 +100,7 @@ function Img:display(which)
 	self.img_file = vim.fs.basename(filepath)
 	local src = vim.fs.joinpath(self.kernel:img_dir(), filepath)
 
+	---@diagnostic disable-next-line: access-invisible
 	self.kernel:do_image_display_pre(src)
 
 	-- First try Snacks
