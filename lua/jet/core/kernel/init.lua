@@ -678,6 +678,7 @@ function Kernel:start_lua_client(callback)
 				client_id = val.client_id,
 				display_name = self.spec.display_name,
 				filetype = self.filetype,
+				session_id = self.session_id,
 			})
 
 			-- Even though the kernel has not yet been shown in a REPL, if
