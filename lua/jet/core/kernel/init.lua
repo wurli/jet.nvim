@@ -1,6 +1,7 @@
 local manager = require("jet.core.manager")
 local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
+local lsp = require("jet.core.kernel.lsp")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -30,7 +31,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_id? string
 ---@field session_info? jet.SessionInfo
 ---@field client_id? string
----@field lsp_port? integer
+---@field lsp jet.Lsp
 ---@field term? jet.Kernel.Term
 ---@field img? jet.Kernel.Img
 ---@field cmd string[]
@@ -207,7 +208,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
+			self.term:create_autocmd("TermEnter", function() manager:set_primary(self) end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
@@ -231,16 +232,6 @@ function Kernel:status()
 	else
 		return "inactive", " "
 	end
-end
-
----Set the kernel as the 'primary' kernel for its filetype. No-op if the kernel
----has no filetype.
-function Kernel:set_as_filetype_primary()
-	if not self.filetype then
-		return
-	end
-
-	manager.filetype_primary[self.filetype] = self.session_id
 end
 
 ---@param s string
@@ -607,42 +598,6 @@ function Kernel:handle_stream()
 	end, { alias = "Watch for kernel stream messages " .. self.session_id })
 end
 
----@private
-function Kernel:register_lsp_client()
-	if not self.filetype then
-		return
-	end
-
-	assert(self.lsp_port, "Kernel has no lsp port")
-	assert(self.client_id, "Kernel has no client id")
-	---@diagnostic disable-next-line: unnecessary-assert
-	assert(self.spec and self.spec.display_name, "Kernel has no display name")
-
-	local clean_name = self.spec.display_name:gsub("%W", "_"):gsub("_+", "_"):gsub("^_+", ""):gsub("_+$", "")
-	self.lsp_name = "jet_" .. clean_name .. "_" .. self.client_id
-
-	local capabilities = vim.lsp.protocol.make_client_capabilities()
-
-	vim.lsp.config(self.lsp_name, {
-		cmd = vim.lsp.rpc.connect("127.0.0.1", self.lsp_port),
-		root_markers = { ".git" },
-		filetypes = { self.filetype },
-		root_dir = ".",
-		capabilities = {
-			general = capabilities.general,
-			textDocument = {
-				completion = (capabilities.textDocument or {}).completion,
-				-- hover = {
-				-- 	dynamicRegistration = true,
-				-- 	contentFormat = { constants.MarkupKind.Markdown, constants.MarkupKind.PlainText },
-				-- },
-			},
-		},
-	})
-
-	vim.lsp.enable(self.lsp_name)
-end
-
 ---Connect to a real kernel instance using the Jet Lua client.
 ---
 ---When a kernel is opened, the Lua client starts first, possibly starting a
@@ -710,7 +665,6 @@ function Kernel:start_lua_client(callback)
 		if val then
 			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self.session_id)
 
-			self.lsp_port = val.lsp_port
 			self.client_id = val.client_id
 			self.kernel_info = val.kernel_info
 			self.stream = val.stream
@@ -719,15 +673,21 @@ function Kernel:start_lua_client(callback)
 			-- has a chance to override it.
 			self:try_resolve_filetype()
 
+			self.lsp = lsp.init({
+				port = val.lsp_port,
+				client_id = val.client_id,
+				display_name = self.spec.display_name,
+				filetype = self.filetype,
+			})
+
 			-- Even though the kernel has not yet been shown in a REPL, if
 			-- there isn't another kernel for this filetype already set as
 			-- primary we should set this one for convenience.
 			if self.filetype and not manager.filetype_primary[self.filetype] then
-				self:set_as_filetype_primary()
+				manager:set_primary(self)
 			end
 
 			self:handle_stream()
-			self:register_lsp_client()
 
 			self:do_lua_client_start()
 			self:do_status_changed()

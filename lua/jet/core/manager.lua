@@ -14,6 +14,29 @@ function Manager:insert(k)
 	self.kernels[k.session_id] = k
 end
 
+---Also activates the kernel LSP and disables any other active Jet LSP for the
+---same filetype.
+---
+---@param k jet.Kernel
+function Manager:set_primary(k)
+	assert(k.session_id, "Kernel must have a session_id")
+	assert(k.filetype, "Kernel must have a filetype")
+
+	self.kernels[k.session_id] = k
+	self.filetype_primary[k.filetype] = k.session_id
+
+	-- We only want one active Jet LSP per filetype
+	for _, ki in pairs(self.kernels) do
+		if ki ~= k and ki.filetype == k.filetype and ki.lsp then
+			ki.lsp:disable()
+		end
+	end
+
+	if k.lsp then
+		k.lsp:enable()
+	end
+end
+
 ---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
 ---@field spec_path? string
