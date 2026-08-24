@@ -21,9 +21,9 @@ M.curl = function(args, callback)
 end
 
 ---@param dir? string
----@return { dir: string, bin_path?: string, lib_path?: string }
+---@return { dir: string, bin_dir: string, lib_dir: string, bin_path?: string, lib_path?: string }
 M.jet_resource_paths = function(dir)
-	dir = dir or require("jet.core.config").data.jet_nvim_data_dir
+	dir = dir or require("jet.core.config").data.jet_nvim_data_dir --[[@as string]]
 	local bin_dir = dir .. "/bin/"
 	local lib_dir = dir .. "/lib/"
 
