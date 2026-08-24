@@ -18,6 +18,7 @@ end
 ---@field session_id? string Implies `status` = "connected" or "external"
 ---@field spec_path? string
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
+---@field ft? string | boolean alias for `filetype`
 ---@field display_name? string
 ---@field primary? boolean Implies `status` = "connected"
 ---@field default? boolean Only gets the default kernel for `filetype` (see `config.default_kernels`)
@@ -28,6 +29,7 @@ end
 ---@return jet.Kernel[]
 Manager.filter_kernels = function(kernels, opts)
 	opts = opts or {}
+	opts.filetype = opts.filetype or opts.ft
 	opts.status = opts.status or { "connecting", "connected", "external", "inactive" }
 	opts.status = type(opts.status) == "string" and { opts.status } or opts.status
 	if opts.filetype == true then
