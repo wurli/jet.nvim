@@ -5,6 +5,7 @@ local utils = require("jet.core.utils")
 ---@field name string
 ---@field augroup integer
 ---@field ns integer
+---@field kernel jet.Kernel
 ---@field open_opts vim.api.keyset.win_config | fun(): vim.api.keyset.win_config
 local Buf = {}
 Buf.__index = Buf ---@private
@@ -12,6 +13,7 @@ Buf.__index = Buf ---@private
 ---@class jet.Buf.init.Opts
 ---@field name string
 ---@field ns integer
+---@field kernel jet.Kernel
 ---@field open_opts vim.api.keyset.win_config | fun(): vim.api.keyset.win_config
 
 ---@generic T
@@ -20,6 +22,7 @@ Buf.__index = Buf ---@private
 ---@return T
 function Buf.init(class, opts)
 	local out = setmetatable({
+		kernel = opts.kernel,
 		ns = opts.ns,
 		name = opts.name,
 		open_opts = opts.open_opts,
@@ -27,6 +30,7 @@ function Buf.init(class, opts)
 		buf = vim.api.nvim_create_buf(false, true),
 	}, class or Buf)
 
+	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 	vim.api.nvim_buf_set_name(out.buf, out.name)
 
 	return out

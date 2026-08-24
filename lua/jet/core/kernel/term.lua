@@ -2,7 +2,6 @@ local config = require("jet.core.config")
 local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Term : jet.Buf
----@field kernel jet.Kernel
 ---@field job_id integer
 local Term = setmetatable({}, { __index = buf })
 Term.__index = Term ---@private
@@ -19,6 +18,7 @@ function Term.init(opts)
 	local out = buf.init(Term, {
 		name = opts.kernel:friendly_name(),
 		ns = opts.ns,
+		kernel = opts.kernel,
 		open_opts = function()
 			local img_win = opts.kernel.img and opts.kernel.img:win()
 			return {
@@ -31,9 +31,6 @@ function Term.init(opts)
 
 	out.kernel = opts.kernel
 	vim.bo[out.buf].filetype = "jetrepl"
-
-	--TODO: document this
-	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 
 	-- buf_call since the buf is not yet attached to a window.
 	vim.api.nvim_buf_call(out.buf, function()

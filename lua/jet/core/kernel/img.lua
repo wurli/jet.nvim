@@ -2,7 +2,6 @@ local utils = require("jet.core.utils")
 local buf = require("jet.core.kernel.buf")
 
 ---@class jet.Kernel.Img : jet.Buf
----@field kernel jet.Kernel
 ---@field img_file? string
 local Img = setmetatable({}, { __index = buf })
 Img.__index = Img ---@private
@@ -19,6 +18,7 @@ function Img.init(opts)
 	local out = buf.init(Img, {
 		name = opts.kernel:friendly_name() .. " - Images",
 		ns = opts.ns,
+		kernel = opts.kernel,
 		open_opts = function()
 			local term_win = opts.kernel.term and opts.kernel.term:win()
 			return {
@@ -31,7 +31,6 @@ function Img.init(opts)
 
 	out.kernel = opts.kernel
 	vim.bo[out.buf].filetype = "jetimg" -- Note: Snacks.image overrides to "image"
-	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 
 	out:create_autocmd("BufWinEnter", function() out:display() end)
 
