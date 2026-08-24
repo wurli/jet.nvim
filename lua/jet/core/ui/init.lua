@@ -1,5 +1,5 @@
 local M = {}
-local api = require("jet.core.api")
+local manager = require("jet.core.manager")
 local utils = require("jet.core.utils")
 local line = require("jet.core.ui.line")
 local linegroup = require("jet.core.ui.linegroup")
@@ -318,7 +318,7 @@ end
 
 ---@param callback fun(kernels: jet.ui._KernelGroup[])
 local list_kernel_groups = function(callback)
-	api.list_kernels({}, {}, function(kernel_list)
+	manager.list({}, function(kernel_list)
 		table.sort(kernel_list, function(a, b)
 			if a:status() == "inactive" and b:status() ~= "inactive" then
 				return true
@@ -329,13 +329,13 @@ local list_kernel_groups = function(callback)
 		---@type table<string, { kernel: jet.Kernel, external: jet.Kernel[], connected: jet.Kernel[] }>
 		local kernels_grouped = {}
 
-		for _, k in ipairs(api.filter_kernels(kernel_list, { status = "inactive" })) do
+		for _, k in ipairs(manager.filter_kernels(kernel_list, { status = "inactive" })) do
 			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
 		end
 
 		for group_name, kernels in pairs({
-			connected = api.filter_kernels(kernel_list, { status = { "connected", "connecting" } }),
-			external = api.filter_kernels(kernel_list, { status = "external" }),
+			connected = manager.filter_kernels(kernel_list, { status = { "connected", "connecting" } }),
+			external = manager.filter_kernels(kernel_list, { status = "external" }),
 		}) do
 			for _, k in ipairs(kernels) do
 				local path = utils.path_normalise(k.spec_path)

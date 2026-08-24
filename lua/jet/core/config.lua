@@ -1,13 +1,14 @@
 local M = {}
 
 ---@class jet.Config.Hooks
----@field on_execution_state_changed table<any, fun(k: jet.Kernel, state: jet.kernel.execution_state)>
+---@field on_execution_state_changed table<any, fun(k: jet.Kernel, state: jet.Kernel.execution_state)>
 ---@field on_kernel_close table<any, fun(k: jet.Kernel)>
 ---@field on_kernel_init table<any, fun(k: jet.Kernel)>
 ---@field on_lua_client_start table<any, fun(k: jet.Kernel)>
 ---@field on_message_received table<any, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_send_pre table<any, fun(k: jet.Kernel, code: string[])>
 ---@field on_status_changed table<any, fun(k: jet.Kernel)>
+---@field on_image_display_pre table<any, fun(k: jet.Kernel, file: string)>
 
 ---@class jet.Config.Opts
 M.defaults = {
@@ -32,12 +33,11 @@ M.defaults = {
 	---```
 	---@type table<string, string | fun(): string?>
 	default_kernels = {},
-	repl_win_opts = {}, ---@type vim.api.keyset.win_config
 	ui = {
 		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
 	},
 	image = {
-		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): boolean>
+		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
 	},
 	--- Control how Jet displays how long stuff is taking:
 	--- ``` lua
@@ -82,6 +82,7 @@ M.defaults = {
 		on_message_received = {},
 		on_send_pre = {},
 		on_status_changed = {},
+		on_image_display_pre = {},
 	},
 	---* `send.send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending
@@ -110,7 +111,7 @@ M.jet_nvim_version = "0.0.1"
 
 ---@class jet.Config.Data
 M.data = {
-	jet_min_version = "0.0.7",
+	jet_min_version = "0.0.8",
 	binary_path = nil, ---@type string?
 	library_path = nil, ---@type string?
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",

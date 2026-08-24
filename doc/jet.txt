@@ -34,9 +34,8 @@ Lua API                                                                *lua-api*
                                          end,
                                      }
 <
-        • {repl_win_opts}        (`vim.api.keyset.win_config`)
         • {ui}                   (`{ stream_lines = 3 }`)
-        • {image}                (`{ handlers = table<string,fun(data: string, mime: jet.Mime, filepath: string) -> boolean>, ... }`)
+        • {image}                (`{ handlers = table<string,fun(data: string, mime: jet.Mime, filepath: string) -> (string|false)>, ... }`)
         • {time_formatter}       (`(fun(hh: integer, mm: integer, ss: integer) -> string)?`)
                                  Control how Jet displays how long stuff is
                                  taking: >lua
@@ -107,13 +106,14 @@ Lua API                                                                *lua-api*
 *jet.Config.Hooks*
 
     Fields: ~
-        • {on_execution_state_changed}  (`table<any,fun(k: jet.Kernel, state: jet.kernel.execution_state)>`)
+        • {on_execution_state_changed}  (`table<any,fun(k: jet.Kernel, state: jet.Kernel.execution_state)>`)
         • {on_kernel_close}             (`table<any,fun(k: jet.Kernel)>`)
         • {on_kernel_init}              (`table<any,fun(k: jet.Kernel)>`)
         • {on_lua_client_start}         (`table<any,fun(k: jet.Kernel)>`)
         • {on_message_received}         (`table<any,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
         • {on_send_pre}                 (`table<any,fun(k: jet.Kernel, code: string[])>`)
         • {on_status_changed}           (`table<any,fun(k: jet.Kernel)>`)
+        • {on_image_display_pre}        (`table<any,fun(k: jet.Kernel, file: string)>`)
 
 *jet.Kernel*
 
@@ -131,7 +131,7 @@ Lua API                                                                *lua-api*
 
     Fields: ~
         • {session_name}         (`string?`)
-        • {spec}                 (`(jupyter.KernelSpec|jet.kernel.paritalspec)`)
+        • {spec}                 (`(jupyter.KernelSpec|jet.Kernel.paritalspec)`)
         • {spec_path}            (`string`)
         • {kernel_info}          (`jupyter.KernelInfo?`)
         • {session_id}           (`string?`)
@@ -143,16 +143,18 @@ Lua API                                                                *lua-api*
         • {cmd}                  (`string[]`)
         • {owned}                (`boolean`)
         • {filetype}             (`string?`)
-        • {last_execution}       (`jet.kernel.last_execution?`)
+        • {last_execution}       (`jet.Kernel.last_execution?`)
         • {execution_state}      (`("busy"|"idle"|"starting")?`)
         • {ui_expand}            (`boolean`)
-        • {comms}                (`table<string,string>`) comm_name -> id
+        • {known_comms}          (`table<string,fun(kernel: jet.Kernel, comm_id: string, data: table)>`)
+        • {open_comms}           (`table<string,{ data: table?, name: string }>`)
         • {output_stream}        (`{ complete_lines: jet.utils.Queue<string>, incomplete_line: string }`)
         • {on_message_received}  (`table<string,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
         • {on_started}           (`table<string,fun(k: jet.Kernel)>`)
         • {metadata}             (`table<string,any>`) Arbitrary data,
                                  e.g. for use by extensions
         • {stream}               (`jet.callback<jupyter.Msg>`)
+        • {hooks}                (`jet.Config.Hooks`)
         • {lsp_name}             (`string`)
 
 Kernel:init_owned({opts})                                  *Kernel:init_owned()*
@@ -203,14 +205,49 @@ Kernel:set_as_filetype_primary()              *Kernel:set_as_filetype_primary()*
     Set the kernel as the 'primary' kernel for its filetype. No-op if the
     kernel has no filetype.
 
-Kernel:image_dir()                                          *Kernel:image_dir()*
+Kernel:img_dir()                                              *Kernel:img_dir()*
 
     Return: ~
         (`string`)
 
-Kernel:open_images()                                      *Kernel:open_images()*
+Kernel:img_toggle()                                        *Kernel:img_toggle()*
+
+Kernel:img_open({which})                                     *Kernel:img_open()*
+
+    Parameters: ~
+        • {which}     (`(string|integer)?`)
+
+    Return: ~
+        (`integer`) Win number
+
+Kernel:friendly_name()                                  *Kernel:friendly_name()*
+
+    Return: ~
+        (`string`)
+
+Kernel:img_save({content}, {mime}, {name})                   *Kernel:img_save()*
+
+    Write an image to the kernel's `image_dir()`.
+
+    • If the `name` doesn't start with a data prefix, one will be prepended.
+    • If the `name` doesn't have an extension, one will be appended based on
+      the MIME type.
+
+    Parameters: ~
+        • {content}   (`string`)
+        • {mime}      (`(string|jet.Mime)`) Describes the format of the
+                      `content`
+        • {name}      (`string`)
+
+    Return: ~
+        (`(string|false)`) the path to the saved file, or `false` on failure.
 
 Kernel:handle_input_request({msg})               *Kernel:handle_input_request()*
+
+    Parameters: ~
+        • {msg}       (`jupyter.Msg`)
+
+Kernel:handle_comm_open({msg})                       *Kernel:handle_comm_open()*
 
     Parameters: ~
         • {msg}       (`jupyter.Msg`)
@@ -285,6 +322,14 @@ Kernel:comm_send({comm_id}, {data})                         *Kernel:comm_send()*
 
     See: ~
         • |Kernel:comm_open()|
+
+Kernel:comm_close({comm_id})                               *Kernel:comm_close()*
+
+    Parameters: ~
+        • {comm_id}   (`string`)
+
+    Return: ~
+        (`string`) Message id
 
 Kernel:send_repl({code}, {tabstop})                         *Kernel:send_repl()*
 

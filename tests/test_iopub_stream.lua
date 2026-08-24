@@ -6,12 +6,7 @@ local child = MiniTest.new_child_neovim()
 
 local T = new_set({
 	hooks = {
-		pre_case = function()
-			child.restart({ "-u", "scripts/minimal_init.lua" })
-			child.lua([[require("jet").setup({
-			    ui = { stream_lines = 50 }
-			})]])
-		end,
+		pre_case = function() child.restart({ "-u", "scripts/minimal_init.lua" }) end,
 		post_once = child.stop,
 	},
 })
@@ -22,7 +17,7 @@ T["kernel records stream from output in Kernel.output_stream"] = function()
 
 		_G.k:term_open(function()
 			-- Give the Jet CLI a chance to start up
-			vim.uv.sleep(500)
+			vim.uv.sleep(1000)
 
 			k:send_repl({
 				'print("this is line 1")',

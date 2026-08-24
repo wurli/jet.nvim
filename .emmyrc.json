@@ -22,6 +22,7 @@
     "library": [
       "$VIMRUNTIME",
       "./deps",
+      "$HOME/.local/share/nvim/lazy/image.nvim/",
       "$HOME/.local/share/nvim/lazy/snacks.nvim/"
     ]
   }

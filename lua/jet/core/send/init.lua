@@ -49,24 +49,27 @@ M.send_auto = function(r, move_cursor)
 
 	table.insert(code_filtered, "")
 
-	require("jet.core.api").get_connected({ filetype = ft, primary = true }, function(k)
-		k:send_repl(code_filtered, vim.bo[r.buf].tabstop)
+	require("jet.core.manager").get(
+		{ status = { "connected", "connecting" }, filetype = ft, primary = true },
+		function(k)
+			k:send_repl(code_filtered, vim.bo[r.buf].tabstop)
 
-		if move_cursor then
-			local next_line = r.end_row
-			local next_significant_line = utils.next_significant_line({
-				buf = r.buf,
-				row = next_line,
-				col = 0,
-			}) or (next_line + 1)
-			vim.schedule(function() vim.fn.cursor(next_significant_line + 1, 0) end)
-		end
+			if move_cursor then
+				local next_line = r.end_row
+				local next_significant_line = utils.next_significant_line({
+					buf = r.buf,
+					row = next_line,
+					col = 0,
+				}) or (next_line + 1)
+				vim.schedule(function() vim.fn.cursor(next_significant_line + 1, 0) end)
+			end
 
-		if vim.fn.mode():lower() == "v" then
-			local esc_termcode = "\27"
-			vim.api.nvim_feedkeys(esc_termcode, "n", false)
+			if vim.fn.mode():lower() == "v" then
+				local esc_termcode = "\27"
+				vim.api.nvim_feedkeys(esc_termcode, "n", false)
+			end
 		end
-	end, true)
+	)
 end
 
 M.send_motion = function()

@@ -1,16 +1,12 @@
 local manager = require("jet.core.manager")
-local config = require("jet.core.config")
+local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
-local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@class jet.Kernel.Img
----@field buf integer
-
----@alias jet.kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
----@alias jet.kernel.paritalspec { display_name: string, language: string }
----@alias jet.kernel.execution_state "busy" | "idle" | "starting"
+---@alias jet.Kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
+---@alias jet.Kernel.paritalspec { display_name: string, language: string }
+---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
 ---The `Kernel` class is jet.nvim's central abstraction for working with
 ---Jupyter kernels using Jet. You can create a new instance using two
@@ -28,7 +24,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   ```
 ---@class jet.Kernel
 ---@field session_name? string
----@field spec jupyter.KernelSpec | jet.kernel.paritalspec
+---@field spec jupyter.KernelSpec | jet.Kernel.paritalspec
 ---@field spec_path string
 ---@field kernel_info? jupyter.KernelInfo
 ---@field session_id? string
@@ -40,39 +36,51 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field cmd string[]
 ---@field owned boolean
 ---@field filetype? string
----@field last_execution? jet.kernel.last_execution
----@field execution_state? jet.kernel.execution_state
+---@field last_execution? jet.Kernel.last_execution
+---@field execution_state? jet.Kernel.execution_state
 ---@field ui_expand boolean
----@field comms table<string, string> comm_name -> id
+---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
+---@field open_comms table<string, { name: string, data?: table }>
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
 ---@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 ---@field stream jet.callback<jupyter.Msg>
+---@field hooks jet.Config.Hooks
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
 
 ---@return Partial<jet.Kernel>
 local init_defaults = function()
-	local queue = require("jet.core.utils.queue")
 	return {
-		comms = {},
+		open_comms = {},
+		known_comms = {},
 		ui_expand = false,
 		output_stream = {
-			complete_lines = queue.new(config.options.ui.stream_lines, {}),
+			complete_lines = require("jet.core.utils.queue").new(cfg.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
 		on_message_received = {},
 		on_started = {},
 		metadata = {},
+		hooks = {
+			on_execution_state_changed = {},
+			on_kernel_close = {},
+			on_kernel_init = {},
+			on_lua_client_start = {},
+			on_message_received = {},
+			on_send_pre = {},
+			on_status_changed = {},
+			on_image_display_pre = {},
+		},
 	}
 end
 
 ---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jupyter.KernelSpec | jet.kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
@@ -86,7 +94,7 @@ function Kernel.init_owned(opts)
 	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
 	out:try_resolve_filetype()
 
-	hooks.kernel_init(out)
+	out:do_kernel_init()
 
 	return out
 end
@@ -120,10 +128,47 @@ function Kernel.init_external(opts)
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
 
-	hooks.kernel_init(out)
+	out:do_kernel_init()
 
 	return out
 end
+
+---A rather grim implementation, but it gives type hints _and_ calls both the
+---kernel-specific hooks and the global hooks.
+---@generic T
+---@param hooks table<string | integer, T>
+---@return T
+local function make_hook_caller(hooks)
+	local hook_name
+	for name, hookset in pairs(cfg.hooks) do
+		if hookset == hooks then
+			hook_name = name
+		end
+	end
+
+	---@param k jet.Kernel
+	return function(k, ...)
+		if hook_name and k.hooks[hook_name] then
+			for _, hook in pairs(k.hooks[hook_name]) do
+				hook(k, ...)
+			end
+		end
+		for _, hook in pairs(hooks) do
+			hook(k, ...)
+		end
+	end
+end
+
+-- stylua: ignore start
+Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed) ---@private
+Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close) ---@private
+Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init) ---@private
+Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start) ---@private
+Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received) ---@private
+Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre) ---@private
+Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed) ---@private
+Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre) ---@private
+-- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
@@ -161,13 +206,9 @@ function Kernel:term_create(callback)
 	self:start_lua_client(function()
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
-			self.term = require("jet.core.kernel.term").init({
-				session_id = self.session_id,
-				display_name = self.spec.display_name,
-				ns = jet_hl_ns,
-			})
+			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
 			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
-			if config.options.stop_on_buf_wipeout then
+			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
 		end
@@ -356,72 +397,98 @@ function Kernel:update_execution_state(msg)
 	end
 
 	if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
-		local jet_b = vim.b[self.term.buf].jet or {}
-		jet_b.execution_state = self.execution_state
-		jet_b.last_execution = self.last_execution
-		vim.b[self.term.buf].jet = jet_b
 		vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
 	end
 
-	hooks.execution_state_changed(self, new_state)
+	self:do_execution_state_changed(new_state)
 end
 
----@return string
-function Kernel:image_dir()
+function Kernel:img_dir()
 	assert(self.session_id, "Kernel has no session id")
-	local dir = vim.fn.stdpath("data") .. "/images/" .. self.session_id
+	local dir = vim.fn.stdpath("data") .. "/jet/images/" .. self.session_id
 	utils.mkdir(dir)
 	return dir
 end
 
-function Kernel:open_images()
-	local term_win = self.term and self.term:win()
-
-	local images = {}
-	local img_dir = self:image_dir()
-	for file, type in vim.fs.dir(img_dir) do
-		if type == "file" then
-			table.insert(images, img_dir .. "/" .. file)
-		end
-	end
-	table.sort(images)
-	local file = images[#images]
-
-	if not file then
-		utils.log_warn("No images found for kernel '%s'", self.spec.display_name)
-		return
-	end
-
-	---@param win integer
-	local open_above = function(win)
-		self.img = self.img or { buf = vim.api.nvim_create_buf(false, true) }
-		if not vim.api.nvim_buf_is_valid(self.img.buf) then
-			self.img.buf = vim.api.nvim_create_buf(false, true)
-		end
-		require("jet.core.image").show(self.img.buf, file)
-		if not utils.buf_get_win(self.img.buf) then
-			vim.api.nvim_open_win(self.img.buf, false, {
-				split = "above",
-				style = "minimal",
-				win = win,
-			})
-		end
-	end
-
-	if term_win then
-		open_above(term_win)
+function Kernel:img_toggle()
+	if self.img then
+		self.img:toggle()
 	else
-		self:term_open(function(t)
-			term_win = t:win()
-
-			if not term_win then
-				utils.log_error("Failed to open terminal for kernel '%s'", self.spec.display_name)
-				return
-			end
-
-			open_above(term_win)
-		end)
+		self:img_open()
 	end
+end
+
+---@param which? string | integer
+---@return integer # Win number
+function Kernel:img_open(which)
+	if not self.img then
+		assert(self.session_id, "Kernel has no session id")
+		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
+	end
+	return self.img:open(false, which)
+end
+
+---@return string
+function Kernel:friendly_name()
+	local session_hash = (self.session_id or ""):match("_([^_]+)$")
+	local name = self.spec.display_name
+	if session_hash then
+		name = name .. " (" .. session_hash .. ")"
+	end
+	return name
+end
+
+---Write an image to the kernel's `image_dir()`.
+---
+---* If the `name` doesn't start with a data prefix, one will be prepended.
+---* If the `name` doesn't have an extension, one will be appended based on the
+---  MIME type.
+---
+---@param content string
+---@param mime string | jet.Mime Describes the format of the `content`
+---@param name string
+---@return string | false Returns the path to the saved file, or `false` on failure.
+function Kernel:img_save(content, mime, name)
+	if type(mime) == "string" then
+		mime = assert(require("jet.core.utils.mime").parse(mime), "Failed to parse MIME type: " .. mime)
+	end
+
+	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
+	local extension_pattern = "%.(%w+)$"
+	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
+	local extension = name:match("%.(%w+)$") or mime.subtype
+	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
+
+	local path = string.format("%s/%s_%s.%s", self:img_dir(), timestamp, base_name, extension)
+
+	if mime.type ~= "image" then
+		utils.log_error("MIME type is not an image: %s/%s", mime.type, mime.subtype)
+		return false
+	end
+
+	local handlers = require("jet.core.config").options.image.handlers
+	local handler = handlers[mime.subtype]
+
+	if handler then
+		local res = handler(content, mime, path)
+		if res == nil then
+			utils.log_warn("Image handler for MIME subtype '%s' returned nil, assuming success", mime.subtype)
+			res = path
+		end
+		return res
+	end
+
+	local supported_types = { png = true }
+	if not supported_types[mime.subtype] then
+		utils.log_error(
+			"Unsupported MIME subtype '%s' (should be one of %s)",
+			mime.subtype,
+			table.concat(vim.list_extend(vim.tbl_keys(supported_types), vim.tbl_keys(handlers)), ", ")
+		)
+		return false
+	end
+
+	return require("jet.core.utils.base64").base64_to_file(content, path)
 end
 
 ---@private
@@ -435,12 +502,18 @@ function Kernel:handle_image_msg(msg)
 	end
 
 	for mime_text, content in pairs(data) do
-		local mime = utils.parse_mime(mime_text)
+		local mime = require("jet.core.utils.mime").parse(mime_text)
 		if mime and mime.type == "image" then
-			local filepath =
-				string.format("%s/%s_%s.png", self:image_dir(), vim.fn.strftime("%Y%m%d_%H%M%S"), msg.header.msg_id)
-			if require("jet.core.image").base64_to_file(content, mime, filepath) then
-				self:open_images()
+			local res = self:img_save(content, mime, msg.header.msg_id)
+			if res then
+				self:img_open(vim.fs.basename(res))
+			else
+				utils.log_error(
+					"Failed to save image from kernel '%s' with MIME type '%s/%s'",
+					self.spec.display_name,
+					mime.type,
+					mime.subtype
+				)
 			end
 		end
 	end
@@ -475,6 +548,42 @@ function Kernel:handle_input_request(msg)
 	end)
 end
 
+---@param msg jupyter.Msg
+function Kernel:handle_comm_open(msg)
+	if msg.header.msg_type ~= "comm_open" then
+		return
+	end
+
+	if not msg.content then
+		utils.log_warn("Received a comm_open message without content from kernel '%s'", self.spec.display_name)
+		return
+	end
+
+	if not msg.content.comm_id or not msg.content.target_name then
+		utils.log_warn(
+			"Received invalid comm_open message from kernel '%s'.\nExpected both `comm_id` and `target_name` in content;\nGot: `%s`",
+			self.spec.display_name,
+			vim.inspect(msg.content)
+		)
+		return
+	end
+
+	local handle_comm = self.known_comms[msg.content.target_name]
+
+	if handle_comm then
+		self.open_comms[msg.content.comm_id] = { name = msg.content.target_name, data = msg.content.data }
+		handle_comm(self, msg.content.comm_id, msg.content.data)
+	else
+		utils.log_warn(
+			"Received a comm_open message for unknown comm '%s' from kernel '%s'; replying with `comm_close`",
+			msg.content.target_name,
+			self.spec.display_name
+		)
+		self:comm_close(msg.content.comm_id)
+		return
+	end
+end
+
 ---@private
 function Kernel:handle_stream()
 	utils.poll(function()
@@ -486,8 +595,9 @@ function Kernel:handle_stream()
 			self:update_output_stream(msg)
 			self:handle_image_msg(msg)
 			self:handle_input_request(msg)
+			self:handle_comm_open(msg)
 
-			hooks.message_received(self, msg)
+			self:do_message_received(msg)
 			for _, hook in pairs(self.on_message_received) do
 				hook(self, msg)
 			end
@@ -568,7 +678,7 @@ function Kernel:start_lua_client(callback)
 
 		self.client_id = STARTING_KERNEL_SENTINEL
 
-		hooks.status_changed(self)
+		self:do_status_changed()
 
 		---@diagnostic disable-next-line: unnecessary-assert
 		assert(self.session_id, "Kernel did not return a session id")
@@ -619,8 +729,8 @@ function Kernel:start_lua_client(callback)
 			self:handle_stream()
 			self:register_lsp_client()
 
-			hooks.lua_client_start(self)
-			hooks.status_changed(self)
+			self:do_lua_client_start()
+			self:do_status_changed()
 
 			for _, on_started_callback in pairs(self.on_started) do
 				on_started_callback(self)
@@ -641,7 +751,7 @@ function Kernel:try_resolve_filetype()
 		return
 	end
 	local shorten = require("jet.core.utils").path_shorten
-	for ft, default_spec in pairs(config.options.default_kernels) do
+	for ft, default_spec in pairs(cfg.default_kernels) do
 		local s = type(default_spec) == "string" and default_spec or default_spec()
 		if s and shorten(s) == shorten(self.spec_path) then
 			self.filetype = ft
@@ -699,13 +809,13 @@ function Kernel:close(reason)
 				reason = reason and string.format(" (%s)", reason) or ""
 				utils.log_info("Stopped kernel '%s'%s", self.spec.display_name, reason)
 			end
-			hooks.kernel_close(self)
-			hooks.status_changed(self)
+			self:do_kernel_close()
+			self:do_status_changed()
 		end)
 		return
 	end
 
-	hooks.status_changed(self)
+	self:do_status_changed()
 end
 
 ---Stop the kernel if it is owned
@@ -735,6 +845,7 @@ end
 ---@class jet.kernel.comm_open.Opts
 ---@field listener? fun(res: jupyter.Msg)
 ---@field listener_interval? integer In milliseconds, default 50ms
+---@field callback? fun(msg: jupyter.Msg)
 
 ---Open a comm channel to the kernel
 ---
@@ -753,11 +864,21 @@ end
 ---@see https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 function Kernel:comm_open(name, data, opts)
 	assert(self.client_id, "Kernel has no client id")
-	local _cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
+	local cb, comm_id, msg_id = require("jet.core.engine").comm_open(self.client_id, name, data or {})
 
-	self.comms[name] = comm_id
+	self.open_comms[comm_id] = { name = name, data = data }
 
 	opts = opts or {}
+
+	if opts.callback then
+		utils.poll(function()
+			local res = cb()
+			if res.value then
+				opts.callback(res.value)
+			end
+			return res.status
+		end, { alias = "Polling comm_open callback" })
+	end
 
 	if opts.listener then
 		local get_comm_msg = require("jet.core.engine").comm_listen(self.client_id, comm_id)
@@ -768,7 +889,7 @@ function Kernel:comm_open(name, data, opts)
 				opts.listener(res.value)
 			end
 			return res.status
-		end, { interval = opts.listener_interval, "Waiting for comm open reply " .. self.session_id })
+		end, { interval = opts.listener_interval, alias = "Waiting for comm open reply " .. self.session_id })
 	end
 
 	return comm_id, msg_id
@@ -786,13 +907,22 @@ function Kernel:comm_send(comm_id, data)
 	return msg_id
 end
 
+---@param comm_id string
+---@return string # Message id
+function Kernel:comm_close(comm_id)
+	assert(self.client_id)
+	local _cb, msg_id = require("jet.core.engine").comm_close(self.client_id, comm_id)
+	self.open_comms[comm_id] = nil
+	return msg_id
+end
+
 ---Send code to the kernel via the terminal repl
 ---
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
 	self:term_open(function(t)
-		t:send(code, tabstop, function(lines) hooks.send_pre(self, lines) end)
+		t:send(code, tabstop, function(lines) self:do_send_pre(lines) end)
 	end, false)
 end
 
