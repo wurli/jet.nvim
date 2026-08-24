@@ -166,6 +166,13 @@ local select_kernel = function(kernels, msg, callback)
 	end)
 end
 
+---@param session_id string
+---@return jet.Kernel?
+Manager.get_by_id = function(session_id)
+	assert(type(session_id) == "string", "'session_id' must be a string")
+	return Manager.kernels[session_id]
+end
+
 ---Get a kernel and do some stuff with it
 ---
 ---Looks for kernels which match `filters` in the following order:
