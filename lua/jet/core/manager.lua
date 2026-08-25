@@ -230,7 +230,7 @@ Manager.get = function(filters, callback)
 			return
 		end
 
-		Manager.list({ status = { "inactive" } }, function(inactive_kernels)
+		Manager.list(get_filters({ status = { "inactive" } }), function(inactive_kernels)
 			local matches2 =
 				Manager.filter_kernels(inactive_kernels, get_filters({ status = { "inactive" }, default = true }))
 			if #matches2 > 0 then
@@ -248,9 +248,6 @@ Manager.get = function(filters, callback)
 				choose(inactive_kernels)
 				return
 			end
-
-			-- If we reach this point, there are multiple kernels to choose from.
-			Manager.list({}, function(kernels) select_kernel(kernels, "Select a kernel", callback) end)
 		end)
 	end)
 end
