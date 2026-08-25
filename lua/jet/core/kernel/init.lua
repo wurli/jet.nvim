@@ -849,9 +849,7 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	self:term_open(function(t)
-		t:send(code, tabstop, function(lines) self:do_send_pre(lines) end)
-	end, false)
+	self:term_open(function(t) t:send(code, tabstop) end)
 end
 
 ---Send code to the kernel via the Lua client

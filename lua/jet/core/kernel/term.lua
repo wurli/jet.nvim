@@ -64,8 +64,7 @@ end
 
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
----@param on_send? fun(code: string[]) Optional; callback to be called after code is sent
-function Term:send(code, tabstop, on_send)
+function Term:send(code, tabstop)
 	tabstop = tabstop or vim.bo.tabstop or 4
 	if type(code) == "string" then
 		code = vim.split(code, "[\n\r]", { plain = false })
@@ -95,9 +94,7 @@ function Term:send(code, tabstop, on_send)
 	-- at the end of statements which end on an indented line in order to be
 	-- actually sent to the kernel (otherwise you get the continuation prompt
 	-- '+ ...').
-	if on_send then
-		on_send(code)
-	end
+	require("jet.core.hooks").do_send_pre(self.kernel, code)
 
 	code = table.concat(code, "\r")
 
