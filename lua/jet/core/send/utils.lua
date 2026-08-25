@@ -125,6 +125,7 @@ end
 
 ---@param text string
 ---@param commentstring? string
+---@return boolean
 M.is_comment = function(text, commentstring)
 	-- Happens reasonably often, so worth checking here for convenience
 	if not commentstring or commentstring == "" then
@@ -156,11 +157,14 @@ end
 
 ---@class jet.send.next_significant_line.Opts
 ---@field accept_current? boolean
+---@field direction? "down" | "up"
 
 ---@param opts? jet.send.next_significant_line.Opts
 ---@param pos? jet.send.Pos
 ---@return jet.send.Pos?
-M.next_significant_pos = function(opts, pos)
+M.next_expr_boundary = function(opts, pos)
+	opts = opts or {}
+	opts.direction = opts.direction or "down"
 	pos = pos or M.curr_pos()
 
 	local lang_info = M.local_lang_info(pos)
@@ -170,26 +174,37 @@ M.next_significant_pos = function(opts, pos)
 
 	local cur_line = pos.row
 
+	local increment = opts.direction == "down" and 1 or -1
+
 	if opts and opts.accept_current then
-		cur_line = cur_line - 1
+		cur_line = cur_line - increment
 	end
 
-	local out = { buf = pos.buf }
+	local prev_is_significant
+	local prev_pos
 
 	while true do
-		cur_line = cur_line + 1
+		cur_line = cur_line + increment
 		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
 		if not line then
 			return nil
 		end
-		if line:match("%S") and not M.is_comment(line, lang_info.commentstring) then
-			out.row = cur_line
-			out.col = (line:find("%S") or 1) - 1
-			break
+
+		local curr_is_significant = line:match("%S") ~= nil and not M.is_comment(line, lang_info.commentstring)
+
+		local curr_pos = {
+			buf = pos.buf,
+			row = cur_line,
+			col = (line:find("%S") or 1) - 1,
+		}
+
+		if prev_is_significant ~= nil and (prev_is_significant ~= curr_is_significant) then
+			return curr_is_significant and curr_pos or prev_pos
+		else
+			prev_is_significant = curr_is_significant
+			prev_pos = curr_pos
 		end
 	end
-
-	return out
 end
 
 return M
