@@ -1,5 +1,15 @@
 local M = {}
 
+---@return jet.send.Pos
+M.curr_pos = function()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	return {
+		buf = vim.api.nvim_get_current_buf(),
+		row = cursor[1] - 1,
+		col = cursor[2],
+	}
+end
+
 ---Adapted from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/_comment.lua
 ---NOTE: if this causes issues in the future (e.g. we don't actually want the
 ---range-specific filetype) we could instead return a table of candidate
@@ -8,7 +18,7 @@ local M = {}
 ---@param pos? jet.send.Pos
 ---@return { filetype?: string, commentstring?: string }
 M.local_lang_info = function(pos)
-	pos = pos or require("jet.core.send.get_code").curr_pos()
+	pos = pos or M.curr_pos()
 	local buf_ft = vim.bo[pos.buf].filetype
 	local buf_cs = vim.bo[pos.buf].commentstring
 
@@ -102,15 +112,25 @@ M.is_comment = function(text, commentstring)
 	return startswith(text, cs_left) and endswith(text, cs_right)
 end
 
----@param pos jet.send.Pos
+---@class jet.send.next_significant_line.Opts
+---@field accept_current? boolean
+
+---@param opts? jet.send.next_significant_line.Opts
+---@param pos? jet.send.Pos
 ---@return integer? 1-indexed line number
-M.next_significant_line = function(pos)
+M.next_significant_line = function(opts, pos)
+	pos = pos or M.curr_pos()
+
 	local lang_info = M.local_lang_info(pos)
 	if not lang_info.commentstring then
 		return nil
 	end
 
 	local cur_line = pos.row
+
+	if opts and opts.accept_current then
+		cur_line = cur_line - 1
+	end
 
 	while true do
 		cur_line = cur_line + 1

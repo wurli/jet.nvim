@@ -20,20 +20,10 @@ local M = {
 ---@field end_row integer 0-indexed
 ---@field end_col integer 0-indexed
 
----@return jet.send.Pos
-M.curr_pos = function()
-	local cursor = vim.api.nvim_win_get_cursor(0)
-	return {
-		buf = vim.api.nvim_get_current_buf(),
-		row = cursor[1] - 1,
-		col = cursor[2],
-	}
-end
-
 ---@param pos jet.send.Pos?
 ---@return jet.send.Range?
 M.get_auto = function(pos)
-	pos = pos or M.curr_pos()
+	pos = pos or require("jet.core.send.utils").curr_pos()
 	if vim.tbl_contains({ "v", "V", "" }, vim.fn.mode()) then
 		return M.get_visual()
 	end

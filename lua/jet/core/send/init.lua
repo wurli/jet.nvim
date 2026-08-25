@@ -22,7 +22,7 @@ M.send_auto = function(r, move_cursor)
 
 	if not r then
 		local curr_row = vim.fn.line(".") - 1
-		local expr_row = utils.next_significant_line({ buf = 0, row = curr_row - 1, col = 0 }) or curr_row
+		local expr_row = utils.next_significant_line({}, { buf = 0, row = curr_row - 1, col = 0 }) or curr_row
 		r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
 		if not r then
 			return
@@ -56,7 +56,7 @@ M.send_auto = function(r, move_cursor)
 
 			if move_cursor then
 				local next_line = r.end_row
-				local next_significant_line = utils.next_significant_line({
+				local next_significant_line = utils.next_significant_line({}, {
 					buf = r.buf,
 					row = next_line,
 					col = 0,
