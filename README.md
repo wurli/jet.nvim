@@ -147,7 +147,7 @@ Architecture differences aside, a high-level feature comparison is as follows:
         <br/>
         <img src="https://img.shields.io/github/stars/kiyoon/jupynium.nvim?style=flat&label=%E2%AD%90" alt="stars">
       </td>
-      <td align="left">🐍 remote plugin</td>
+      <td align="left">JupyterLab via 🐍 (Selenium)</td>
       <td align="center">❌</td>
       <td align="center">❌</td>
       <td align="center">❌</td>
@@ -161,7 +161,7 @@ Architecture differences aside, a high-level feature comparison is as follows:
         <br/>
         <img src="https://img.shields.io/github/stars/luk400/vim-jukit?style=flat&label=%E2%AD%90" alt="stars">
       </td>
-      <td align="left">🐍 remote plugin</td>
+      <td align="left">🐍 autoload via vimscript</td>
       <td align="center">❌</td>
       <td align="center">✅</td>
       <td align="center">✅</td>
@@ -175,7 +175,7 @@ Architecture differences aside, a high-level feature comparison is as follows:
         <br/>
         <img src="https://img.shields.io/github/stars/SUSTech-data/neopyter?style=flat&label=%E2%AD%90" alt="stars">
       </td>
-      <td align="left">🐍 remote plugin</td>
+      <td align="left">JupyterLab via RPC</td>
       <td align="center">✅</td>
       <td align="center">❌</td>
       <td align="center">❌</td>
