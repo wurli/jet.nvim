@@ -19,11 +19,23 @@ end
 ---
 ---@param k jet.Kernel
 function Manager:set_primary(k)
+	print("setting primary kernel")
 	assert(k.session_id, "Kernel must have a session_id")
 	assert(k.filetype, "Kernel must have a filetype")
 
+	local prev_primary = self.filetype_primary[k.filetype]
+
 	self.kernels[k.session_id] = k
 	self.filetype_primary[k.filetype] = k.session_id
+
+	if prev_primary ~= k.session_id then
+		if prev_primary and self.kernels[prev_primary] then
+			---@diagnostic disable-next-line: access-invisible
+			self.kernels[prev_primary]:do_primary_status_changed(false)
+		end
+		---@diagnostic disable-next-line: access-invisible
+		k:do_primary_status_changed(true)
+	end
 
 	-- We only want one active Jet LSP per filetype
 	for _, ki in pairs(self.kernels) do

@@ -9,6 +9,7 @@ local M = {}
 ---@field on_send_pre table<any, fun(k: jet.Kernel, code: string[])>
 ---@field on_status_changed table<any, fun(k: jet.Kernel)>
 ---@field on_image_display_pre table<any, fun(k: jet.Kernel, file: string)>
+---@field on_primary_status_changed table<any, fun(k: jet.Kernel, primary: boolean)>
 
 ---@class jet.Config.Opts
 M.defaults = {
@@ -83,6 +84,7 @@ M.defaults = {
 		on_send_pre = {},
 		on_status_changed = {},
 		on_image_display_pre = {},
+		on_primary_status_changed = {},
 	},
 	---* `send.send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending
