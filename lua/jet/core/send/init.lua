@@ -20,56 +20,44 @@ M.send_auto = function(r, move_cursor)
 		move_cursor = vim.fn.mode():lower() ~= "v"
 	end
 
+	local code_pos = utils.next_significant_pos({ accept_current = true })
+	r = r or require("jet.core.send.get_code").get_auto(code_pos)
+
 	if not r then
-		local curr_row = vim.fn.line(".") - 1
-		local expr_row = utils.next_significant_line({}, { buf = 0, row = curr_row - 1, col = 0 }) or curr_row
-		r = require("jet.core.send.get_code").get_auto({ buf = 0, row = expr_row, col = 0 })
-		if not r then
-			return
-		end
-	end
-
-	local ok, text = pcall(vim.api.nvim_buf_get_text, r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
-
-	if (not ok) or #text == 0 or (#text == 1 and text[1] == "") then
 		return
 	end
 
-	local lang_info = utils.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
-	local ft, commentstring = lang_info.filetype, lang_info.commentstring
+	local code, ft = utils.range_code(r)
 
-	local code_filtered = vim.tbl_filter(
-		function(line) return line:match("%S") ~= nil and not utils.is_comment(line, commentstring) end,
-		text
-	)
-
-	if #code_filtered == 0 then
+	if not code or (#code == 1 and code[1] == "") then
 		return
 	end
 
-	table.insert(code_filtered, "")
+	table.insert(code, "")
 
-	require("jet.core.manager").get(
-		{ status = { "connected", "connecting" }, filetype = ft, primary = true },
-		function(k)
-			k:send_repl(code_filtered, vim.bo[r.buf].tabstop)
+	require("jet.core.manager").get({
+		status = { "connected", "connecting" },
+		filetype = ft,
+		primary = true,
+	}, function(k)
+		k:send_repl(code, vim.filetype.get_option(ft, "tabstop") --[[@as integer]])
 
-			if move_cursor then
-				local next_line = r.end_row
-				local next_significant_line = utils.next_significant_line({}, {
-					buf = r.buf,
-					row = next_line,
-					col = 0,
-				}) or (next_line + 1)
-				vim.schedule(function() vim.fn.cursor(next_significant_line + 1, 0) end)
-			end
-
-			if vim.fn.mode():lower() == "v" then
-				local esc_termcode = "\27"
-				vim.api.nvim_feedkeys(esc_termcode, "n", false)
-			end
+		if move_cursor then
+			local expr_end = r.end_row
+			local pos = utils.next_significant_pos({}, {
+				buf = r.buf,
+				row = expr_end,
+				col = 0,
+			})
+			local line = pos and pos.row or (expr_end + 1)
+			vim.schedule(function() vim.fn.cursor(line + 1, 0) end)
 		end
-	)
+
+		if vim.fn.mode():lower() == "v" then
+			local esc_termcode = "\27"
+			vim.api.nvim_feedkeys(esc_termcode, "n", false)
+		end
+	end)
 end
 
 M.send_motion = function()

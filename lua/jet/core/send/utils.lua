@@ -10,6 +10,48 @@ M.curr_pos = function()
 	}
 end
 
+---@param r jet.send.Range
+---@return string[]?
+M.range_text = function(r)
+	local ok, text = pcall(vim.api.nvim_buf_get_text, r.buf, r.start_row, r.start_col, r.end_row, r.end_col, {})
+	if not ok then
+		return nil
+	end
+	if #text == 0 then
+		return nil
+	end
+	return text
+end
+
+---@param r jet.send.Range
+---@return nil
+---@return_overload string[], string
+M.range_code = function(r)
+	local text = M.range_text(r)
+
+	if not text then
+		return
+	end
+
+	local lang_info = M.local_lang_info({ buf = r.buf, row = r.start_row, col = r.start_col })
+	local ft, commentstring = lang_info.filetype, lang_info.commentstring
+
+	if not ft or not commentstring then
+		return
+	end
+
+	local code_filtered = vim.tbl_filter(
+		function(line) return line:match("%S") ~= nil and not M.is_comment(line, commentstring) end,
+		text
+	)
+
+	if #code_filtered == 0 then
+		return
+	end
+
+	return code_filtered, ft
+end
+
 ---Adapted from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/_comment.lua
 ---NOTE: if this causes issues in the future (e.g. we don't actually want the
 ---range-specific filetype) we could instead return a table of candidate
@@ -117,8 +159,8 @@ end
 
 ---@param opts? jet.send.next_significant_line.Opts
 ---@param pos? jet.send.Pos
----@return integer? 1-indexed line number
-M.next_significant_line = function(opts, pos)
+---@return jet.send.Pos?
+M.next_significant_pos = function(opts, pos)
 	pos = pos or M.curr_pos()
 
 	local lang_info = M.local_lang_info(pos)
@@ -132,6 +174,8 @@ M.next_significant_line = function(opts, pos)
 		cur_line = cur_line - 1
 	end
 
+	local out = { buf = pos.buf }
+
 	while true do
 		cur_line = cur_line + 1
 		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
@@ -139,9 +183,13 @@ M.next_significant_line = function(opts, pos)
 			return nil
 		end
 		if line:match("%S") and not M.is_comment(line, lang_info.commentstring) then
-			return cur_line
+			out.row = cur_line
+			out.col = (line:find("%S") or 1) - 1
+			break
 		end
 	end
+
+	return out
 end
 
 return M
