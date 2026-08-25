@@ -2,10 +2,6 @@ local utils = require("jet.core.send.utils")
 
 local M = {}
 
-M.send_chunk = function()
-	--
-end
-
 --TODO: I think this API probably needs some polish. Doesn't feel particularly
 --elegant to me. This function probs does too much:
 -- * (optionally) gets code to send
