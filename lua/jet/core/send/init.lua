@@ -60,6 +60,12 @@ M.send_auto = function(r, move_cursor)
 	end)
 end
 
+---``` lua
+---vim.keymap.set({ "n", "v" }, "<leader>js", require("jet.core.send").send_motion(), {
+---    desc = "Execute code (Jet)",
+---    expr = true,
+---})
+---```
 M.send_motion = function()
 	return require("jet.core.send.get_code").get_motion(function(rng) M.send_auto(rng, false) end)
 end
