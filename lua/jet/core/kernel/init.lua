@@ -209,7 +209,7 @@ local strip_escapes = function(s)
 end
 
 ---@param s string
-split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
+local split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
 ---@private
 ---@param msg jupyter.Msg
