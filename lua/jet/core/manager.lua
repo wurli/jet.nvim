@@ -29,12 +29,11 @@ function Manager:set_primary(k)
 	self.filetype_primary[k.filetype] = k.session_id
 
 	if prev_primary ~= k.session_id then
+		local h = require("jet.core.hooks")
 		if prev_primary and self.kernels[prev_primary] then
-			---@diagnostic disable-next-line: access-invisible
-			self.kernels[prev_primary]:do_primary_status_changed(false)
+			h.do_primary_status_changed(self.kernels[prev_primary], false)
 		end
-		---@diagnostic disable-next-line: access-invisible
-		k:do_primary_status_changed(true)
+		h.do_primary_status_changed(k, true)
 	end
 
 	-- We only want one active Jet LSP per filetype

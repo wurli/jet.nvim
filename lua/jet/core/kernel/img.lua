@@ -101,7 +101,7 @@ function Img:display(which)
 	local src = vim.fs.joinpath(self.kernel:img_dir(), filepath)
 
 	---@diagnostic disable-next-line: access-invisible
-	self.kernel:do_image_display_pre(src)
+	require("jet.core.hooks").do_image_display_pre(self.kernel, src)
 
 	-- First try Snacks
 	if _G.Snacks and _G.Snacks.image and _G.Snacks.image.config then

@@ -2,6 +2,7 @@ local manager = require("jet.core.manager")
 local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
 local lsp = require("jet.core.kernel.lsp")
+local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -47,7 +48,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 ---@field stream jet.callback<jupyter.Msg>
----@field hooks jet.Config.Hooks
+---@field hooks jet.Hooks
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
@@ -65,17 +66,7 @@ local init_defaults = function()
 		on_message_received = {},
 		on_started = {},
 		metadata = {},
-		hooks = {
-			on_execution_state_changed = {},
-			on_kernel_close = {},
-			on_kernel_init = {},
-			on_lua_client_start = {},
-			on_message_received = {},
-			on_send_pre = {},
-			on_status_changed = {},
-			on_image_display_pre = {},
-			on_primary_status_changed = {},
-		},
+		hooks = hooks.init_hooks(),
 	}
 end
 
@@ -135,42 +126,16 @@ function Kernel.init_external(opts)
 	return out
 end
 
----A rather grim implementation, but it gives type hints _and_ calls both the
----kernel-specific hooks and the global hooks.
----@generic T
----@param hooks table<string | integer, T>
----@return T
-local function make_hook_caller(hooks)
-	local hook_name
-	for name, hookset in pairs(cfg.hooks) do
-		if hookset == hooks then
-			hook_name = name
-		end
-	end
-
-	---@param k jet.Kernel
-	return function(k, ...)
-		if hook_name and k.hooks[hook_name] then
-			for _, hook in pairs(k.hooks[hook_name]) do
-				hook(k, ...)
-			end
-		end
-		for _, hook in pairs(hooks) do
-			hook(k, ...)
-		end
-	end
-end
-
 -- stylua: ignore start
-Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed) ---@private
-Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close) ---@private
-Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init) ---@private
-Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start) ---@private
-Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received) ---@private
-Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre) ---@private
-Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed) ---@private
-Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre) ---@private
-Kernel.do_primary_status_changed  = make_hook_caller(cfg.hooks.on_primary_status_changed) ---@private
+Kernel.do_execution_state_changed = hooks.do_execution_state_changed ---@private
+Kernel.do_kernel_close            = hooks.do_kernel_close            ---@private
+Kernel.do_kernel_init             = hooks.do_kernel_init             ---@private
+Kernel.do_lua_client_start        = hooks.do_lua_client_start        ---@private
+Kernel.do_message_received        = hooks.do_message_received        ---@private
+Kernel.do_send_pre                = hooks.do_send_pre                ---@private
+Kernel.do_status_changed          = hooks.do_status_changed          ---@private
+Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
+Kernel.do_primary_status_changed  = hooks.do_primary_status_changed  ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
