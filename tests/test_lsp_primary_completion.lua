@@ -38,8 +38,10 @@ local open_python_buf = function()
 	]])
 
 	assert(
-		vim.wait(10000, function()
-			return child.lua_get([[
+		vim.wait(
+			10000,
+			function()
+				return child.lua_get([[
 				(function()
 					for _, c in ipairs(vim.lsp.get_clients({ bufnr = _G.buf })) do
 						if c.name:sub(1,4) == "jet_" then return true end
@@ -47,7 +49,9 @@ local open_python_buf = function()
 					return false
 				end)()
 			]])
-		end, 50),
+			end,
+			50
+		),
 		"No jet_* LSP attached to python buffer"
 	)
 end
