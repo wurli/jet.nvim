@@ -207,4 +207,45 @@ M.next_expr_boundary = function(opts, pos)
 	end
 end
 
+---Get the next position in a buffer which is not empty or a comment
+---
+---@param opts? jet.send.next_significant_line.Opts
+---@param pos? jet.send.Pos
+---@return jet.send.Pos?
+M.next_significant_pos = function(opts, pos)
+	opts = opts or {}
+	opts.direction = opts.direction or "down"
+	pos = pos or M.curr_pos()
+
+	local lang_info = M.local_lang_info(pos)
+	if not lang_info.commentstring then
+		return nil
+	end
+
+	local cur_line = pos.row
+
+	local increment = opts.direction == "down" and 1 or -1
+
+	if opts and opts.accept_current then
+		cur_line = cur_line - increment
+	end
+
+	local out = { buf = pos.buf }
+
+	while true do
+		cur_line = cur_line + increment
+		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
+		if not line then
+			return nil
+		end
+		if line:match("%S") and not M.is_comment(line, lang_info.commentstring) then
+			out.row = cur_line
+			out.col = (line:find("%S") or 1) - 1
+			break
+		end
+	end
+
+	return out
+end
+
 return M

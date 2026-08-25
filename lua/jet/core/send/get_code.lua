@@ -91,7 +91,7 @@ end
 ---vim.keymap.set(
 --    { "n", "v" },
 --    "gj",
---    require("jet.core.execute").handle_motion(vim.print),
+--    require("jet.core.execute").get_motion(vim.print),
 --    { expr = true }
 --)
 ---```
