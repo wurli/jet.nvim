@@ -52,26 +52,8 @@ Lua API                                                                *lua-api*
                                          end
                                      })
 <
-        • {hooks}                (`jet.Config.Hooks`) These functions run at
-                                 different points in the kernel lifecycle and
-                                 can be used to customise behaviour. For
-                                 example, `on_message_received()` triggers
-                                 whenever a message is received from the
-                                 kernel and is passed the full message data.
-                                 E.g. you could set up a notification whenever
-                                 an execution completes like so: >lua
-                                     require("jet").setup({
-                                         hooks = {
-                                             on_message_received = {
-                                                 my_notifier = function(k, msg)
-                                                     if msg.header.msg_type == "execute_reply" then
-                                                         vim.notify(k.spec.display_name .. ": execution complete")
-                                                     end
-                                                 end
-                                             }
-                                         }
-                                     })
-<
+        • {hooks}                (`jet.Hooks`) Hooks for custom integrations;
+                                 see |jet.Hooks|.
         • {send}                 (`{ send_by_expr = boolean }`)
                                  • `send.send_by_expr`: If `true` (the
                                    default) then each expression will be sent
@@ -103,17 +85,7 @@ Lua API                                                                *lua-api*
                                        issue in reedline, which powers the Jet
                                        REPL experience..
 
-*jet.Config.Hooks*
-
-    Fields: ~
-        • {on_execution_state_changed}  (`table<any,fun(k: jet.Kernel, state: jet.Kernel.execution_state)>`)
-        • {on_kernel_close}             (`table<any,fun(k: jet.Kernel)>`)
-        • {on_kernel_init}              (`table<any,fun(k: jet.Kernel)>`)
-        • {on_lua_client_start}         (`table<any,fun(k: jet.Kernel)>`)
-        • {on_message_received}         (`table<any,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
-        • {on_send_pre}                 (`table<any,fun(k: jet.Kernel, code: string[])>`)
-        • {on_status_changed}           (`table<any,fun(k: jet.Kernel)>`)
-        • {on_image_display_pre}        (`table<any,fun(k: jet.Kernel, file: string)>`)
+        Type not found
 
 *jet.Kernel*
 
@@ -137,7 +109,7 @@ Lua API                                                                *lua-api*
         • {session_id}           (`string?`)
         • {session_info}         (`jet.SessionInfo?`)
         • {client_id}            (`string?`)
-        • {lsp_port}             (`integer?`)
+        • {lsp}                  (`jet.Lsp`)
         • {term}                 (`jet.Kernel.Term?`)
         • {img}                  (`jet.Kernel.Img?`)
         • {cmd}                  (`string[]`)
@@ -154,8 +126,7 @@ Lua API                                                                *lua-api*
         • {metadata}             (`table<string,any>`) Arbitrary data,
                                  e.g. for use by extensions
         • {stream}               (`jet.callback<jupyter.Msg>`)
-        • {hooks}                (`jet.Config.Hooks`)
-        • {lsp_name}             (`string`)
+        • {hooks}                (`jet.Hooks`)
 
 Kernel:init_owned({opts})                                  *Kernel:init_owned()*
 
@@ -199,11 +170,6 @@ Kernel:status()                                                *Kernel:status()*
     Return: ~
         (`jet.kernel.status`)
         (`string`)
-
-Kernel:set_as_filetype_primary()              *Kernel:set_as_filetype_primary()*
-
-    Set the kernel as the 'primary' kernel for its filetype. No-op if the
-    kernel has no filetype.
 
 Kernel:img_dir()                                              *Kernel:img_dir()*
 

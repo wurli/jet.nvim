@@ -1,15 +1,5 @@
 local M = {}
 
----@class jet.Config.Hooks
----@field on_execution_state_changed table<any, fun(k: jet.Kernel, state: jet.Kernel.execution_state)>
----@field on_kernel_close table<any, fun(k: jet.Kernel)>
----@field on_kernel_init table<any, fun(k: jet.Kernel)>
----@field on_lua_client_start table<any, fun(k: jet.Kernel)>
----@field on_message_received table<any, fun(k: jet.Kernel, msg: jupyter.Msg)>
----@field on_send_pre table<any, fun(k: jet.Kernel, code: string[])>
----@field on_status_changed table<any, fun(k: jet.Kernel)>
----@field on_image_display_pre table<any, fun(k: jet.Kernel, file: string)>
-
 ---@class jet.Config.Opts
 M.defaults = {
 	binary_path = nil, ---@type string? Path to a custom Jet binary.
@@ -55,35 +45,8 @@ M.defaults = {
 	--- })
 	--- ```
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
-	---These functions run at different points in the kernel lifecycle and can
-	---be used to customise behaviour. For example, `on_message_received()`
-	---triggers whenever a message is received from the kernel and is passed
-	---the full message data. E.g. you could set up a notification whenever an
-	---execution completes like so:
-	---``` lua
-	---require("jet").setup({
-	---    hooks = {
-	---        on_message_received = {
-	---            my_notifier = function(k, msg)
-	---                if msg.header.msg_type == "execute_reply" then
-	---                    vim.notify(k.spec.display_name .. ": execution complete")
-	---                end
-	---            end
-	---        }
-	---    }
-	---})
-	---```
-	---@type jet.Config.Hooks
-	hooks = {
-		on_execution_state_changed = {},
-		on_kernel_close = {},
-		on_kernel_init = {},
-		on_lua_client_start = {},
-		on_message_received = {},
-		on_send_pre = {},
-		on_status_changed = {},
-		on_image_display_pre = {},
-	},
+	---Hooks for custom integrations; see |jet.Hooks|.
+	hooks = require("jet.core.hooks").init_hooks(),
 	---* `send.send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending
 	---  several complete expressions to the repl in one go, all will be

@@ -1,6 +1,8 @@
 local manager = require("jet.core.manager")
 local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
+local lsp = require("jet.core.kernel.lsp")
+local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -30,7 +32,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_id? string
 ---@field session_info? jet.SessionInfo
 ---@field client_id? string
----@field lsp_port? integer
+---@field lsp jet.Lsp
 ---@field term? jet.Kernel.Term
 ---@field img? jet.Kernel.Img
 ---@field cmd string[]
@@ -46,7 +48,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field on_started table<string, fun(k: jet.Kernel)>
 ---@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
 ---@field stream jet.callback<jupyter.Msg>
----@field hooks jet.Config.Hooks
+---@field hooks jet.Hooks
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
@@ -64,16 +66,7 @@ local init_defaults = function()
 		on_message_received = {},
 		on_started = {},
 		metadata = {},
-		hooks = {
-			on_execution_state_changed = {},
-			on_kernel_close = {},
-			on_kernel_init = {},
-			on_lua_client_start = {},
-			on_message_received = {},
-			on_send_pre = {},
-			on_status_changed = {},
-			on_image_display_pre = {},
-		},
+		hooks = hooks.init_hooks(),
 	}
 end
 
@@ -133,41 +126,16 @@ function Kernel.init_external(opts)
 	return out
 end
 
----A rather grim implementation, but it gives type hints _and_ calls both the
----kernel-specific hooks and the global hooks.
----@generic T
----@param hooks table<string | integer, T>
----@return T
-local function make_hook_caller(hooks)
-	local hook_name
-	for name, hookset in pairs(cfg.hooks) do
-		if hookset == hooks then
-			hook_name = name
-		end
-	end
-
-	---@param k jet.Kernel
-	return function(k, ...)
-		if hook_name and k.hooks[hook_name] then
-			for _, hook in pairs(k.hooks[hook_name]) do
-				hook(k, ...)
-			end
-		end
-		for _, hook in pairs(hooks) do
-			hook(k, ...)
-		end
-	end
-end
-
 -- stylua: ignore start
-Kernel.do_execution_state_changed = make_hook_caller(cfg.hooks.on_execution_state_changed) ---@private
-Kernel.do_kernel_close            = make_hook_caller(cfg.hooks.on_kernel_close) ---@private
-Kernel.do_kernel_init             = make_hook_caller(cfg.hooks.on_kernel_init) ---@private
-Kernel.do_lua_client_start        = make_hook_caller(cfg.hooks.on_lua_client_start) ---@private
-Kernel.do_message_received        = make_hook_caller(cfg.hooks.on_message_received) ---@private
-Kernel.do_send_pre                = make_hook_caller(cfg.hooks.on_send_pre) ---@private
-Kernel.do_status_changed          = make_hook_caller(cfg.hooks.on_status_changed) ---@private
-Kernel.do_image_display_pre       = make_hook_caller(cfg.hooks.on_image_display_pre) ---@private
+Kernel.do_execution_state_changed = hooks.do_execution_state_changed ---@private
+Kernel.do_kernel_close            = hooks.do_kernel_close            ---@private
+Kernel.do_kernel_init             = hooks.do_kernel_init             ---@private
+Kernel.do_lua_client_start        = hooks.do_lua_client_start        ---@private
+Kernel.do_message_received        = hooks.do_message_received        ---@private
+Kernel.do_send_pre                = hooks.do_send_pre                ---@private
+Kernel.do_status_changed          = hooks.do_status_changed          ---@private
+Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
+Kernel.do_primary_status_changed  = hooks.do_primary_status_changed  ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
@@ -207,7 +175,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() self:set_as_filetype_primary() end)
+			self.term:create_autocmd("TermEnter", function() manager:set_primary(self) end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
@@ -231,16 +199,6 @@ function Kernel:status()
 	else
 		return "inactive", " "
 	end
-end
-
----Set the kernel as the 'primary' kernel for its filetype. No-op if the kernel
----has no filetype.
-function Kernel:set_as_filetype_primary()
-	if not self.filetype then
-		return
-	end
-
-	manager.filetype_primary[self.filetype] = self.session_id
 end
 
 ---@param s string
@@ -607,42 +565,6 @@ function Kernel:handle_stream()
 	end, { alias = "Watch for kernel stream messages " .. self.session_id })
 end
 
----@private
-function Kernel:register_lsp_client()
-	if not self.filetype then
-		return
-	end
-
-	assert(self.lsp_port, "Kernel has no lsp port")
-	assert(self.client_id, "Kernel has no client id")
-	---@diagnostic disable-next-line: unnecessary-assert
-	assert(self.spec and self.spec.display_name, "Kernel has no display name")
-
-	local clean_name = self.spec.display_name:gsub("%W", "_"):gsub("_+", "_"):gsub("^_+", ""):gsub("_+$", "")
-	self.lsp_name = "jet_" .. clean_name .. "_" .. self.client_id
-
-	local capabilities = vim.lsp.protocol.make_client_capabilities()
-
-	vim.lsp.config(self.lsp_name, {
-		cmd = vim.lsp.rpc.connect("127.0.0.1", self.lsp_port),
-		root_markers = { ".git" },
-		filetypes = { self.filetype },
-		root_dir = ".",
-		capabilities = {
-			general = capabilities.general,
-			textDocument = {
-				completion = (capabilities.textDocument or {}).completion,
-				-- hover = {
-				-- 	dynamicRegistration = true,
-				-- 	contentFormat = { constants.MarkupKind.Markdown, constants.MarkupKind.PlainText },
-				-- },
-			},
-		},
-	})
-
-	vim.lsp.enable(self.lsp_name)
-end
-
 ---Connect to a real kernel instance using the Jet Lua client.
 ---
 ---When a kernel is opened, the Lua client starts first, possibly starting a
@@ -710,7 +632,6 @@ function Kernel:start_lua_client(callback)
 		if val then
 			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self.session_id)
 
-			self.lsp_port = val.lsp_port
 			self.client_id = val.client_id
 			self.kernel_info = val.kernel_info
 			self.stream = val.stream
@@ -719,15 +640,22 @@ function Kernel:start_lua_client(callback)
 			-- has a chance to override it.
 			self:try_resolve_filetype()
 
+			self.lsp = lsp.init({
+				port = val.lsp_port,
+				client_id = val.client_id,
+				display_name = self.spec.display_name,
+				filetype = self.filetype,
+				session_id = self.session_id,
+			})
+
 			-- Even though the kernel has not yet been shown in a REPL, if
 			-- there isn't another kernel for this filetype already set as
 			-- primary we should set this one for convenience.
 			if self.filetype and not manager.filetype_primary[self.filetype] then
-				self:set_as_filetype_primary()
+				manager:set_primary(self)
 			end
 
 			self:handle_stream()
-			self:register_lsp_client()
 
 			self:do_lua_client_start()
 			self:do_status_changed()
