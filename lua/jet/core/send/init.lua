@@ -2,20 +2,6 @@ local utils = require("jet.core.send.utils")
 
 local M = {}
 
-M.next_code = function()
-	local pos = utils.next_expr_boundary({ direction = "down" })
-	if pos then
-		vim.fn.cursor(pos.row + 1, pos.col + 1)
-	end
-end
-
-M.prev_code = function()
-	local pos = utils.next_expr_boundary({ direction = "up" })
-	if pos then
-		vim.fn.cursor(pos.row + 1, pos.col + 1)
-	end
-end
-
 ---@return jet.send.Range?
 M.get_next_expr = function()
 	local code_pos = utils.next_expr_boundary({ current_ok = true })

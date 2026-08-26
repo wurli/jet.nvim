@@ -1,9 +1,9 @@
 -- local MiniTest = require("mini.test")
 -- local child = MiniTest.new_child_neovim()
 --
--- local open_lua_buf = function(lines)
+-- local open_test_buf = function(lines)
 -- 	child.cmd("enew")
--- 	child.bo.filetype = "lua"
+-- 	child.bo.filetype = "my_test_filetype"
 -- 	child.api.nvim_buf_set_lines(0, 0, -1, false, lines)
 -- 	child.fn.cursor(1, 1)
 -- end
@@ -26,64 +26,58 @@
 -- 		pre_once = function()
 -- 			child.restart({ "-u", "scripts/minimal_init.lua" })
 
----Set the 'expr' function for Lua to something which is basically
----gets the same range as `vip`, but without visual-line mode
+---Region of contiguous non-whitespace on the current line around `pos`.
+---Returns nil when the cursor sits on whitespace or past end-of-line.
 ---
 ---@param pos jet.send.Pos
 ---@return jet.send.Range?
 local get_expr = function(pos)
+	print("-----------------------------------")
+	vim.print("pos: " .. pos.row .. ", " .. pos.col)
+	local nudge = require("jet.core.send.utils").pos_nudge
 	local lines = vim.api.nvim_buf_get_lines(pos.buf, 0, -1, false)
-	local curr_row = pos.row + 1
-	local curr_text = lines[curr_row]
-	if not (curr_text and curr_text:match("%S")) then
-		return
+
+	local pos_to_char = function(p)
+		local line = lines[p.row + 1]
+		return line and line:sub(p.col + 1, p.col + 1) or nil
 	end
 
-	local first_non_blank = function(s) return s:find("%S") end ---@param s string
-	local last_non_blank = function(s) return s:find("%S%s*$") end ---@param s string
-
-	local start_row = curr_row
-	local start_col = first_non_blank(curr_text)
-	while true do
-		local text = lines[start_row - 1]
-		local first_char = text and first_non_blank(text)
-		if first_char then
-			start_col = first_char
-			start_row = start_row - 1
-		else
-			break
-		end
+	---@param p jet.send.Pos
+	local pos_is_nonblank = function(p)
+		local line = lines[p.row + 1]
+		local char = line and line:sub(p.col + 1, p.col + 1)
+		return char and char ~= "" and char:match("%s") == nil or false
 	end
 
-	local end_row = curr_row
-	local end_col = last_non_blank(curr_text)
-	while true do
-		local text = lines[end_row + 1]
-		local last_char = text and last_non_blank(text)
-		if last_char then
-			end_col = last_char
-			end_row = end_row + 1
-		else
-			break
-		end
+	if not pos_is_nonblank(pos) then
+		return nil
 	end
 
-	if not (start_col and end_col) then
-		return
+	local start_pos = vim.deepcopy(pos)
+	local end_pos = vim.deepcopy(pos)
+
+	local prev_pos = nudge(start_pos, -1)
+	while prev_pos and pos_is_nonblank(prev_pos) do
+		start_pos = prev_pos
+		prev_pos = nudge(prev_pos, -1)
+	end
+
+	local next_pos = nudge(end_pos, 1)
+	while next_pos and pos_is_nonblank(next_pos) do
+		vim.print({ pos_to_char(next_pos) })
+		end_pos = next_pos
+		next_pos = nudge(end_pos, 1)
 	end
 
 	local out = {
 		buf = pos.buf,
-		start_row = start_row - 1,
-		start_col = start_col - 1,
-		end_row = end_row - 1,
-		end_col = end_col,
+		start_row = start_pos.row,
+		start_col = start_pos.col,
+		end_row = end_pos.row,
+		end_col = end_pos.col + 1,
 	}
 
-	vim.print({
-		pos = pos,
-		out = out,
-	})
+	vim.print(out)
 
 	return out
 end
@@ -99,7 +93,6 @@ vim.keymap.set("n", "]e", function()
 		vim.fn.cursor(pos.row + 1, pos.col + 1)
 	end
 end)
-
 vim.keymap.set("n", "[e", function()
 	local pos = require("jet.core.send.utils").next_expr_boundary({
 		direction = -1,
@@ -116,16 +109,11 @@ end)
 -- })
 --
 -- T["next_expr_boundary() works"] = function()
--- 	open_lua_buf({
+-- 	open_test_buf({
 -- 		"",
--- 		"local foo = 123",
--- 		"print(foo)",
+-- 		"foo",
+-- 		"barbar",
 -- 		"",
--- 		"   local bar = 123 - 234",
--- 		"",
--- 		"",
--- 		"local foo = 123",
--- 		"print(foo)",
 -- 	})
 --
 -- 	child.lua([[
