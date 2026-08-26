@@ -324,20 +324,37 @@ M.next_significant_pos = function(opts, pos)
 	end
 
 	local cur_line = pos.row
-
 	local out = { buf = pos.buf }
 
 	while true do
-		cur_line = cur_line + opts.direction
 		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
+
 		if not line then
 			return nil
 		end
+
+		if cur_line == pos.row then
+			if opts.direction == 1 then
+				line = line:sub(pos.col + 1)
+			else
+				line = line:sub(1, pos.col)
+			end
+		end
+
 		if line:match("%S") and not M.is_comment(line, lang_info.commentstring) then
 			out.row = cur_line
-			out.col = (line:find("%S") or 1) - 1
+			if opts.direction == 1 then
+				out.col = (line:find("%S") or 1) - 1
+			else
+				out.col = (line:find("%S%s*$") or #line) - 1
+			end
+			if cur_line == pos.row and opts.direction == 1 then
+				out.col = out.col + pos.col
+			end
 			break
 		end
+
+		cur_line = cur_line + opts.direction
 	end
 
 	return out
