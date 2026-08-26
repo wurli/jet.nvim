@@ -277,9 +277,12 @@ M.next_expr_boundary = function(opts, pos)
 				or nil
 
 			if not (out and is_after(out, pos)) and not opts._no_recurse then
-				opts.current_ok = true
-				opts._no_recurse = true
-				out = M.next_expr_boundary(opts, M.pos_nudge(r_end, opts.direction))
+				local nudged = M.pos_nudge(r_end, opts.direction)
+				if nudged then
+					opts.current_ok = true
+					opts._no_recurse = true
+					out = M.next_expr_boundary(opts, nudged)
+				end
 			end
 		elseif opts.direction == -1 then
 			out = (include_boundary_end and is_after(pos, r_end) and r_end)
@@ -287,9 +290,12 @@ M.next_expr_boundary = function(opts, pos)
 				or nil
 
 			if not (out and is_after(pos, out)) and not opts._no_recurse then
-				opts.current_ok = true
-				opts._no_recurse = true
-				out = M.next_expr_boundary(opts, M.pos_nudge(r_start, opts.direction))
+				local nudged = M.pos_nudge(r_start, opts.direction)
+				if nudged then
+					opts.current_ok = true
+					opts._no_recurse = true
+					out = M.next_expr_boundary(opts, nudged)
+				end
 			end
 		end
 	end
