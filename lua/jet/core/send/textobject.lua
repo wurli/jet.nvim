@@ -7,8 +7,10 @@ local M = {}
 ---    require("jet.core.send.textobject").textobject()
 ---end, {})
 ---```
-M.textobject = function()
-	local range = require("jet.core.send.get_code").get_expr(utils.curr_pos())
+---@param pos? jet.send.Pos
+M.textobject = function(pos)
+	local range = require("jet.core.send.get_code").get_expr(pos or utils.curr_pos())
+
 	if not range then
 		return
 	end

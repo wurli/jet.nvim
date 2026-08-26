@@ -18,7 +18,7 @@ end
 
 ---@return jet.send.Range?
 M.get_next_expr = function()
-	local code_pos = utils.next_expr_boundary({ accept_current = true })
+	local code_pos = utils.next_expr_boundary({ current_ok = true })
 	return require("jet.core.send.get_code").get_auto(code_pos)
 end
 

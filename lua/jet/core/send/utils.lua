@@ -155,56 +155,157 @@ M.is_comment = function(text, commentstring)
 	return startswith(text, cs_left) and endswith(text, cs_right)
 end
 
+---@param r jet.send.Range
+---@return jet.send.Pos
+M.range_end = function(r)
+	-- Gotta nudge since range end is exclusive
+	local out = M.pos_nudge({
+		buf = r.buf,
+		row = r.end_row,
+		col = r.end_col,
+	}, -1)
+	assert(out, "Failed to nudge range end position backwards")
+	return out
+end
+
+---@param r jet.send.Range
+---@return jet.send.Pos
+M.range_start = function(r)
+	return {
+		buf = r.buf,
+		row = r.start_row,
+		col = r.start_col,
+	}
+end
+
+---@param a jet.send.Pos
+---@param b jet.send.Pos
+---@return boolean
+M.pos_eq = function(a, b) return a.buf == b.buf and a.row == b.row and a.col == b.col end
+
+---@param pos jet.send.Pos
+---@param n? -1 | 1
+---@return jet.send.Pos?
+M.pos_nudge = function(pos, n)
+	n = n or 1
+
+	local new_col = pos.col + n
+
+	if n == 1 then
+		local line = vim.api.nvim_buf_get_lines(pos.buf, pos.row, pos.row + 1, false)[1]
+		if new_col <= (line and #line or 1) - 1 then
+			return { buf = pos.buf, row = pos.row, col = new_col }
+		else
+			local new_row = pos.row + 1
+			if new_row <= vim.api.nvim_buf_line_count(pos.buf) then
+				return { buf = pos.buf, row = new_row, col = 0 }
+			else
+				return
+			end
+		end
+	end
+
+	if n == -1 then
+		if new_col >= 0 then
+			return { buf = pos.buf, row = pos.row, col = new_col }
+		else
+			local new_row = pos.row - 1
+			if new_row >= 0 then
+				local line = vim.api.nvim_buf_get_lines(pos.buf, new_row, new_row + 1, false)[1]
+				return { buf = pos.buf, row = new_row, col = line and math.max(0, (#line - 1)) or 0 }
+			else
+				return
+			end
+		end
+	end
+end
+
+-- vim.keymap.set("n", "<leader>t", function()
+-- 	local pos = M.curr_pos()
+-- 	vim.print({ pos = pos, next = M.pos_nudge(pos, 1), prev = M.pos_nudge(pos, -1) })
+-- end)
+
+---@param a jet.send.Pos
+---@param b jet.send.Pos
+M.pos_lt = function(a, b)
+	assert(a.buf == b.buf, "Cannot compare positions in different buffers")
+
+	if a.row < b.row then
+		return true
+	elseif a.row > b.row then
+		return false
+	else
+		return a.col < b.col
+	end
+end
+
 ---@class jet.send.next_significant_line.Opts
----@field accept_current? boolean
----@field direction? "down" | "up"
+---@field direction? 1 | -1
+---@field boundary? "start" | "end" | "any"
+---@field current_ok? boolean
+---@field _no_recurse? boolean
 
 ---@param opts? jet.send.next_significant_line.Opts
 ---@param pos? jet.send.Pos
 ---@return jet.send.Pos?
 M.next_expr_boundary = function(opts, pos)
 	opts = opts or {}
-	opts.direction = opts.direction or "down"
+	opts.boundary = opts.boundary or "any"
+	opts.direction = opts.direction or 1
 	pos = pos or M.curr_pos()
+	local include_boundary_start = opts.boundary == "start" or opts.boundary == "any"
+	local include_boundary_end = opts.boundary == "end" or opts.boundary == "any"
 
-	local lang_info = M.local_lang_info(pos)
-	if not lang_info.commentstring then
-		return nil
+	local curr_expr = require("jet.core.send.get_code").get_expr(pos)
+
+	if not curr_expr then
+		local next_pos = M.next_significant_pos(opts, pos)
+		curr_expr = next_pos and require("jet.core.send.get_code").get_expr(next_pos)
 	end
 
-	local cur_line = pos.row
+	local out ---@type jet.send.Pos?
 
-	local increment = opts.direction == "down" and 1 or -1
+	local is_after = function(a, b) return opts.current_ok and M.pos_eq(a, b) or M.pos_lt(b, a) end
 
-	if opts and opts.accept_current then
-		cur_line = cur_line - increment
-	end
+	if curr_expr then
+		local r_start = M.range_start(curr_expr)
+		local r_end = M.range_end(curr_expr)
 
-	local prev_is_significant
-	local prev_pos
+		if opts.direction == 1 then
+			out = (include_boundary_start and is_after(r_start, pos) and r_start)
+				or (include_boundary_end and is_after(r_end, pos) and r_end)
+				or nil
 
-	while true do
-		cur_line = cur_line + increment
-		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
-		if not line then
-			return nil
+			if not (out and is_after(out, pos)) and not opts._no_recurse then
+				opts.current_ok = true
+				opts._no_recurse = true
+				out = M.next_expr_boundary(opts, M.pos_nudge(r_end, opts.direction))
+			end
+		elseif opts.direction == -1 then
+			out = (include_boundary_end and is_after(pos, r_end) and r_end)
+				or (include_boundary_start and is_after(pos, r_start) and r_start)
+				or nil
+
+			if not (out and is_after(pos, out)) and not opts._no_recurse then
+				opts.current_ok = true
+				opts._no_recurse = true
+				out = M.next_expr_boundary(opts, M.pos_nudge(r_start, opts.direction))
+			end
 		end
-
-		local curr_is_significant = line:match("%S") ~= nil and not M.is_comment(line, lang_info.commentstring)
-
-		local curr_pos = {
-			buf = pos.buf,
-			row = cur_line,
-			col = (line:find("%S") or 1) - 1,
-		}
-
-		if prev_is_significant ~= nil and (prev_is_significant ~= curr_is_significant) then
-			return curr_is_significant and curr_pos or prev_pos
-		else
-			prev_is_significant = curr_is_significant
-			prev_pos = curr_pos
-		end
 	end
+
+	if (not out) or opts.current_ok or (not M.pos_eq(out, pos)) or opts._no_recurse then
+		return out
+	end
+
+	opts.current_ok = true
+	opts._no_recurse = true
+	local next = M.next_expr_boundary(opts, pos)
+	if not next or not M.pos_eq(pos, next) then
+		return
+	end
+
+	return M.pos_nudge(next, opts.direction == "down" and 1 or -1)
 end
 
 ---Get the next position in a buffer which is not empty or a comment
@@ -214,7 +315,7 @@ end
 ---@return jet.send.Pos?
 M.next_significant_pos = function(opts, pos)
 	opts = opts or {}
-	opts.direction = opts.direction or "down"
+	opts.direction = opts.direction or 1
 	pos = pos or M.curr_pos()
 
 	local lang_info = M.local_lang_info(pos)
@@ -224,16 +325,10 @@ M.next_significant_pos = function(opts, pos)
 
 	local cur_line = pos.row
 
-	local increment = opts.direction == "down" and 1 or -1
-
-	if opts and opts.accept_current then
-		cur_line = cur_line - increment
-	end
-
 	local out = { buf = pos.buf }
 
 	while true do
-		cur_line = cur_line + increment
+		cur_line = cur_line + opts.direction
 		local line = vim.api.nvim_buf_get_lines(pos.buf, cur_line, cur_line + 1, false)[1]
 		if not line then
 			return nil
