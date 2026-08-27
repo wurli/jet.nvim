@@ -165,6 +165,9 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
+---Set this kernel as the primary kernel for its filetype.
+function Kernel:set_primary() manager:set_primary(self) end
+
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
 ---Lua API.
@@ -175,7 +178,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() manager:set_primary(self) end)
+			self.term:create_autocmd("TermEnter", function() self:set_primary() end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
