@@ -35,8 +35,6 @@ end
 ---@return_overload string[], string
 function Range:code(opts)
 	opts = opts or {}
-	local utils = require("jet.core.send.utils")
-
 	local text = Range.text(self)
 
 	if not text then
