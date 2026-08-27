@@ -74,10 +74,10 @@ local T = MiniTest.new_set({
 					return out
 				end
 
-				require("jet.core.send.get_range").filetype.my_test_filetype = { get_expr = get_expr }
+				require("jet").filetype.my_test_filetype = { get_expr = get_expr }
 
 				_G.cursor_to_next_expr = function(opts)
-					local pos = require("jet.core.send.utils").next_expr_boundary(opts)
+					local pos = require("jet.core.send.motion").next_expr_boundary(opts)
 					if pos then
 						vim.fn.cursor(pos.row + 1, pos.col + 1)
 						return pos
