@@ -21,7 +21,7 @@ end
 ---@param r jet.send.Range
 ---@param move_cursor boolean?
 M.send_range = function(kernel, r, move_cursor)
-	local code, ft = range.range_code(r)
+	local code, ft = range.code(r)
 
 	if not code or (#code == 1 and code[1] == "") then
 		return

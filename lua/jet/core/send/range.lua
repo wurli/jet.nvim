@@ -33,7 +33,7 @@ end
 ---@param opts jet.send.range_code.Opts?
 ---@return nil
 ---@return_overload string[], string
-function Range:range_code(opts)
+function Range:code(opts)
 	opts = opts or {}
 	local utils = require("jet.core.send.utils")
 
@@ -43,7 +43,7 @@ function Range:range_code(opts)
 		return
 	end
 
-	local lang_info = utils.local_lang_info(pos.new({ buf = self.buf, row = self.start_row, col = self.start_col }))
+	local lang_info = pos.new({ buf = self.buf, row = self.start_row, col = self.start_col }):lang_info()
 	local ft, commentstring = lang_info.filetype, lang_info.commentstring
 
 	if not ft or not commentstring then
@@ -52,7 +52,9 @@ function Range:range_code(opts)
 
 	if not opts.comments then
 		text = vim.tbl_filter(
-			function(line) return line:match("%S") ~= nil and not utils.is_comment(line, commentstring) end,
+			function(line)
+				return line:match("%S") ~= nil and not require("jet.core.utils.comment").is_comment(line, commentstring)
+			end,
 			text
 		)
 	end

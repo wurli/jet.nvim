@@ -66,7 +66,7 @@ Manager.filter_kernels = function(kernels, opts)
 	opts.status = opts.status or { "connecting", "connected", "external", "inactive" }
 	opts.status = type(opts.status) == "string" and { opts.status } or opts.status
 	if opts.filetype == true then
-		opts.filetype = require("jet.core.send.utils").local_lang_info().filetype
+		opts.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
 	end
 
 	---@param k jet.Kernel
