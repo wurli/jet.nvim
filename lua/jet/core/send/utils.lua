@@ -10,6 +10,15 @@ M.curr_pos = function()
 	}
 end
 
+---@param p jet.send.Pos
+M.pos_char = function(p)
+	local line = vim.api.nvim_buf_get_lines(p.buf, p.row, p.row + 1, false)[1]
+	if not line then
+		return nil
+	end
+	return line:sub(p.col + 1, p.col + 1)
+end
+
 ---@param r jet.send.Range
 ---@return string[]?
 M.range_text = function(r)
@@ -256,27 +265,27 @@ M.next_expr_boundary = function(opts, pos)
 	local include_boundary_start = opts.boundary == "start" or opts.boundary == "any"
 	local include_boundary_end = opts.boundary == "end" or opts.boundary == "any"
 
-	local curr_expr = require("jet.core.send.get_code").get_expr(pos)
+	local expr = require("jet.core.send.get_code").get_expr(pos)
 
-	if not curr_expr then
+	if not expr then
 		local next_pos = M.next_significant_pos(opts, pos)
-		curr_expr = next_pos and require("jet.core.send.get_code").get_expr(next_pos)
+		expr = next_pos and require("jet.core.send.get_code").get_expr(next_pos)
 	end
 
 	local out ---@type jet.send.Pos?
 
 	local is_after = function(a, b) return opts.current_ok and M.pos_eq(a, b) or M.pos_lt(b, a) end
 
-	if curr_expr then
-		local r_start = M.range_start(curr_expr)
-		local r_end = M.range_end(curr_expr)
+	if expr then
+		local r_start = M.range_start(expr)
+		local r_end = M.range_end(expr)
 
 		if opts.direction == 1 then
 			out = (include_boundary_start and is_after(r_start, pos) and r_start)
 				or (include_boundary_end and is_after(r_end, pos) and r_end)
 				or nil
 
-			if not (out and is_after(out, pos)) and not opts._no_recurse then
+			if not (out and is_after(out, pos)) then
 				local nudged = M.pos_nudge(r_end, opts.direction)
 				if nudged then
 					opts.current_ok = true
@@ -289,7 +298,7 @@ M.next_expr_boundary = function(opts, pos)
 				or (include_boundary_start and is_after(pos, r_start) and r_start)
 				or nil
 
-			if not (out and is_after(pos, out)) and not opts._no_recurse then
+			if not (out and is_after(pos, out)) then
 				local nudged = M.pos_nudge(r_start, opts.direction)
 				if nudged then
 					opts.current_ok = true
@@ -300,12 +309,11 @@ M.next_expr_boundary = function(opts, pos)
 		end
 	end
 
-	if (not out) or opts.current_ok or (not M.pos_eq(out, pos)) or opts._no_recurse then
+	if not out or opts.current_ok or (not M.pos_eq(out, pos)) then
 		return out
 	end
 
 	opts.current_ok = true
-	opts._no_recurse = true
 	local next = M.next_expr_boundary(opts, pos)
 	if not next or not M.pos_eq(pos, next) then
 		return
