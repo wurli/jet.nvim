@@ -272,11 +272,16 @@ M.next_expr_boundary = function(opts, pos)
 		expr = next_pos and require("jet.core.send.get_code").get_expr(next_pos)
 		if next_pos and not expr then
 			require("jet.core.utils").log_warn(
-				"Failed to get expression at non-commented position %d:%d; returning early",
+				"Failed to get expression at position %d:%d; skipping line.",
 				next_pos.row + 1,
 				next_pos.col + 1
 			)
-			return
+			-- If a node is not a comment but is not captured by the
+			-- `get_expr()` code, just skip to the next line. We could also use
+			-- `pos_nudge()` to try the next character, but next row means less
+			-- messages and is more likely to just skip the problematic region.
+			next_pos.row = next_pos.row + opts.direction
+			return M.next_expr_boundary(opts, next_pos)
 		end
 	end
 
