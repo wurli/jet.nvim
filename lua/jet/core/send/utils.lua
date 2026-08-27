@@ -1,5 +1,4 @@
 local pos = require("jet.core.send.pos")
-local range = require("jet.core.send.range")
 
 local M = {}
 
@@ -11,7 +10,7 @@ local M = {}
 ---@param p? jet.send.Pos
 ---@return { filetype?: string, commentstring?: string }
 M.local_lang_info = function(p)
-	p = p or pos.curr_pos()
+	p = p or pos.get_curr()
 	local buf_ft = vim.bo[p.buf].filetype
 	local buf_cs = vim.bo[p.buf].commentstring
 
@@ -119,7 +118,7 @@ M.next_expr_boundary = function(opts, p)
 	opts = opts or {}
 	opts.boundary = opts.boundary or "any"
 	opts.direction = opts.direction or 1
-	p = p or pos.curr_pos()
+	p = p or pos.get_curr()
 	local include_boundary_start = opts.boundary == "start" or opts.boundary == "any"
 	local include_boundary_end = opts.boundary == "end" or opts.boundary == "any"
 
@@ -145,11 +144,13 @@ M.next_expr_boundary = function(opts, p)
 
 	local out ---@type jet.send.Pos?
 
-	local is_after = function(a, b) return opts.current_ok and pos.pos_eq(a, b) or pos.pos_lt(b, a) end
+	---@param a jet.send.Pos
+	---@param b jet.send.Pos
+	local is_after = function(a, b) return opts.current_ok and a:eq(b) or b:lt(a) end
 
 	if expr then
-		local r_start = range.range_start(expr)
-		local r_end = range.range_end(expr)
+		local r_start = expr:start()
+		local r_end = expr:_end()
 
 		if opts.direction == 1 then
 			out = (include_boundary_start and is_after(r_start, p) and r_start)
@@ -157,7 +158,7 @@ M.next_expr_boundary = function(opts, p)
 				or nil
 
 			if not (out and is_after(out, p)) then
-				local nudged = pos.pos_nudge(r_end, opts.direction)
+				local nudged = r_end:nudge(opts.direction)
 				if nudged then
 					opts.current_ok = true
 					opts._no_recurse = true
@@ -170,7 +171,7 @@ M.next_expr_boundary = function(opts, p)
 				or nil
 
 			if not (out and is_after(p, out)) then
-				local nudged = pos.pos_nudge(r_start, opts.direction)
+				local nudged = r_start:nudge(opts.direction)
 				if nudged then
 					opts.current_ok = true
 					opts._no_recurse = true
@@ -180,17 +181,17 @@ M.next_expr_boundary = function(opts, p)
 		end
 	end
 
-	if not out or opts.current_ok or (not pos.pos_eq(out, p)) then
+	if not out or opts.current_ok or (not out:eq(p)) then
 		return out
 	end
 
 	opts.current_ok = true
 	local next = M.next_expr_boundary(opts, p)
-	if not next or not pos.pos_eq(p, next) then
+	if not next or not p:eq(next) then
 		return
 	end
 
-	return pos.pos_nudge(next, opts.direction == "down" and 1 or -1)
+	return next:nudge(opts.direction == "down" and 1 or -1)
 end
 
 ---Get the next position in a buffer which is not empty or a comment
@@ -201,7 +202,7 @@ end
 M.next_significant_pos = function(opts, p)
 	opts = opts or {}
 	opts.direction = opts.direction or 1
-	p = p or pos.curr_pos()
+	p = p or pos.get_curr()
 
 	local lang_info = M.local_lang_info(p)
 	if not lang_info.commentstring then
@@ -242,7 +243,7 @@ M.next_significant_pos = function(opts, p)
 		cur_line = cur_line + opts.direction
 	end
 
-	return out
+	return pos.new(out)
 end
 
 return M

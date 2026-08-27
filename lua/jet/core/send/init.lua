@@ -1,3 +1,4 @@
+local pos = require("jet.core.send.pos")
 local range = require("jet.core.send.range")
 local utils = require("jet.core.send.utils")
 
@@ -30,21 +31,12 @@ M.send_range = function(kernel, r, move_cursor)
 		move_cursor = vim.fn.mode():lower() ~= "v"
 	end
 
-	-- require("jet.core.manager").get({
-	-- 	status = { "connected", "connecting" },
-	-- 	filetype = ft,
-	-- 	primary = true,
-	-- }, function(k)
 	kernel:send_repl(code, vim.filetype.get_option(ft, "tabstop") --[[@as integer]])
 
 	if move_cursor then
 		local expr_end = r.end_row
-		local pos = utils.next_expr_boundary({}, {
-			buf = r.buf,
-			row = expr_end,
-			col = 0,
-		})
-		local line = pos and pos.row or (expr_end + 1)
+		local p = utils.next_expr_boundary({}, pos.new({ buf = r.buf, row = expr_end, col = 0 }))
+		local line = p and p.row or (expr_end + 1)
 		vim.schedule(function() vim.fn.cursor(line + 1, 0) end)
 	end
 

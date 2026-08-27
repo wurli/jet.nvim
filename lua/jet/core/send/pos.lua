@@ -3,30 +3,32 @@
 ---@field buf integer
 ---@field row integer 0-indexed
 ---@field col integer 0-indexed
-
 local Pos = {}
+Pos.__index = Pos
 
----@param a jet.send.Pos
----@param b jet.send.Pos
+---@param opts Partial<jet.send.Pos>
+---@return jet.send.Pos
+Pos.new = function(opts) return setmetatable(opts, Pos) end
+
+---@param p jet.send.Pos
 ---@return boolean
-Pos.pos_eq = function(a, b) return a.buf == b.buf and a.row == b.row and a.col == b.col end
+function Pos:eq(p) return self.buf == p.buf and self.row == p.row and self.col == p.col end
 
----@param pos jet.send.Pos
 ---@param n? -1 | 1
 ---@return jet.send.Pos?
-Pos.pos_nudge = function(pos, n)
+function Pos:nudge(n)
 	n = n or 1
 
-	local new_col = pos.col + n
+	local new_col = self.col + n
 
 	if n == 1 then
-		local line = vim.api.nvim_buf_get_lines(pos.buf, pos.row, pos.row + 1, false)[1]
+		local line = vim.api.nvim_buf_get_lines(self.buf, self.row, self.row + 1, false)[1]
 		if new_col <= (line and #line or 1) - 1 then
-			return { buf = pos.buf, row = pos.row, col = new_col }
+			return Pos.new({ buf = self.buf, row = self.row, col = new_col })
 		else
-			local new_row = pos.row + 1
-			if new_row <= vim.api.nvim_buf_line_count(pos.buf) then
-				return { buf = pos.buf, row = new_row, col = 0 }
+			local new_row = self.row + 1
+			if new_row <= vim.api.nvim_buf_line_count(self.buf) then
+				return Pos.new({ buf = self.buf, row = new_row, col = 0 })
 			else
 				return
 			end
@@ -35,12 +37,12 @@ Pos.pos_nudge = function(pos, n)
 
 	if n == -1 then
 		if new_col >= 0 then
-			return { buf = pos.buf, row = pos.row, col = new_col }
+			return Pos.new({ buf = self.buf, row = self.row, col = new_col })
 		else
-			local new_row = pos.row - 1
+			local new_row = self.row - 1
 			if new_row >= 0 then
-				local line = vim.api.nvim_buf_get_lines(pos.buf, new_row, new_row + 1, false)[1]
-				return { buf = pos.buf, row = new_row, col = line and math.max(0, (#line - 1)) or 0 }
+				local line = vim.api.nvim_buf_get_lines(self.buf, new_row, new_row + 1, false)[1]
+				return Pos.new({ buf = self.buf, row = new_row, col = line and math.max(0, (#line - 1)) or 0 })
 			else
 				return
 			end
@@ -48,37 +50,36 @@ Pos.pos_nudge = function(pos, n)
 	end
 end
 
----@param a jet.send.Pos
----@param b jet.send.Pos
-Pos.pos_lt = function(a, b)
-	assert(a.buf == b.buf, "Cannot compare positions in different buffers")
+---@param p jet.send.Pos
+function Pos:lt(p)
+	assert(self.buf == p.buf, "Cannot compare positions in different buffers")
 
-	if a.row < b.row then
+	if self.row < p.row then
 		return true
-	elseif a.row > b.row then
+	elseif self.row > p.row then
 		return false
 	else
-		return a.col < b.col
+		return self.col < p.col
 	end
 end
 
 ---@return jet.send.Pos
-Pos.curr_pos = function()
+Pos.get_curr = function()
 	local cursor = vim.api.nvim_win_get_cursor(0)
-	return {
+	return Pos.new({
 		buf = vim.api.nvim_get_current_buf(),
 		row = cursor[1] - 1,
 		col = cursor[2],
-	}
+	})
 end
 
----@param p jet.send.Pos
-Pos.pos_char = function(p)
-	local line = vim.api.nvim_buf_get_lines(p.buf, p.row, p.row + 1, false)[1]
+---@return string?
+function Pos:to_char()
+	local line = vim.api.nvim_buf_get_lines(self.buf, self.row, self.row + 1, false)[1]
 	if not line then
 		return nil
 	end
-	return line:sub(p.col + 1, p.col + 1)
+	return line:sub(self.col + 1, self.col + 1)
 end
 
 return Pos

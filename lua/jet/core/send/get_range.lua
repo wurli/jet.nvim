@@ -1,3 +1,4 @@
+local range = require("jet.core.send.range")
 local pos = require("jet.core.send.pos")
 
 ---@class jet.GetCode
@@ -11,7 +12,7 @@ local M = {
 ---@param p jet.send.Pos?
 ---@return jet.send.Range?
 M.get_auto = function(p)
-	p = p or pos.curr_pos()
+	p = p or pos.get_curr()
 	if vim.tbl_contains({ "v", "V", "" }, vim.fn.mode()) then
 		return M.get_visual()
 	end
@@ -39,13 +40,13 @@ M.get_line = function(p)
 	if not line then
 		return
 	end
-	return {
+	return range.new({
 		buf = p.buf,
 		start_row = p.row,
 		start_col = 0,
 		end_row = p.row + 1,
 		end_col = #line,
-	}
+	})
 end
 
 ---@return jet.send.Range?
@@ -58,19 +59,19 @@ M.get_visual = function()
 		local pos1 = region[1][1]
 		local pos2 = region[#region][2]
 
-		return {
+		return range.new({
 			buf = vim.api.nvim_get_current_buf(),
 			start_row = pos1[2] - 1,
 			start_col = pos1[3] - 1,
 			end_row = pos2[2] - 1,
 			end_col = pos2[3],
-		}
+		})
 	end
-	return M.get_line({
+	return M.get_line(pos.new({
 		buf = vim.api.nvim_get_current_buf(),
 		row = vim.fn.line(".") - 1,
 		col = vim.fn.col(".") - 1,
-	})
+	}))
 end
 
 ---Holds the callback executed by `handle_motion()` after a motion is completed
@@ -124,11 +125,11 @@ M._handle_curr_motion = function(mode)
 		end_col = pos2[3],
 	}
 
-	local ft = require("jet.core.send.utils").local_lang_info({
+	local ft = require("jet.core.send.utils").local_lang_info(pos.new({
 		buf = code.buf,
 		row = code.start_row,
 		col = code.start_col,
-	}).filetype
+	})).filetype
 
 	---`if` to avoid LSP warnings
 	if _G.JET_OP_PENDING_CALLBACK then

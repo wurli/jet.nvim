@@ -35,7 +35,6 @@ local T = MiniTest.new_set({
 				---@param pos jet.send.Pos
 				---@return jet.send.Range?
 				local get_expr = function(pos)
-					local nudge = require("jet.core.send.pos").pos_nudge
 					local lines = vim.api.nvim_buf_get_lines(pos.buf, 0, -1, false)
 
 					---@param p jet.send.Pos
@@ -52,25 +51,25 @@ local T = MiniTest.new_set({
 					local start_pos = vim.deepcopy(pos)
 					local end_pos = vim.deepcopy(pos)
 
-					local prev_pos = nudge(start_pos, -1)
+					local prev_pos = start_pos:nudge(-1)
 					while prev_pos and pos_is_nonblank(prev_pos) do
 						start_pos = prev_pos
-						prev_pos = nudge(prev_pos, -1)
+						prev_pos = prev_pos:nudge(-1)
 					end
 
-					local next_pos = nudge(end_pos, 1)
+					local next_pos = end_pos:nudge(1)
 					while next_pos and pos_is_nonblank(next_pos) do
 						end_pos = next_pos
-						next_pos = nudge(end_pos, 1)
+						next_pos = end_pos:nudge(1)
 					end
 
-					local out = {
+					local out = require("jet.core.send.range").new({
 						buf = pos.buf,
 						start_row = start_pos.row,
 						start_col = start_pos.col,
 						end_row = end_pos.row,
 						end_col = end_pos.col + 1,
-					}
+					})
 
 					return out
 				end
