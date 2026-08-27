@@ -1,3 +1,4 @@
+local range = require("jet.core.send.range")
 local utils = require("jet.core.send.utils")
 
 local M = {}
@@ -5,7 +6,7 @@ local M = {}
 ---@return jet.send.Range?
 M.get_next_expr = function()
 	local code_pos = utils.next_expr_boundary({ current_ok = true })
-	return require("jet.core.send.get_code").get_auto(code_pos)
+	return require("jet.core.send.get_range").get_auto(code_pos)
 end
 
 --TODO: I think this API probably needs some polish. Doesn't feel particularly
@@ -19,7 +20,7 @@ end
 ---@param r jet.send.Range
 ---@param move_cursor boolean?
 M.send_range = function(kernel, r, move_cursor)
-	local code, ft = utils.range_code(r)
+	local code, ft = range.range_code(r)
 
 	if not code or (#code == 1 and code[1] == "") then
 		return
@@ -52,22 +53,6 @@ M.send_range = function(kernel, r, move_cursor)
 		vim.api.nvim_feedkeys(esc_termcode, "n", false)
 	end
 	-- end)
-end
-
----``` lua
----vim.keymap.set({ "n", "v" }, "<leader>js", require("jet.core.send").send_motion(), {
----    desc = "Execute code (Jet)",
----    expr = true,
----})
----```
-M.send_motion = function()
-	return require("jet.core.send.get_code").get_motion(function(rng)
-		require("jet").get({
-			filetype = true,
-			primary = true,
-			status = { "connected", "connecting" },
-		}, function(k) M.send_range(k, rng, false) end)
-	end)
 end
 
 return M

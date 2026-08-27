@@ -1,3 +1,5 @@
+local pos = require("jet.core.send.pos")
+
 ---@class jet.GetCode
 local M = {
 	---@type table<string, Partial<jet.GetCode>>
@@ -6,56 +8,42 @@ local M = {
 	},
 }
 
---- TODO: swap for vim.Pos once it's stabilised
----@class jet.send.Pos
----@field buf integer
----@field row integer 0-indexed
----@field col integer 0-indexed
-
---- TODO: swap for vim.Range once it's stabilised
----@class jet.send.Range
----@field buf integer
----@field start_row integer 0-indexed
----@field start_col integer 0-indexed
----@field end_row integer 0-indexed
----@field end_col integer 0-indexed
-
----@param pos jet.send.Pos?
+---@param p jet.send.Pos?
 ---@return jet.send.Range?
-M.get_auto = function(pos)
-	pos = pos or require("jet.core.send.utils").curr_pos()
+M.get_auto = function(p)
+	p = p or pos.curr_pos()
 	if vim.tbl_contains({ "v", "V", "" }, vim.fn.mode()) then
 		return M.get_visual()
 	end
-	return M.get_expr(pos)
+	return M.get_expr(p)
 end
 
----@param pos jet.send.Pos
+---@param p jet.send.Pos
 ---@return jet.send.Range?
-M.get_expr = function(pos)
+M.get_expr = function(p)
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
-	local ft = require("jet.core.send.utils").local_lang_info(pos).filetype
+	local ft = require("jet.core.send.utils").local_lang_info(p).filetype
 	local ft_module = M.filetype[ft]
 	---@diagnostic disable-next-line: unnecessary-if
 	if ft_module and ft_module.get_expr then
-		return ft_module.get_expr(pos)
+		return ft_module.get_expr(p)
 	end
 
-	return M.get_line(pos)
+	return M.get_line(p)
 end
 
----@param pos jet.send.Pos
+---@param p jet.send.Pos
 ---@return jet.send.Range?
-M.get_line = function(pos)
-	local line = vim.api.nvim_buf_get_lines(pos.buf, pos.row, pos.row + 1, false)[1]
+M.get_line = function(p)
+	local line = vim.api.nvim_buf_get_lines(p.buf, p.row, p.row + 1, false)[1]
 	if not line then
 		return
 	end
 	return {
-		buf = pos.buf,
-		start_row = pos.row,
+		buf = p.buf,
+		start_row = p.row,
 		start_col = 0,
-		end_row = pos.row + 1,
+		end_row = p.row + 1,
 		end_col = #line,
 	}
 end
@@ -85,6 +73,9 @@ M.get_visual = function()
 	})
 end
 
+---Holds the callback executed by `handle_motion()` after a motion is completed
+_G.JET_OP_PENDING_CALLBACK = nil
+
 ---Can be used in mappings to handle the code moved over by a motion:
 ---
 ---```lua
@@ -96,18 +87,18 @@ end
 --)
 ---```
 ---
----@param callback fun(code: jet.send.Range)
+---@param callback fun(code: jet.send.Range, filetype: string?)
 ---@return fun(): "g@" # A function that can be used in an operator-pending mapping
-M.get_motion = function(callback)
+M.handle_motion = function(callback)
 	return function()
-		---@diagnostic disable-next-line: global-in-non-module
 		-- Unfortunately doesn't seem to work if the callback is a member of this module
 		_G.JET_OP_PENDING_CALLBACK = callback
-		vim.o.operatorfunc = "v:lua.require'jet.core.send.get_code'._handle_curr_motion"
+		vim.o.operatorfunc = "v:lua.require'jet.core.send.get_range'._handle_curr_motion"
 		return "g@"
 	end
 end
 
+---@private
 ---@param mode "line" | "block" | "char"
 M._handle_curr_motion = function(mode)
 	if not _G.JET_OP_PENDING_CALLBACK then
@@ -118,8 +109,8 @@ M._handle_curr_motion = function(mode)
 		type = mode == "line" and "V"
 			or mode == "block" and ""
 			or mode == "char" and "v"
-			-- Keeps lua_ls happy
-			or "Something has gone wrong!",
+			-- Keeps lsp happy
+			or error("Invalid mode: " .. vim.inspect(mode)),
 	})
 	assert(region and region[1] and region[#region], "Failed to get motion region")
 	local pos1 = region[1][1]
@@ -133,8 +124,16 @@ M._handle_curr_motion = function(mode)
 		end_col = pos2[3],
 	}
 
-	_G.JET_OP_PENDING_CALLBACK(code)
-	---@diagnostic disable-next-line: global-in-non-module
+	local ft = require("jet.core.send.utils").local_lang_info({
+		buf = code.buf,
+		row = code.start_row,
+		col = code.start_col,
+	}).filetype
+
+	---`if` to avoid LSP warnings
+	if _G.JET_OP_PENDING_CALLBACK then
+		_G.JET_OP_PENDING_CALLBACK(code, ft)
+	end
 	_G.JET_OP_PENDING_CALLBACK = nil
 end
 

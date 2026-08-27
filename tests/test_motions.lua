@@ -35,7 +35,7 @@ local T = MiniTest.new_set({
 				---@param pos jet.send.Pos
 				---@return jet.send.Range?
 				local get_expr = function(pos)
-					local nudge = require("jet.core.send.utils").pos_nudge
+					local nudge = require("jet.core.send.pos").pos_nudge
 					local lines = vim.api.nvim_buf_get_lines(pos.buf, 0, -1, false)
 
 					---@param p jet.send.Pos
@@ -75,7 +75,7 @@ local T = MiniTest.new_set({
 					return out
 				end
 
-				require("jet.core.send.get_code").filetype.my_test_filetype = { get_expr = get_expr }
+				require("jet.core.send.get_range").filetype.my_test_filetype = { get_expr = get_expr }
 
 				_G.cursor_to_next_expr = function(opts)
 					local pos = require("jet.core.send.utils").next_expr_boundary(opts)
@@ -89,8 +89,6 @@ local T = MiniTest.new_set({
 		post_once = child.stop,
 	},
 })
-
-require("jet.core.send.utils").next_expr_boundary()
 
 ---@param opts jet.send.next_significant_line.Opts
 local next_expr_boundary = function(opts)
