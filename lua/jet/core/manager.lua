@@ -120,6 +120,7 @@ end
 
 ---@param filters? jet.api.Filters
 ---@param callback? fun(kernels: jet.Kernel[])
+---@return jet.Kernel[]?
 Manager.list = function(filters, callback)
 	filters = filters or {}
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
