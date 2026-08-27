@@ -24,10 +24,13 @@ end
 M.get_expr = function(p)
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
 	local ft = p:lang_info().filetype
-	local ft_module = M.filetype[ft]
-	---@diagnostic disable-next-line: unnecessary-if
-	if ft_module and ft_module.get_expr then
-		return ft_module.get_expr(p)
+	local ft_module = require("jet").filetype[ft] or {}
+	if ft_module.get_expr then
+		local out = ft_module.get_expr(p)
+		if out and not out.code then
+			out = range.new(out)
+		end
+		return out
 	end
 
 	return M.get_line(p)
@@ -117,19 +120,17 @@ M._handle_curr_motion = function(mode)
 	local pos1 = region[1][1]
 	local pos2 = region[#region][2]
 
-	local code = {
+	local code = range.new({
 		buf = vim.api.nvim_get_current_buf(),
 		start_row = pos1[2] - 1,
 		start_col = pos1[3] - 1,
 		end_row = pos2[2] - 1,
 		end_col = pos2[3],
-	}
-
-	local ft = pos.new({ buf = code.buf, row = code.start_row, col = code.start_col }):lang_info().filetype
+	})
 
 	---`if` to avoid LSP warnings
 	if _G.JET_OP_PENDING_CALLBACK then
-		_G.JET_OP_PENDING_CALLBACK(code, ft)
+		_G.JET_OP_PENDING_CALLBACK(code, code:start():lang_info().filetype)
 	end
 	_G.JET_OP_PENDING_CALLBACK = nil
 end

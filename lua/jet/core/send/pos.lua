@@ -82,6 +82,9 @@ function Pos:to_char()
 	return line:sub(self.col + 1, self.col + 1)
 end
 
+---@return integer, integer
+function Pos:to_cursor() return self.row + 1, self.col + 1 end
+
 ---Adapted from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/_comment.lua
 ---NOTE: if this causes issues in the future (e.g. we don't actually want the
 ---range-specific filetype) we could instead return a table of candidate
@@ -89,7 +92,6 @@ end
 ---until we find a match. Don't do this until it's clear that it's a real issue.
 ---@return { filetype?: string, commentstring?: string }
 function Pos:lang_info()
-	self = self or Pos.get_curr()
 	local buf_ft = vim.bo[self.buf].filetype
 	local buf_cs = vim.bo[self.buf].commentstring
 
