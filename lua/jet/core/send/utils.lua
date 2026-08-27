@@ -270,6 +270,14 @@ M.next_expr_boundary = function(opts, pos)
 	if not expr then
 		local next_pos = M.next_significant_pos(opts, pos)
 		expr = next_pos and require("jet.core.send.get_code").get_expr(next_pos)
+		if next_pos and not expr then
+			require("jet.core.utils").log_warn(
+				"Failed to get expression at non-commented position %d:%d; returning early",
+				next_pos.row + 1,
+				next_pos.col + 1
+			)
+			return
+		end
 	end
 
 	local out ---@type jet.send.Pos?
