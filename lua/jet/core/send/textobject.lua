@@ -1,5 +1,3 @@
-local utils = require("jet.core.send.utils")
-
 local M = {}
 
 ---``` lua
@@ -7,14 +5,8 @@ local M = {}
 ---    require("jet.core.send.textobject").textobject()
 ---end, {})
 ---```
----@param pos? jet.send.Pos
-M.textobject = function(pos)
-	local range = require("jet.core.send.get_code").get_expr(pos or utils.curr_pos())
-
-	if not range then
-		return
-	end
-
+---@param range jet.send.Range
+M.textobject = function(range)
 	vim.api.nvim_buf_set_mark(0, "<", range.start_row + 1, range.start_col, {})
 	vim.api.nvim_buf_set_mark(0, ">", range.end_row + 1, range.end_col - 1, {})
 	vim.cmd("normal! gv")
