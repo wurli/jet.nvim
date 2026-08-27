@@ -19,7 +19,6 @@ end
 ---
 ---@param k jet.Kernel
 function Manager:set_primary(k)
-	print("setting primary kernel")
 	assert(k.session_id, "Kernel must have a session_id")
 	assert(k.filetype, "Kernel must have a filetype")
 
