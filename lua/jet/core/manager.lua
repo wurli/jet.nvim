@@ -19,7 +19,6 @@ end
 ---
 ---@param k jet.Kernel
 function Manager:set_primary(k)
-	print("setting primary kernel")
 	assert(k.session_id, "Kernel must have a session_id")
 	assert(k.filetype, "Kernel must have a filetype")
 
@@ -67,7 +66,7 @@ Manager.filter_kernels = function(kernels, opts)
 	opts.status = opts.status or { "connecting", "connected", "external", "inactive" }
 	opts.status = type(opts.status) == "string" and { opts.status } or opts.status
 	if opts.filetype == true then
-		opts.filetype = require("jet.core.send.utils").local_lang_info().filetype
+		opts.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
 	end
 
 	---@param k jet.Kernel
@@ -121,6 +120,7 @@ end
 
 ---@param filters? jet.api.Filters
 ---@param callback? fun(kernels: jet.Kernel[])
+---@return jet.Kernel[]?
 Manager.list = function(filters, callback)
 	filters = filters or {}
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
@@ -230,7 +230,7 @@ Manager.get = function(filters, callback)
 			return
 		end
 
-		Manager.list({ status = { "inactive" } }, function(inactive_kernels)
+		Manager.list(get_filters({ status = { "inactive" } }), function(inactive_kernels)
 			local matches2 =
 				Manager.filter_kernels(inactive_kernels, get_filters({ status = { "inactive" }, default = true }))
 			if #matches2 > 0 then
@@ -248,9 +248,6 @@ Manager.get = function(filters, callback)
 				choose(inactive_kernels)
 				return
 			end
-
-			-- If we reach this point, there are multiple kernels to choose from.
-			Manager.list({}, function(kernels) select_kernel(kernels, "Select a kernel", callback) end)
 		end)
 	end)
 end

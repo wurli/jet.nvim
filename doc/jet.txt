@@ -165,6 +165,10 @@ Kernel:term_open({callback}, {focus})                       *Kernel:term_open()*
         • {callback}  (`(fun(t: jet.Kernel.Term))?`)
         • {focus}     (`boolean?`)
 
+Kernel:set_primary()                                      *Kernel:set_primary()*
+
+    Set this kernel as the primary kernel for its filetype.
+
 Kernel:status()                                                *Kernel:status()*
 
     Return: ~

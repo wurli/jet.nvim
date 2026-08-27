@@ -1,7 +1,17 @@
 local config = require("jet.core.config")
 local manager = require("jet.core.manager")
 
-local M = {}
+---@class jet.Filetype
+---@field get_expr? fun(p: jet.send.Pos): jet.send.Range?
+
+---@class jet
+local M = {
+	---Filetype extensions. Currently only used to set `get_expr()` for a given
+	---filetype.
+	---@type table<string, jet.Filetype>
+	filetype = {},
+}
+M.ft = M.filetype
 
 local jet_quit_augroup = vim.api.nvim_create_augroup("jet.quit", { clear = true })
 

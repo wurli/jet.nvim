@@ -165,6 +165,9 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
+---Set this kernel as the primary kernel for its filetype.
+function Kernel:set_primary() manager:set_primary(self) end
+
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
 ---Lua API.
@@ -175,7 +178,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() manager:set_primary(self) end)
+			self.term:create_autocmd("TermEnter", function() self:set_primary() end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
@@ -209,7 +212,7 @@ local strip_escapes = function(s)
 end
 
 ---@param s string
-split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
+local split = function(s, trim) return vim.split(s, "[\n\r]", { plain = false, trimempty = trim }) end
 
 ---@private
 ---@param msg jupyter.Msg
@@ -849,9 +852,7 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	self:term_open(function(t)
-		t:send(code, tabstop, function(lines) self:do_send_pre(lines) end)
-	end, false)
+	self:term_open(function(t) t:send(code, tabstop) end)
 end
 
 ---Send code to the kernel via the Lua client
