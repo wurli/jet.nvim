@@ -89,7 +89,7 @@ local T = MiniTest.new_set({
 	},
 })
 
----@param opts jet.send.next_significant_line.Opts
+---@param opts jet.send.next_expr_boundary.Opts
 local next_expr_boundary = function(opts)
 	local out = child.lua_get(
 		string.format(
