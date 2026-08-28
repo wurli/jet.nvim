@@ -2,13 +2,12 @@ local pos = require("jet.core.send.pos")
 
 local M = {}
 
----@class jet.send.next_significant_line.Opts
+---@class jet.send.next_expr_boundary.Opts
 ---@field direction? 1 | -1
 ---@field boundary? "start" | "end" | "any"
 ---@field current_ok? boolean
----@field _no_recurse? boolean
 
----@param opts? jet.send.next_significant_line.Opts
+---@param opts? jet.send.next_expr_boundary.Opts
 ---@param p? jet.send.Pos
 ---@return jet.send.Pos?
 M.next_expr_boundary = function(opts, p)
@@ -58,7 +57,6 @@ M.next_expr_boundary = function(opts, p)
 				local nudged = r_end:nudge(opts.direction)
 				if nudged then
 					opts.current_ok = true
-					opts._no_recurse = true
 					out = M.next_expr_boundary(opts, nudged)
 				end
 			end
@@ -71,7 +69,6 @@ M.next_expr_boundary = function(opts, p)
 				local nudged = r_start:nudge(opts.direction)
 				if nudged then
 					opts.current_ok = true
-					opts._no_recurse = true
 					out = M.next_expr_boundary(opts, nudged)
 				end
 			end
@@ -93,7 +90,7 @@ end
 
 ---Get the next position in a buffer which is not empty or a comment
 ---
----@param opts? jet.send.next_significant_line.Opts
+---@param opts? jet.send.next_expr_boundary.Opts
 ---@param p? jet.send.Pos
 ---@return jet.send.Pos?
 M.next_significant_pos = function(opts, p)

@@ -19,9 +19,10 @@ M.get_auto = function(p)
 	return M.get_expr(p)
 end
 
----@param p jet.send.Pos
+---@param p? jet.send.Pos
 ---@return jet.send.Range?
 M.get_expr = function(p)
+	p = p or pos.get_curr()
 	-- Note: we want the filetype at the _cursor_, not the buffer filetype
 	local ft = p:lang_info().filetype
 	local ft_module = require("jet").filetype[ft] or {}
@@ -30,6 +31,8 @@ M.get_expr = function(p)
 		if out and not out.code then
 			out = range.new(out)
 		end
+		-- Might be nil - but better not fall back to line if a ft module is
+		-- present as this could be confusing.
 		return out
 	end
 

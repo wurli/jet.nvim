@@ -35,7 +35,7 @@ end
 ---@return_overload string[], string
 function Range:code(opts)
 	opts = opts or {}
-	local text = Range.text(self)
+	local text = self:text()
 
 	if not text then
 		return
