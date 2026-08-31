@@ -1,33 +1,72 @@
-<h1 align="center">jet.nvim ✈️</h1>
+# <p align="center">jet.nvim ✈️</p>
 
 <p align="center">A Jupyter kernel supervisor for Neovim, built on top of <a href=https://github.com/wurli/jet>Jet</a></p>
 
+<!-- ![demo](https://github.com/user-attachments/assets/3e091499-eee3-43d8-ad75-8bfa7a2113f7) -->
+https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
+
+## Features
+
+*   A repl which runs in Neovim's built-in terminal
+*   An LSP server which provides live completions from the kernel
+*   A Lua API with fine-grained control over running kernels, down to the level
+    of individual Jupyter messages
+*   Ability to connect to kernel sessions running outside of Neovim
+*   AI-friendly: agents can use the Jet CLI to interact with your kernel
+    sessions
+*   Plug and play - No remote plugin stuff. No python requirements. 
+
+**Not yet implemented**
+*   Notebooks
+*   Windows support (contributions welcome!)
+
+## More demos
+
+<details>
+<summary><strong>Send from buffer using custom motions/textobjects</strong></summary>
+
+jet.nvim provides an 'expression' text object, which can be used to send
+discrete chunks of code to the Jet repl. The textobject is configurable per
+filetype, so for example, installing jet.nvim extensions like
+[jet.ark](https://github.com/wurli/jet.ark) will give better expression
+detection in R scripts.
+
+In the demo below, `]e` and `[e` are used to go the next/previous expression,
+and `ie` is used as the expression textobject. These compose nicely, so e.g.
+the following keymap can be used to send the current expression to the repl
+with a single keypress:
+
+``` lua
+vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
+```
+
 ![motions](https://github.com/user-attachments/assets/f9c58f37-f084-43c4-9f33-413f26f016d3)
 
-## More screenshots
+</details>
+
 
 <details>
 <summary><strong>AI integration</strong></summary>
 
-The [Jet](https://github.com/wurli/jet) CLI can be used by multiple users to
-connect to the same kernel session. Jet provides a simple
+The [Jet CLI](https://github.com/wurli/jet) allows multiple users to connect to
+the same kernel session. Jet provides a simple
 [skill](https://github.com/wurli/jet/blob/main/crates/cli/src/skill.md)
-enabling AI agents to run code and view outputs using your kernel session. AI
-code is clearly marked as such in the repl:
+teaching AI agents how to do this. Agent code is clearly marked as such in the
+repl:
 
 ![claude](https://github.com/user-attachments/assets/0d34eefe-db6f-43f8-b58f-34abea99ada7)
 
-> [!TIP]
->
-> **Why is this kind of AI integration useful?** Say you have some Python code
-> which produces a single DataFrame and takes 10 minutes to run. Once you have
-> the resulting DataFrame loaded in your Python session, to perform any
-> analysis using AI in a traditional workflow, you will either need to first
-> tell the AI how to reproduce the DataFrame, or serialise it to a file which
-> the AI can quickly read. Both of these options take time and introduce plenty
-> of room for things to go wrong. Using Jet however, the AI acts as 'player 2'
-> in your session and can work with the data directly. This can save a tonne of
-> time and greatly reduce context/token usage for certain types of problem.
+**Why is this kind of AI integration useful?** Say you have some Python code
+which produces a single DataFrame and takes 10 minutes to run. Once you have
+the resulting DataFrame loaded in your Python session, to perform any analysis
+using AI in a traditional workflow, you will either need to first tell the AI
+how to reproduce the DataFrame, or serialise it to a file which the AI can
+quickly read. Both of these options take time and introduce plenty of room for
+things to go wrong. Using Jet however, the AI acts as 'player 2' in your
+session and can work with the data directly. This can save a tonne of time and
+greatly reduce context/token usage for certain types of problem.
+
+bla bla
 
 </details>
 
@@ -53,28 +92,12 @@ start, stop or rename kernel sessions from Neovim:
 
 </details>
 
-## Features
-
-*   A REPL which runs in Neovim's built-in terminal
-*   Integration with Jet's LSP server which surfaces completions from the kernel
-    in your Neovim session
-*   A Lua API which gives fine-grained control over running kernels, down to
-    the level of individual Jupyter messages
-*   Ability to connect to kernel sessions running outside of Neovim
-*   Work alongside your favourite AI agent using Jet
-*   Plug and play - No remote plugin stuff. No python requirements. 
-
-**Not yet implemented**
-*   Notebooks!
-
 ## Installation
 
 Using `vim.pack`:
 
 ``` lua
 vim.pack.add({ "https://github.com/wurli/jet.nvim" })
-
--- You'll need to call setup() for things to work correctly
 require("jet").setup({})
 ```
 
@@ -111,7 +134,7 @@ expose kernel-specific functionality.
 | ----                                        | ------                                  | -------- | --------             |
 | [jet.ark](https://github.com/wurli/jet.ark) | [Ark](https://github.com/posit-dev/ark) | R        | LSP server, debugger |
 
-## jet.nvim vs similar plugins
+## Similar plugins
 
 Many other plugins provide some level of Jupyter integration, mostly by
 implementing a Python backend. jet.nvim takes a different approach, offloading
