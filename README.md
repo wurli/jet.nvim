@@ -1,13 +1,13 @@
-<h1 align="center">jet.nvim ✈️</h1>
+# <p align="center">jet.nvim ✈️</p>
 
-A Jupyter kernel supervisor for Neovim, built on top of
+A Jupyter frontend for Neovim, built on top of
 [Jet](https://github.com/wurli/jet).
 
 ## Features
 
-*   A REPL which runs in Neovim's built-in terminal
-*   Integration with Jet's LSP server which surfaces completions from the kernel
-    in your Neovim session
+*   A repl which runs in Neovim's built-in terminal
+*   An LSP server which surfaces completions from the kernel in your Neovim
+    session
 *   A Lua API which gives fine-grained control over running kernels, down to
     the level of individual Jupyter messages
 *   Ability to connect to kernel sessions running outside of Neovim
@@ -23,8 +23,6 @@ Using `vim.pack`:
 
 ``` lua
 vim.pack.add({ "https://github.com/wurli/jet.nvim" })
-
--- You'll need to call setup() for things to work correctly
 require("jet").setup({})
 ```
 

@@ -7,7 +7,13 @@ jet.nvim is a Jupyter client/API for Neovim, built on top of the Jet
 https://github.com/wurli/jet CLI/Lua library.
 
 ------------------------------------------------------------------------------
-Lua API                                                                *lua-api*
+Installation                                                      *installation*
+
+>lua
+    vim.pack.add("https://github.com/wurli/jet.nvim")
+    require("jet").setup()
+<
+The full set of configuration options is as follows:
 
 *jet.Config.Opts*
 
@@ -85,7 +91,35 @@ Lua API                                                                *lua-api*
                                        issue in reedline, which powers the Jet
                                        REPL experience..
 
-        Type not found
+*jet.Hooks*
+
+    These functions run at different points in the kernel lifecycle and can be
+    used to customise behaviour. For example, `on_message_received()` triggers
+    whenever jet.nvim receives a message from the kernel, and it receives the
+    the full message data. You can use this to implement custom behaviour,
+    such as notifications which fire whenever an execution completes, like so: >lua
+        require("jet").setup({
+            hooks = {
+                on_message_received = {
+                    my_notifier = function(k, msg)
+                        if msg.header.msg_type == "execute_reply" then
+                            vim.notify(k.spec.display_name .. ": execution complete")
+                        end
+                    end
+                }
+            }
+        })
+<
+    Fields: ~
+        • {on_execution_state_changed}  (`table<any,fun(k: jet.Kernel, state: jet.Kernel.execution_state)>`)
+        • {on_kernel_close}             (`table<any,fun(k: jet.Kernel)>`)
+        • {on_kernel_init}              (`table<any,fun(k: jet.Kernel)>`)
+        • {on_lua_client_start}         (`table<any,fun(k: jet.Kernel)>`)
+        • {on_message_received}         (`table<any,fun(k: jet.Kernel, msg: jupyter.Msg)>`)
+        • {on_send_pre}                 (`table<any,fun(k: jet.Kernel, code: string[])>`)
+        • {on_status_changed}           (`table<any,fun(k: jet.Kernel)>`)
+        • {on_image_display_pre}        (`table<any,fun(k: jet.Kernel, file: string)>`)
+        • {on_primary_status_changed}   (`table<any,fun(k: jet.Kernel, primary: boolean)>`)
 
 *jet.Kernel*
 
