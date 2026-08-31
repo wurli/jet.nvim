@@ -1,7 +1,57 @@
 <h1 align="center">jet.nvim ✈️</h1>
 
-A Jupyter kernel supervisor for Neovim, built on top of
-[Jet](https://github.com/wurli/jet).
+<p align="center">A Jupyter kernel supervisor for Neovim, built on top of <a href=https://github.com/wurli/jet>Jet</a></p>
+
+![motions](https://github.com/user-attachments/assets/f9c58f37-f084-43c4-9f33-413f26f016d3)
+
+## More screenshots
+
+<details>
+<summary><strong>AI integration</strong></summary>
+
+The [Jet](https://github.com/wurli/jet) CLI can be used by multiple users to
+connect to the same kernel session. Jet provides a simple
+[skill](https://github.com/wurli/jet/blob/main/crates/cli/src/skill.md)
+enabling AI agents to run code and view outputs using your kernel session. AI
+code is clearly marked as such in the repl:
+
+![claude](https://github.com/user-attachments/assets/0d34eefe-db6f-43f8-b58f-34abea99ada7)
+
+> [!TIP]
+>
+> **Why is this kind of AI integration useful?** Say you have some Python code
+> which produces a single DataFrame and takes 10 minutes to run. Once you have
+> the resulting DataFrame loaded in your Python session, to perform any
+> analysis using AI in a traditional workflow, you will either need to first
+> tell the AI how to reproduce the DataFrame, or serialise it to a file which
+> the AI can quickly read. Both of these options take time and introduce plenty
+> of room for things to go wrong. Using Jet however, the AI acts as 'player 2'
+> in your session and can work with the data directly. This can save a tonne of
+> time and greatly reduce context/token usage for certain types of problem.
+
+</details>
+
+<details>
+<summary><strong>LSP Server</strong></summary>
+
+jet.nvim provides kernel completions via an LSP middle-layer. These can include
+runtime information not available to other LSP servers, e.g. the column names in
+a Pandas DataFrame:
+
+![completions](https://github.com/user-attachments/assets/37322d81-1972-42fd-9b79-eaaf5692bb2b)
+
+</details>
+
+
+<details>
+<summary><strong>Jet UI</strong></summary>
+
+jet.nvim provides a UI for kernel management, allowing you to easily
+start, stop or rename kernel sessions from Neovim:
+
+![ui](https://github.com/user-attachments/assets/dae00ec1-59cf-490a-9536-7be2973e64bd)
+
+</details>
 
 ## Features
 
