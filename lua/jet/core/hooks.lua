@@ -21,7 +21,7 @@ M.init_hooks = function()
 	---Note that each set of hooks is a table!
 	---@class jet.Hooks
 	local hooks = {
-		---When the kernel switches between 'busy' and 'idle' status
+		---When the kernel switches between "busy" and "idle" status
 		---@type table<any, fun(k: jet.Kernel, state: jet.Kernel.execution_state)>
 		on_execution_state_changed = {},
 
@@ -48,8 +48,8 @@ M.init_hooks = function()
 		---@type table<any, fun(k: jet.Kernel, code: string[])>
 		on_send_pre = {},
 
-		---When the kernel status changes (e.g. between 'connecting',
-		---'connected', 'inactive' or 'external')
+		---When the kernel status changes (e.g. between "connecting",
+		---"connected", "inactive" or "external")
 		---@type table<any, fun(k: jet.Kernel)>
 		on_status_changed = {},
 
