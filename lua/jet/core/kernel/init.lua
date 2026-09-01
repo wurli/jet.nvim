@@ -867,9 +867,13 @@ end
 ---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
-	if type(code) == "table" then
-		code = table.concat(code, "\n")
+	if type(code) == "string" then
+		code = vim.split(code, "[\n\r]")
 	end
+	self:do_send_pre(code)
+
+	code = table.concat(code, "\n")
+
 	local responder, msg_id = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
 
 	if callback then
