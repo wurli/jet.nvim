@@ -323,7 +323,17 @@ local list_kernel_groups = function(callback)
 			if a:status() == "inactive" and b:status() ~= "inactive" then
 				return true
 			end
-			return a.spec_path < b.spec_path
+			if a.spec_path ~= b.spec_path then
+				return a.spec_path < b.spec_path
+			elseif a.session_info and not b.session_info then
+				return true
+			elseif not a.session_info and b.session_info then
+				return false
+			elseif a.session_info and b.session_info then
+				return a.session_info.created_at < b.session_info.created_at
+			else
+				return true --- Something has pretty much gone wrong if we get to here
+			end
 		end)
 
 		---@type table<string, { kernel: jet.Kernel, external: jet.Kernel[], connected: jet.Kernel[] }>
