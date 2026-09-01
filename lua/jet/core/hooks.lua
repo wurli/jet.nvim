@@ -2,24 +2,23 @@ local M = {}
 
 M.init_hooks = function()
 	---These functions run at different points in the kernel lifecycle and can
-	---be used to customise behaviour. For example, `on_message_received()`
-	---triggers whenever jet.nvim receives a message from the kernel, and it
-	---receives the the full message data. You can use this to implement custom
-	---behaviour, such as notifications which fire whenever an execution
-	---completes, like so:
+	---be used to customise behaviour. For example, you could use
+	---`on_message_received` to implement custom behaviour such as
+	---notifications which fire whenever an execution completes like so:
 	---``` lua
-	---require("jet").setup({
-	---    hooks = {
-	---        on_message_received = {
-	---            my_notifier = function(k, msg)
-	---                if msg.header.msg_type == "execute_reply" then
-	---                    vim.notify(k.spec.display_name .. ": execution complete")
-	---                end
-	---            end
-	---        }
-	---    }
-	---})
+	---local hooks = require("jet.core.config").options.hooks
+	---
+	---hooks.on_message_received.my_notifier = function(k, msg)
+	---    if msg.header.msg_type == "execute_reply" then
+	---        vim.notify(k.spec.display_name .. ": execution complete")
+	---    end
+	---end
+	---
+	-----And to disable the hook:
+	---hooks.on_message_received.my_notified = nil
 	---```
+	---
+	---Note that each set of hooks is a table!
 	---@class jet.Hooks
 	local hooks = {
 		---When the kernel switches between 'busy' and 'idle' status
