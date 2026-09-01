@@ -244,21 +244,21 @@ expose kernel-specific functionality.
 | ----                                        | ------                                  | -------- | --------             |
 | [jet.ark](https://github.com/wurli/jet.ark) | [Ark](https://github.com/posit-dev/ark) | R        | LSP server, debugger |
 
-## Similar plugins
+## jet.nvim vs similar plugins
 
-Many other plugins provide some level of Jupyter integration, mostly by
-implementing a Python backend. jet.nvim takes a different approach, offloading
-implementation details such as ZMQ and Jupyter's wire protocol to Jet's Rust
-backend. This happens in two ways:
+Many other plugins provide some level of Jupyter integration, mostly via some
+kind of Python backend. jet.nvim takes a different approach, using a custom
+Rust library (Jet) to handle implementation details such as ZMQ and Jupyter's
+wire protocol. Jet's integration with Neovim happens via 2 mechanisms:
 
-* **Jet's Lua API**: jet.nvim bundles the Jet Lua library, allowing a fully
+* **The Jet Lua API**: jet.nvim bundles the Jet Lua library, allowing a fully
   featured kernel supervisor to be built in Neovim's Lua runtime. This makes
   jet.nvim more extensible than any other Jupyter plugin in Neovim's ecosystem,
   and allows jet.nvim itself to stay fairly lean, delegating kernel-specific
   problems to extension plugins such as
   [jet.ark](https://github.com/wurli/jet.ark).
 
-* **Jet's CLI**: Jet provides a command-line tool implementing a full,
+* **The Jet CLI**: Jet provides a command-line tool implementing a full,
   completion-enabled repl which runs in any terminal emulator. jet.nvim runs
   the Jet CLI in Neovim's built-in terminal to provide a repl experience which
   _feels_ like native Neovim. A bonus of this architecture is that, since any
@@ -428,34 +428,43 @@ Architecture differences aside, a high-level feature comparison is as follows:
 ## FAQ
 
 <details>
+<summary>Was jet.nvim vibe coded?</summary>
+
+> No. I did use AI quite a bit to develop Jet proper, i.e. the Rust backend. I
+> wrote this README with a keyboard using my own two mucky paws.
+
+</details>
+
+<details>
 <summary>
 For a 'Jupyter kernel supervisor' this plugin doesn't have much to do with
 notebooks?
 </summary>
 
-> It's a common misconception that Jupyter == notebooks. Jupyter is really
-> standard for how interactive languages can tell editors about execution
-> results. It's somewhat analogous to LSP as a standard for how code analysis
-> software can tell editors about code state.
+> Jupyter ~= notebooks. Jupyter is really a standard/protocol for how
+> interactive languages tell editors about results and environment state.
 > 
-> If you want to implement the Jupyter standard for a language, you wrap the
-> language in a Jupyter kernel. Ipykernel is a popular kernel for 🐍, Ark is
-> another for R. There are many other kernels which exist for other languages.
+> If you want to implement the Jupyter protocol for a language, you wrap the
+> language in a Jupyter kernel. IPykernel is a popular kernel for Python, Ark
+> is another for R. There are many other kernels which exist for other
+> languages.
 > 
 > Once you've got a kernel, your editor needs to implement a Jupyter client to
-> talk to it. Most editors which implement a Jupyter client use it for some kind
-> of notebook experience, but many also include some kind of REPL (notable
+> talk to it. Most editors which implement a Jupyter client use it for some
+> kind of notebook experience, but many also include some kind of REPL (notable
 > examples are Positron and Jupyter's Qt Console).
 > 
-> Jet is a Jupyter client and kernel supervisor purpose-built for Neovim. So far
-> jet.nvim only supports a REPL experience, but the infrastructure is there to
-> support notebooks too, I just haven't implemented them on the Neovim side yet.
-> But it's on the roadmap!
-> 
-> NB, one of the main benefits of a purpose-built client like Jet is that it will
-> Neovim to tap into special/non-standard features that some kernels implement
+> One of the main benefits of a purpose-built client like Jet is that it allows
+> Neovim to access special/non-standard features that some kernels implement
 > above and beyond the Jupyter spec. E.g. Ark adds a debugger, LSP server,
-> variables pane, a dedicated help window, etc, all of which I'd like to expose
-> in Neovim.
+> variables pane, a dedicated help window, etc, all of which are unlocked by
+> jet.nvim's Lua API.
 
+</details>
+
+<details>
+<summary>Y no notebook???? >:(</summary>
+jet.nvim is influenced by RStudio and Positron, which are primarily
+repl-focussed. jet.nvim will eventually support a notebook mode though - but
+for now development focus is on the repl.
 </details>
