@@ -211,6 +211,7 @@ Manager.get_by_id = function(session_id)
 end
 
 ---See `jet/init.lua` for docs.
+---TODO: get primary kernel first
 ---@param filters jet.api.Filters
 ---@param callback fun(k: jet.Kernel)
 Manager.get = function(filters, callback)

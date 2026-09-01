@@ -44,7 +44,6 @@ vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
 
 </details>
 
-
 <details>
 <summary><strong>AI integration</strong></summary>
 
@@ -101,26 +100,137 @@ vim.pack.add({ "https://github.com/wurli/jet.nvim" })
 require("jet").setup({})
 ```
 
-Recommended keymaps:
+This will enable the `:Jet` command to bring up the jet.nvim kernel management
+UI.
+
+Since most users will want to work with running kernels in different ways,
+jet.nvim avoids setting default keymaps and instead aims to provide a flexible,
+low-level Lua API to allow users to implement the behaviour that works for
+_them_. The following mappings should give some idea of what's possible:
+
+<details>
+<summary>Repl togglers by filetype</summary>
+
+jet.nvim supports running many kernels simultaneously, and each kernel may also
+run many instances. `get_kernel()` uses some heuristics to determine the best
+kernel to use; see the docs for more information:
 
 ``` lua
-local open_ft = function(ft)
+local toggle_repl = function(ft)
 	return function()
-		---@param k jet.kernel
-		require("jet.core.api").get_any({ filetype = ft }, {}, function(k) k:toggle_term() end)
+		require("jet.api").get_kernel({ filetype = ft }, function(k) k:term_toggle() end)
 	end
 end
 
-vim.keymap.set("n", "<leader>jp", open_ft("python"), { desc = "Open Python (Jet)" })
-vim.keymap.set("n", "<leader>jr", open_ft("r"), { desc = "Open R (Jet)" })
+vim.keymap.set("n", "<leader>jp", toggle_repl("python"), { desc = "Open Python (Jet)" })
+vim.keymap.set("n", "<leader>jr", toggle_repl("r"), { desc = "Open R (Jet)" })
+```
 
+</details>
+
+<details>
+<summary>Toggle image window</summary>
+
+The Jet repl and image buffers set `vim.b.jet.session_id`, which can be used to
+get the `Kernel` object which 'owns' the buffers. This mechanism can be used to
+set toggle keymaps like so:
+
+``` lua
+vim.api.nvim_create_autocmd("BufWinEnter", {
+	callback = function()
+		local session_id = vim.b.jet and vim.b.jet.session_id
+		local k = session_id and require("jet.api").get_kernel_by_id(session_id)
+		if k then
+			vim.keymap.set({ "n", "t" }, "<c-o>", function() k:img_toggle() end, { buffer = 0 })
+		end
+	end,
+})
+```
+</details>
+
+<details>
+<summary>Send code to the repl</summary>
+
+The following keymap adds `go` as an operator which sends the current motion to
+the repl. So, for example, `goi(` will send everything within the current
+parentheses to an active jet repl matching the current filetype:
+
+``` lua
 vim.keymap.set(
-	{ "n", "v" },
-	"<enter>",
-	function() require("jet.core.send").send_auto() end,
-	{ desc = "Execute code (Jet)" }
+	{ "n", "x" },
+	"go",
+	require("jet.api").handle_motion(function(range, filetype)
+		require("jet.api").get_kernel({
+			filetype = filetype,
+			primary = true,
+			status = { "connected", "connecting" },
+		}, function(k)
+			local code = range:code({ comments = false })
+			if code then
+				k:send_repl(code)
+			end
+		end)
+	end),
+	{ desc = "Execute code (Jet)", expr = true }
 )
 ```
+</details>
+
+<details>
+<summary>'Expression' textobject</summary>
+
+Jet allows you to configure what a current 'expression' looks like for a given
+language. For jet.nvim's purposes, an expression is just the smallest block of
+code around (or ahead of) the cursor which it makes sense to send to the kernel
+in one go. This works great with `go` above, so with the combined mappings you
+could use `goie` to send the current/next expression to the repl:
+
+``` lua
+local api = require("jet.api")
+
+vim.keymap.set({ "x", "o" }, "ie", function()
+	local expr = api.get_expr()
+	if not expr then
+		local pos = api.next_expr_boundary({
+			current_ok = false,
+			boundary = "start",
+		})
+		expr = pos and api.get_expr(pos)
+	end
+	if expr then
+		expr:textobject()
+	end
+end, { desc = "textobject (jet): [i]n [e]xpression" })
+```
+
+`]e` and `[e` can be used to navigate between 'expressions':
+
+``` lua
+vim.keymap.set("n", "]e", function()
+	local pos = api.next_expr_boundary({ direction = 1, boundary = "start" })
+	if pos then
+		vim.fn.cursor(pos:to_cursor())
+	end
+end)
+vim.keymap.set("n", "[e", function()
+	local pos = api.next_expr_boundary({ direction = -1, boundary = "start" })
+	if pos then
+		vim.fn.cursor(pos:to_cursor())
+	end
+end)
+```
+
+Finally, if you like to blast through a script sending expressions to the repl
+as you go, you might like a mapping to send the current expression and move to
+the next one in a single keypress:
+
+``` lua
+vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
+vim.keymap.set("x", "<enter>", "go", { remap = true })
+```
+
+</details>
+
 
 ## Extending jet.nvim
 
