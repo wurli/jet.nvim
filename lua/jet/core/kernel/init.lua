@@ -10,45 +10,72 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@alias jet.Kernel.paritalspec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
----The `Kernel` class is jet.nvim's central abstraction for working with
----Jupyter kernels using Jet. You can create a new instance using two
----methods
+---The `Kernel` is jet.nvim's central abstraction for working with Jupyter
+---kernels. You can create a new instance using two methods:
 ---
 ---1. To start a fresh session:
 ---   ``` lua
+---   local Kernel = require("jet.core.kernel")
 ---   local owned = Kernel.init_owned({ spec_path = "path/to/spec/kernel.json" })
 ---   owned:start_lua_client()
 ---   ```
 ---2. To connect to a session running externally:
 ---   ``` lua
+---   local kernel = require("jet.core.kernel")
 ---   local external = Kernel.init_external({ session_id = "jet-session-id" })
 ---   external:start_lua_client()
 ---   ```
 ---@class jet.Kernel
+---Shows up in the `:Jet` UI, but can also be used, e.g. in statuslines and stuff
 ---@field session_name? string
+---See https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
+---for a primer on kernel specs.
 ---@field spec jupyter.KernelSpec | jet.Kernel.paritalspec
+---Path to the `kernelspec` file
 ---@field spec_path string
+---Kernel info as returned by the kernel in response to a `kernel_info_request`
 ---@field kernel_info? jupyter.KernelInfo
+---The Jet session identifier.
 ---@field session_id? string
+---The contents of the Jet `session.json`, e.g. kernel start time, process PID,
+---etc.
 ---@field session_info? jet.SessionInfo
+---The client ID of the current nvim connection to the kernel.
 ---@field client_id? string
+---Information about the kernel's Jet LSP process.
 ---@field lsp jet.Lsp
+---Repl buffer data
 ---@field term? jet.Kernel.Term
+---Image buffer data
 ---@field img? jet.Kernel.Img
----@field cmd string[]
+---`true` if the kernel session was started by this nvim session; `false`
+---otherwise.
 ---@field owned boolean
+---The kernel's filetype. jet.nvim will try to guess this but may fail. You can
+---set it manually, e.g. using |jet.Hooks|.
 ---@field filetype? string
+---Information about the last executed code.
 ---@field last_execution? jet.Kernel.last_execution
+---Either "busy", "idle", or "starting"
 ---@field execution_state? jet.Kernel.execution_state
----@field ui_expand boolean
+---Handlers for "known" comms which the backend may try to open. If the kernel
+---backend attempts to open a comm not in this list, jet.nvim just replies
+---with a `comm_close` message as per the Jupyter spec:
+---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 ---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
+---Open comm channels. See https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
+---for more info.
 ---@field open_comms table<string, { name: string, data?: table }>
+---Latest output from the kernel's `iopub` channel.
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
----@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
----@field on_started table<string, fun(k: jet.Kernel)>
----@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
----@field stream jet.callback<jupyter.Msg>
+---Kernel-specific hooks. Basically for convenience on top of the normal hooks
+---you can set in |jet.Config.Opts|
 ---@field hooks jet.Hooks
+---Arbitrary extra data, e.g. for use by extensions
+---@field metadata table<string, any>
+---@field private stream jet.callback<jupyter.Msg>
+---@field private ui_expand boolean
+---@field private on_started table<string, fun(k: jet.Kernel)>
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
@@ -63,7 +90,6 @@ local init_defaults = function()
 			complete_lines = require("jet.core.utils.queue").new(cfg.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
-		on_message_received = {},
 		on_started = {},
 		metadata = {},
 		hooks = hooks.init_hooks(),
@@ -559,9 +585,6 @@ function Kernel:handle_stream()
 			self:handle_comm_open(msg)
 
 			self:do_message_received(msg)
-			for _, hook in pairs(self.on_message_received) do
-				hook(self, msg)
-			end
 		end
 
 		return res.status
