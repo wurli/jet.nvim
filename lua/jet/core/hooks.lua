@@ -22,30 +22,43 @@ M.init_hooks = function()
 	---```
 	---@class jet.Hooks
 	local hooks = {
+		---When the kernel switches between 'busy' and 'idle' status
 		---@type table<any, fun(k: jet.Kernel, state: jet.Kernel.execution_state)>
 		on_execution_state_changed = {},
 
+		---After a Kernel is shut down
 		---@type table<any, fun(k: jet.Kernel)>
 		on_kernel_close = {},
 
+		---After a Kernel object is initialised; before the Lua client or repl
+		---actually start up. Can be useful, e.g. to set the kernel filetype or
+		---session name.
 		---@type table<any, fun(k: jet.Kernel)>
 		on_kernel_init = {},
 
+		---After the Lua client starts up.
 		---@type table<any, fun(k: jet.Kernel)>
 		on_lua_client_start = {},
 
+		---Whenever a message is received from the kernel.
 		---@type table<any, fun(k: jet.Kernel, msg: jupyter.Msg)>
 		on_message_received = {},
 
+		---Before sending code to the kernel. This callback can
+		---modify the code to be sent in-place.
 		---@type table<any, fun(k: jet.Kernel, code: string[])>
 		on_send_pre = {},
 
+		---When the kernel status changes (e.g. between 'connecting',
+		---'connected', 'inactive' or 'external')
 		---@type table<any, fun(k: jet.Kernel)>
 		on_status_changed = {},
 
+		---Before an image is displayed in Neovim
 		---@type table<any, fun(k: jet.Kernel, file: string)>
 		on_image_display_pre = {},
 
+		---After a kernel's `primary` field is set to `true` or `false`
 		---@type table<any, fun(k: jet.Kernel, primary: boolean)>
 		on_primary_status_changed = {},
 	}
