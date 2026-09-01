@@ -69,11 +69,6 @@ M.defaults = {
 	---@type table<string, string | fun(): string?>
 	default_kernels = {},
 	---Ui config
-	ui = ui_defaults,
-	---Image config
-	image = img_defaults,
-	---Hooks for custom integrations; see |jet.Hooks|.
-	hooks = require("jet.core.hooks").init_hooks(),
 	---* `send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending
 	---  several complete expressions to the repl in one go, all will be
@@ -95,6 +90,11 @@ M.defaults = {
 	send = {
 		send_by_expr = true, ---@type boolean
 	},
+	ui = ui_defaults,
+	---Image config
+	image = img_defaults,
+	---Hooks for custom integrations; see |jet.Hooks|.
+	hooks = require("jet.core.hooks").init_hooks(),
 }
 
 M.jet_nvim_version = "0.0.1"

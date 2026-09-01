@@ -147,7 +147,8 @@ M.time_since = function(t, finish)
 	local seconds = math.floor(os.difftime(finish, t))
 	local hh, mm, ss = math.floor(seconds / 3600), math.floor((seconds % 3600) / 60), seconds % 60
 
-	local fmt = require("jet.core.config").options.time_formatter or fmt_time_hhmmss
+	local cfg = require("jet.core.config").options
+	local fmt = cfg.ui.time_formatter or fmt_time_hhmmss
 
 	return fmt(hh, mm, ss)
 end
