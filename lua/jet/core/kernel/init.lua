@@ -704,17 +704,7 @@ function Kernel:try_resolve_filetype()
 	if self.filetype then
 		return
 	end
-	local shorten = require("jet.core.utils").path_shorten
-	for ft, default_spec in pairs(cfg.default_kernels) do
-		local s = type(default_spec) == "string" and default_spec or default_spec()
-		if s and shorten(s) == shorten(self.spec_path) then
-			self.filetype = ft
-			return
-		end
-	end
-
 	if self.kernel_info then
-		---@diagnostic disable-next-line: unnecessary-if
 		if self.kernel_info.language_info and self.kernel_info.language_info.file_extension then
 			local ft, _, is_fallback = vim.filetype.match({
 				-- Idk if 'dummy-file' is ever gonna make a difference, felt right tho

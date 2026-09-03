@@ -37,8 +37,7 @@ M.list_kernels = function(filters, callback) return manager.list(filters, callba
 ---
 ---Looks for kernels which match `filters` in the following order:
 ---1. Connected (or connecting) kernels
----2. Inactive kernels which are marked as 'default'
----3. Other inactive kernels
+---2. Inactive kernels
 ---
 ---If any of the above steps match a single kernel it is passed to
 ---`callback()`. If multiple kernels match, the user is prompted to select one.

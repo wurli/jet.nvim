@@ -54,7 +54,6 @@ end
 ---@field ft? string | boolean alias for `filetype`
 ---@field display_name? string
 ---@field primary? boolean Implies `status` = "connected"
----@field default? boolean Only gets the default kernel for `filetype` (see `config.default_kernels`)
 ---@field status? jet.kernel.status | jet.kernel.status[]
 
 ---@param kernels jet.Kernel[]
@@ -94,16 +93,6 @@ Manager.filter_kernels = function(kernels, opts)
 			-- and for other kernels if explicitly configured
 			if opts.filetype ~= k.filetype then
 				return false
-			end
-
-			if opts.default then
-				local spec_path = require("jet.core.config").options.default_kernels[opts.filetype]
-				if type(spec_path) == "function" then
-					spec_path = spec_path()
-				end
-				if not spec_path or not utils.path_eq((k.spec_path or ""), spec_path) then
-					return false
-				end
 			end
 		end
 
@@ -210,7 +199,7 @@ Manager.get_by_id = function(session_id)
 	return Manager.kernels[session_id]
 end
 
----See `jet/init.lua` for docs.
+---See `jet/api.lua` for docs.
 ---TODO: get primary kernel first
 ---@param filters jet.api.Filters
 ---@param callback fun(k: jet.Kernel)
@@ -231,25 +220,7 @@ Manager.get = function(filters, callback)
 			return
 		end
 
-		Manager.list(get_filters({ status = { "inactive" } }), function(inactive_kernels)
-			local matches2 =
-				Manager.filter_kernels(inactive_kernels, get_filters({ status = { "inactive" }, default = true }))
-			if #matches2 > 0 then
-				choose(matches2)
-				return
-			end
-
-			local matches3 = Manager.filter_kernels(inactive_kernels, get_filters({ status = { "inactive" } }))
-			if #matches3 > 0 then
-				choose(matches3)
-				return
-			end
-
-			if #inactive_kernels > 0 then
-				choose(inactive_kernels)
-				return
-			end
-		end)
+		Manager.list(get_filters({ status = { "inactive" } }), choose)
 	end)
 end
 
