@@ -5,15 +5,15 @@ vimdoc-prefix: jet
 ---
 
 jet.nvim is a Jupyter client/API for Neovim, built on top of the
-[Jet](https://github.com/wurli/jet) CLI/Lua library.
+Jet CLI/Lua library (https://github.com/wurli/jet).
 
-## Configuration
+# Configuration
 
-Configure jet.nvim by passing options to `setup()`:
+Configure jet.nvim using `setup()`:
 
 ``` lua
 require("jet").setup({
-	-- Config options here
+	-- Config here
 })
 ```
 
@@ -39,34 +39,89 @@ python3 scripts/emmylua-to-md.py --type jet.Hooks
 python3 scripts/emmylua-to-md.py --type jet.Kernel
 ```
 
-## Jet UI
+# Jet UI
 
 Bla bla
 
-### Jet kernel management
+## Jet kernel management
 
-`:Jet` without args brings up a UI for kernel management. This allows
+`:Jet` without args brings up a UI for kernel management. This allows:
 
 * Renaming sessions (sets the `Kernel.session_name` attribute)
 * Stopping or starting kernels
 * Connecting to kernels managed by Jet which are not owned by the current
   Neovim session
+* Execution information (hit <Enter> over a running kernel to expand
+  information)
 
-### The repl buffer
+## The repl buffer
 
-### The image buffer
+The Jet repl buffer is just `jet start` (or `jet attach`) running in neovim's
+built-in terminal.
+
+`vim.b.jet.session_id` is set to the kernel's `session_id`
+
+## The image buffer
 
 ## Filetypes
 
 ## AI integration
 
-## Primary kernels
+## Concepts
 
-## Default kernels
+### Sessions
 
-## Recipes
+A Jet "session" is a running kernel, which can be connected to by multiple
+clients. Jet assigns each session an unique `session_id` comprised of four
+parts:
 
-## API
+1. The session start date/time
+2. The kernel language
+3. The directory the kernel was started in
+4. A random id
 
-## Extending jet.nvim
+Each session gets a metadata `session.json` file stored in Jet's data dir. E.g.
+on macOS the path to a `session.json` file might be
+`~/.local/share/jet/2026-06-22_174223_python_cli_2c247e/session.json`. The
+`session.json` stores stuff like
+
+* The kernel process PID
+* The session start time
+* The path to the kernel's connection file, relative to the `session.json`
+
+You can find this data in nvim in the `Kernel.session_info` field.
+
+### Clients
+
+A client is a frontend which connects to a kernel. If `Kernel.client_id` is
+non-nil, then the Kernel is connected (the `client_id` is generated on
+connection).
+
+### Primary kernels
+
+jet.nvim records per-filetype "primary" kernels. By default a kernel becomes
+the primary when:
+
+* The kernel starts up, if there is not already a primary kernel for the
+  filetype
+* the kernel's repl is focussed (i.e. on |TermEnter|)
+
+Primary status is basically a convenience mechanism to denote the kernel you're
+using "right now". E.g. you can get the primary kernel for the `python`
+filetype like so:
+
+``` lua
+local api = require("jet.api")
+api.get_kernel({ filetype = "python", primary = true }, function(k)
+	-- Do stuff with the kernel here
+end)
+```
+
+You can set primary status using `Kernel:set_primary()`.
+
+### Default kernels
+
+# API
+
+# Extending jet.nvim
 
