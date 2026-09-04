@@ -28,7 +28,7 @@ M.get_expr = function(p) return range_get.get_expr(p) end
 ---@return fun(): "g@" # A function that can be used in an operator-pending mapping
 M.handle_motion = function(callback) return range_get.handle_motion(callback) end
 
----@param filters? jet.api.Filters
+---@param filters? jet.api.Filters | jet.api.Filters[]
 ---@param callback? fun(kernels: jet.Kernel[])
 ---@return jet.Kernel[]?
 M.list_kernels = function(filters, callback) return manager.list(filters, callback) end
@@ -42,7 +42,7 @@ M.list_kernels = function(filters, callback) return manager.list(filters, callba
 ---If any of the above steps match a single kernel it is passed to
 ---`callback()`. If multiple kernels match, the user is prompted to select one.
 ---
----@param filters jet.api.Filters
+---@param filters jet.api.Filters | jet.api.Filters[]
 ---@param callback fun(k: jet.Kernel)
 M.get_kernel = function(filters, callback) return manager.get(filters, callback) end
 
