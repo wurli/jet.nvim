@@ -65,6 +65,20 @@ built-in terminal.
 
 ## Filetypes
 
+jet.nvim tries to determine the filetype of each running kernel, but may
+occasionally fail to do so, or might guess the wrong filetype. In such cases you
+can set the kernel filetype manually using hooks:
+
+``` lua
+-- Woxi is a jupyter kernel for the wolfram language: https://github.com/ad-si/Woxi
+local hooks = require("jet.core.config").options.hooks
+hooks.on_kernel_init.set_woxi_filetype = function(k)
+	if k.display_name:match("woxi") then
+		k.filetype = "mma"
+	end
+end
+```
+
 ## AI integration
 
 ## Concepts
@@ -89,7 +103,7 @@ on macOS the path to a `session.json` file might be
 * The session start time
 * The path to the kernel's connection file, relative to the `session.json`
 
-You can find this data in nvim in the `Kernel.session_info` field.
+jet.nvim loads this data into each kernel's `session_info` field.
 
 ### Clients
 
@@ -117,9 +131,7 @@ api.get_kernel({ filetype = "python", current = true }, function(k)
 end)
 ```
 
-You can set current status using `Kernel:set_current()`.
-
-### Default kernels
+You can set a kernel as current using `Kernel:set_current()`.
 
 # API
 
