@@ -240,7 +240,8 @@ def _render_tags(tags: list[Tag] | None) -> list[str]:
 
 
 def _render_fn(x: Fn, parent=None):
-    name = x.name if parent is None else f"{parent}:{x.name}"
+    sep = ":" if x.is_meth else "."
+    name = x.name if parent is None else f"{parent}{sep}{x.name}"
     params = ", ".join([f"{{{param.name}}}" for param in x.params])
     title_line = f"##### {name}({params}){{#{name}()}}"
 

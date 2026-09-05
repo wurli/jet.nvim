@@ -226,7 +226,7 @@ The full set of configuration options is as follows:
                              you would set the priority using the kernel's
                              init hook (see |jet.Hooks|).
 
-Kernel:init_owned({opts})                              *jet-Kernel:init_owned()*
+Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
     Represents a kernel which is not active. Turn it into an 'owned'/connected
     kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
@@ -237,7 +237,7 @@ Kernel:init_owned({opts})                              *jet-Kernel:init_owned()*
     Return: ~
         (`jet.Kernel`)
 
-Kernel:init_external({opts})                        *jet-Kernel:init_external()*
+Kernel.init_external({opts})                        *jet-Kernel.init_external()*
 
     Initialise a connection to an kernel running externally
 
@@ -533,7 +533,7 @@ The API module                                                     *jet-jet.api*
     local api = require("jet.api")
 <
 
-api:next_expr_boundary({opts}, {p})               *jet-api:next_expr_boundary()*
+api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 
     Parameters: ~
         • {opts}        (`jet.send.next_expr_boundary.Opts?`)
@@ -542,7 +542,7 @@ api:next_expr_boundary({opts}, {p})               *jet-api:next_expr_boundary()*
     Return: ~
         (`jet.send.Pos?`)
 
-api:get_expr({p})                                           *jet-api:get_expr()*
+api.get_expr({p})                                           *jet-api.get_expr()*
 
     Parameters: ~
         • {p}           (`jet.send.Pos?`)
@@ -550,7 +550,7 @@ api:get_expr({p})                                           *jet-api:get_expr()*
     Return: ~
         (`jet.send.Range?`)
 
-api:handle_motion({callback})                          *jet-api:handle_motion()*
+api.handle_motion({callback})                          *jet-api.handle_motion()*
 
     Can be used in mappings to handle the code moved over by a motion: >lua
         vim.keymap.set(
@@ -567,7 +567,7 @@ api:handle_motion({callback})                          *jet-api:handle_motion()*
         (`fun() -> "g@"`) A function that can be used in an operator-pending
         mapping
 
-api:list_kernels({filters}, {callback})                 *jet-api:list_kernels()*
+api.list_kernels({filters}, {callback})                 *jet-api.list_kernels()*
 
     Parameters: ~
         • {filters}     (`jet.api.Filters?`)
@@ -576,7 +576,7 @@ api:list_kernels({filters}, {callback})                 *jet-api:list_kernels()*
     Return: ~
         (`jet.Kernel[]?`)
 
-api:get_kernel({filters}, {callback})                     *jet-api:get_kernel()*
+api.get_kernel({filters}, {callback})                     *jet-api.get_kernel()*
 
     Get a kernel and do some stuff with it
 
@@ -590,7 +590,7 @@ api:get_kernel({filters}, {callback})                     *jet-api:get_kernel()*
         • {filters}     (`jet.api.Filters`)
         • {callback}    (`fun(k: jet.Kernel)`)
 
-api:get_kernel_by_id({session_id})                  *jet-api:get_kernel_by_id()*
+api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
     Get a running kernel by its session id
 
