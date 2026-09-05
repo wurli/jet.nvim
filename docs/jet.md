@@ -39,11 +39,9 @@ python3 scripts/emmylua-to-md.py --type jet.Hooks
 python3 scripts/emmylua-to-md.py --type jet.Kernel
 ```
 
-# Jet UI
+# UI
 
-Bla bla
-
-## Jet kernel management
+## Kernel management
 
 `:Jet` without args brings up a UI for kernel management. This allows:
 
@@ -61,7 +59,18 @@ built-in terminal.
 
 `vim.b.jet.session_id` is set to the kernel's `session_id`
 
-## The image buffer
+## Image display
+
+When a connected kernel produces an image, jet.nvim saves the image to the
+kernel's image directory (see |jet-Kernel:img_dir()|). The kernel image buffer
+cycles through these saved images.
+
+Image display works best when powered by snacks.nvim
+(https://github.com/folke/snacks.nvim), but there is also basic support for
+image.nvim (https://github.com/3rd/image.nvim). In the future jet.nvim will
+migrate to Neovim's native image API.
+
+You can open a kernel's image buffer using `Kernel:img_open()`
 
 ## Filetypes
 
@@ -80,6 +89,10 @@ end
 ```
 
 ## AI integration
+
+AI agents can interact with your Jet session. To enable this:
+1. Make sure the `jet` CLI is on the `PATH`
+2. Install the jet skill (run `:!jet skill` to view the full skill text)
 
 ## Concepts
 
@@ -120,9 +133,10 @@ the current kernel for its filetype when:
   filetype
 * the kernel's repl is focussed (i.e. on |TermEnter|)
 
-Current status is basically a convenience mechanism to denote the kernel you're
-using "right now". E.g. you can get the current kernel for the `python`
-filetype like so:
+Current status is basically a convenience mechanism for identifying the kernel
+you're using "right now" in cases where you're running several kernels for a
+given filetype. E.g. you can get the current kernel for the `python` filetype
+like so:
 
 ``` lua
 local api = require("jet.api")
@@ -141,3 +155,6 @@ python3 scripts/emmylua-to-md.py --mod jet.api
 
 # Extending jet.nvim
 
+jet.nvim aims to delegate 
+
+#### jet.filetype

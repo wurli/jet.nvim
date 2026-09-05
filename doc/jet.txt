@@ -159,8 +159,8 @@ The full set of configuration options is as follows:
 
 *jet.Kernel*
 
-    The `Kernel` is jet.nvim's central abstraction for working with Jupyter
-    kernels. You can create a new instance using two methods:
+    The `Kernel` class is jet.nvim's central abstraction for working with
+    Jupyter kernels. You can create a new instance using two methods:
 
     1. To start a fresh session: >lua
            local Kernel = require("jet.core.kernel")
@@ -211,25 +211,24 @@ The full set of configuration options is as follows:
                              Jupyter spec:
                              https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
         • {open_comms}       (`table<string,{ data: table?, name: string }>`)
-                             Open comm channels. See
+                             Open comm channels. Table keys are comm ids. See
                              https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
                              for more info.
         • {output_stream}    (`{ complete_lines: jet.utils.Queue<string>, incomplete_line: string }`)
                              Latest output from the kernel's `iopub` channel.
+                             By default only holds the last 3 lines, but this
+                             can be configured using `config.ui.stream_lines`.
         • {hooks}            (`jet.Hooks`) Kernel-specific hooks. Basically
-                             for convenience on top of the normal hooks you
+                             for convenience on top of the 'global' hooks you
                              can set in |jet.Config.Opts|
         • {metadata}         (`table<string,any>`) Arbitrary extra data,
                              e.g. for use by extensions
-        • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
-                             will use this field to select a kernel. Typically
-                             you would set the priority using the kernel's
-                             init hook (see |jet.Hooks|).
+        • {priority}         (`integer`)
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
-    Represents a kernel which is not active. Turn it into an 'owned'/connected
-    kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
+    Initialise a `Kernel` object which will start its own "owned" jupyter
+    process.
 
     Parameters: ~
         • {opts}        (`jet.kernel.init_owned.Opts`)
@@ -241,7 +240,9 @@ Kernel.init_external({opts})                        *jet-Kernel.init_external()*
 
     Initialise a connection to an kernel running externally
 
-    opts: - `session_id`: The session ID of the kernel to connect to
+    opts:
+
+    • `session_id`: The session ID of the kernel to connect to
 
     Parameters: ~
         • {opts}        (`jet.kernel.init_external.Opts`)
@@ -431,12 +432,10 @@ Kernel:interrupt()                                      *jet-Kernel:interrupt()*
     Can also be done using `<c-c>` in the terminal.
 
 ==============================================================================
-Jet UI                                                              *jet-jet-ui*
-
-Bla bla
+UI                                                                      *jet-ui*
 
 ------------------------------------------------------------------------------
-Jet kernel management                                *jet-jet-kernel-management*
+Kernel management                                        *jet-kernel-management*
 
 `:Jet` without args brings up a UI for kernel management. This allows:
 
@@ -455,7 +454,18 @@ built-in terminal.
 `vim.b.jet.session_id` is set to the kernel's `session_id`
 
 ------------------------------------------------------------------------------
-The image buffer                                          *jet-the-image-buffer*
+Image display                                                *jet-image-display*
+
+When a connected kernel produces an image, jet.nvim saves the image to the
+kernel's image directory (see |jet-Kernel:img_dir()|). The kernel image buffer
+cycles through these saved images.
+
+Image display works best when powered by snacks.nvim
+(https://github.com/folke/snacks.nvim), but there is also basic support for
+image.nvim (https://github.com/3rd/image.nvim). In the future jet.nvim will
+migrate to Neovim's native image API.
+
+You can open a kernel's image buffer using `Kernel:img_open()`
 
 ------------------------------------------------------------------------------
 Filetypes                                                        *jet-filetypes*
@@ -474,6 +484,10 @@ you can set the kernel filetype manually using hooks: >lua
 
 ------------------------------------------------------------------------------
 AI integration                                              *jet-ai-integration*
+
+AI agents can interact with your Jet session. To enable this: 1. Make sure the
+`jet` CLI is on the `PATH` 2. Install the jet skill (run `:!jet skill` to view
+the full skill text)
 
 ------------------------------------------------------------------------------
 Concepts                                                          *jet-concepts*
@@ -515,9 +529,10 @@ the current kernel for its filetype when:
   filetype
 • the kernel's repl is focussed (i.e. on |TermEnter|)
 
-Current status is basically a convenience mechanism to denote the kernel
-you're using "right now". E.g. you can get the current kernel for the `python`
-filetype like so: >lua
+Current status is basically a convenience mechanism for identifying the kernel
+you're using "right now" in cases where you're running several kernels for a
+given filetype. E.g. you can get the current kernel for the `python` filetype
+like so: >lua
     local api = require("jet.api")
     api.get_kernel({ filetype = "python", current = true }, function(k)
         -- Do stuff with the kernel here
@@ -607,5 +622,9 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
 ==============================================================================
 Extending jet.nvim                                      *jet-extending-jet.nvim*
+
+jet.nvim aims to delegate
+
+*jet.filetype*
 
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

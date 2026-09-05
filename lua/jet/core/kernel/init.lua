@@ -10,8 +10,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@alias jet.Kernel.paritalspec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
----The `Kernel` is jet.nvim's central abstraction for working with Jupyter
----kernels. You can create a new instance using two methods:
+---The `Kernel` class is jet.nvim's central abstraction for working with
+---Jupyter kernels. You can create a new instance using two methods:
 ---
 ---1. To start a fresh session:
 ---   ``` lua
@@ -63,18 +63,21 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---with a `comm_close` message as per the Jupyter spec:
 ---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 ---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
----Open comm channels. See https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
+---Open comm channels. Table keys are comm ids. See
+---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 ---for more info.
 ---@field open_comms table<string, { name: string, data?: table }>
----Latest output from the kernel's `iopub` channel.
+---Latest output from the kernel's `iopub` channel. By default only holds the
+---last 3 lines, but this can be configured using `config.ui.stream_lines`.
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
----Kernel-specific hooks. Basically for convenience on top of the normal hooks
----you can set in |jet.Config.Opts|
+---Kernel-specific hooks. Basically for convenience on top of the 'global'
+---hooks you can set in |jet.Config.Opts|
 ---@field hooks jet.Hooks
 ---Arbitrary extra data, e.g. for use by extensions
 ---@field metadata table<string, any>
 ---Defaults to 100. `api.get_kernel()` will use this field to select a kernel.
----Typically you would set the priority using the kernel's init hook (see |jet.Hooks|).
+---Typically you would set the priority using the kernel's init hook (see
+---|jet.Hooks|).
 ---@field priority integer
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
@@ -106,8 +109,7 @@ end
 ---@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
 ---@field priority? integer
 
----Represents a kernel which is not active. Turn it into an 'owned'/connected
----kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
+---Initialise a `Kernel` object which will start its own "owned" jupyter process.
 ---
 ---@param opts jet.kernel.init_owned.Opts
 function Kernel.init_owned(opts)
@@ -131,7 +133,7 @@ end
 ---Initialise a connection to an kernel running externally
 ---
 ---opts:
----- `session_id`: The session ID of the kernel to connect to
+---* `session_id`: The session ID of the kernel to connect to
 ---
 ---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
