@@ -27,19 +27,6 @@ The full set of configuration options is as follows:
         • {stop_on_buf_wipeout}  (`boolean`) Set to `false` to keep the kernel
                                  running when the terminal buffer is deleted -
                                  see |BufWipeout|.
-        • {default_kernels}      (`table<string,(string|fun() -> string?)>`)
-                                 Tell jet.nvim which kernel to use for a given
-                                 filetype. E.g. to prefer a python3 virtual
-                                 env if present, use a function like so: >lua
-                                     default_kernels = {
-                                         python = function()
-                                             return vim.fs.find("kernel.json", {
-                                                 -- This requires the venv to have ipykernel installed!
-                                                 path = ".venv/share/jupyter/kernels/python3"
-                                             })[1]
-                                         end,
-                                     }
-<
         • {send}                 (`{ send_by_expr = boolean }`) Ui config
                                  • `send_by_expr`: If `true` (the default)
                                    then each expression will be sent and
@@ -165,9 +152,10 @@ The full set of configuration options is as follows:
                                         "connected", "inactive" or "external")
         • {on_image_display_pre}        (`table<any,fun(k: jet.Kernel, file: string)>`)
                                         Before an image is displayed in Neovim
-        • {on_primary_status_changed}   (`table<any,fun(k: jet.Kernel, primary: boolean)>`)
-                                        After a kernel's `primary` field is
-                                        set to `true` or `false`
+        • {on_currentness_changed}      (`table<any,fun(k: jet.Kernel, current: boolean)>`)
+                                        After a kernel becomes or stops
+                                        becoming the 'current' kernel for its
+                                        filetype.
 
 *jet.Kernel*
 
@@ -233,6 +221,10 @@ The full set of configuration options is as follows:
                              can set in |jet.Config.Opts|
         • {metadata}         (`table<string,any>`) Arbitrary extra data,
                              e.g. for use by extensions
+        • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
+                             will use this field to select a kernel. Typically
+                             you would set the priority using the kernel's
+                             init hook (see |jet.Hooks|).
 
 Kernel:init_owned({opts})                              *jet-Kernel:init_owned()*
 
@@ -271,9 +263,9 @@ Kernel:term_open({callback}, {focus})                   *jet-Kernel:term_open()*
         • {callback}  (`(fun(t: jet.Kernel.Term))?`)
         • {focus}     (`boolean?`)
 
-Kernel:set_primary()                                  *jet-Kernel:set_primary()*
+Kernel:set_current()                                  *jet-Kernel:set_current()*
 
-    Set this kernel as the primary kernel for its filetype.
+    Set this kernel as the 'current' kernel for its filetype.
 
 Kernel:status()                                            *jet-Kernel:status()*
 
@@ -502,28 +494,26 @@ A client is a frontend which connects to a kernel. If `Kernel.client_id` is
 non-nil, then the Kernel is connected (the `client_id` is generated on
 connection).
 
-PRIMARY KERNELS                                            *jet-primary-kernels*
+CURRENT KERNELS                                            *jet-current-kernels*
 
-jet.nvim records per-filetype "primary" kernels. By default a kernel becomes
-the primary when:
+jet.nvim tracks per-filetype "current" kernels. By default a kernel becomes
+the current kernel for its filetype when:
 
-• The kernel starts up, if there is not already a primary kernel for the
+• The kernel starts up, if there is not already a current kernel for the
   filetype
 • the kernel's repl is focussed (i.e. on |TermEnter|)
 
-Primary status is basically a convenience mechanism to denote the kernel
-you're using "right now". E.g. you can get the primary kernel for the `python`
-filetype using: >lua
+Current status is basically a convenience mechanism to denote the kernel
+you're using "right now". E.g. you can get the current kernel for the `python`
+filetype like so: >lua
     local api = require("jet.api")
-    api.get_kernel({ filetype = "python", primary = true }, function(k)
+    api.get_kernel({ filetype = "python", current = true }, function(k)
         -- Do stuff with the kernel here
     end)
 <
+You can set current status using `Kernel:set_current()`.
 
 DEFAULT KERNELS                                            *jet-default-kernels*
-
-==============================================================================
-Recipes                                                            *jet-recipes*
 
 ==============================================================================
 API                                                                    *jet-api*

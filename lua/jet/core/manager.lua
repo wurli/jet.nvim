@@ -2,10 +2,10 @@ local utils = require("jet.core.utils")
 
 ---@class jet.Manager
 ---@field kernels table<string, jet.Kernel>
----@field filetype_primary table<string, string> key=filetype, value=session_id
+---@field filetype_current table<string, string> key=filetype, value=session_id
 local Manager = {
 	kernels = {},
-	filetype_primary = {},
+	filetype_current = {},
 }
 
 ---@param k jet.Kernel
@@ -18,21 +18,21 @@ end
 ---same filetype.
 ---
 ---@param k jet.Kernel
-function Manager:set_primary(k)
+function Manager:set_current(k)
 	assert(k.session_id, "Kernel must have a session_id")
 	assert(k.filetype, "Kernel must have a filetype")
 
-	local prev_primary = self.filetype_primary[k.filetype]
+	local prev_current = self.filetype_current[k.filetype]
 
 	self.kernels[k.session_id] = k
-	self.filetype_primary[k.filetype] = k.session_id
+	self.filetype_current[k.filetype] = k.session_id
 
-	if prev_primary ~= k.session_id then
+	if prev_current ~= k.session_id then
 		local h = require("jet.core.hooks")
-		if prev_primary and self.kernels[prev_primary] then
-			h.do_primary_status_changed(self.kernels[prev_primary], false)
+		if prev_current and self.kernels[prev_current] then
+			h.do_currentness_changed(self.kernels[prev_current], false)
 		end
-		h.do_primary_status_changed(k, true)
+		h.do_currentness_changed(k, true)
 	end
 
 	-- We only want one active Jet LSP per filetype
@@ -72,7 +72,7 @@ end
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field ft? string | boolean alias for `filetype`
 ---@field display_name? string
----@field primary? boolean Implies `status` = "connected"
+---@field current? boolean Implies `status` = "connected"
 ---@field status? jet.kernel.status | jet.kernel.status[]
 ---@field predicate? fun(k: jet.Kernel): boolean Predicate function for custom filtering
 ---If `true` then do a final pass after all other filters have been applied and
@@ -119,8 +119,8 @@ Manager.filter_kernels = function(kernels, filters)
 		end
 
 		if
-			filters.primary
-			and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_primary), k.session_id))
+			filters.current
+			and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_current), k.session_id))
 		then
 			return false
 		end

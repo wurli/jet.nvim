@@ -57,9 +57,10 @@ M.init_hooks = function()
 		---@type table<any, fun(k: jet.Kernel, file: string)>
 		on_image_display_pre = {},
 
-		---After a kernel's `primary` field is set to `true` or `false`
-		---@type table<any, fun(k: jet.Kernel, primary: boolean)>
-		on_primary_status_changed = {},
+		---After a kernel becomes or stops becoming the 'current' kernel for
+		---its filetype.
+		---@type table<any, fun(k: jet.Kernel, current: boolean)>
+		on_currentness_changed = {},
 	}
 
 	return hooks
@@ -108,7 +109,7 @@ M.do_message_received        = make_caller(h.on_message_received)
 M.do_send_pre                = make_caller(h.on_send_pre)
 M.do_status_changed          = make_caller(h.on_status_changed)
 M.do_image_display_pre       = make_caller(h.on_image_display_pre)
-M.do_primary_status_changed  = make_caller(h.on_primary_status_changed)
+M.do_currentness_changed     = make_caller(h.on_currentness_changed)
 -- stylua: ignore end
 
 return M

@@ -56,8 +56,8 @@ local open_python_buf = function()
 	)
 end
 
-local set_primary = function(name)
-	child.lua(([[ require("jet.core.manager"):set_primary(_G.%s) ]]):format(name))
+local set_current = function(name)
+	child.lua(([[ require("jet.core.manager"):set_current(_G.%s) ]]):format(name))
 	vim.wait(500)
 end
 
@@ -85,15 +85,15 @@ local get_completions = function(prefix)
 	return child.lua_get("_G.labels")
 end
 
-T["completions follow the primary kernel"] = MiniTest.new_set({
+T["completions follow the current kernel"] = MiniTest.new_set({
 	parametrize = {
 		{ "k2", "my_second_var", "my_first_var" },
 		{ "k1", "my_first_var", "my_second_var" },
 	},
 })
 
-T["completions follow the primary kernel"]["primary provides completions, others do not"] = function(
-	primary,
+T["completions follow the current kernel"]["current provides completions, others do not"] = function(
+	current,
 	expected,
 	forbidden
 )
@@ -102,7 +102,7 @@ T["completions follow the primary kernel"]["primary provides completions, others
 	start_kernel("k2")
 	run_code("k2", "my_second_var = 2")
 
-	set_primary(primary)
+	set_current(current)
 	open_python_buf()
 
 	local labels_expected = get_completions(expected:sub(1, -4)) -- strip "var"

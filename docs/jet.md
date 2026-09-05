@@ -97,27 +97,27 @@ A client is a frontend which connects to a kernel. If `Kernel.client_id` is
 non-nil, then the Kernel is connected (the `client_id` is generated on
 connection).
 
-### Primary kernels
+### Current kernels
 
-jet.nvim records per-filetype "primary" kernels. By default a kernel becomes
-the primary when:
+jet.nvim tracks per-filetype "current" kernels. By default a kernel becomes
+the current kernel for its filetype when:
 
-* The kernel starts up, if there is not already a primary kernel for the
+* The kernel starts up, if there is not already a current kernel for the
   filetype
 * the kernel's repl is focussed (i.e. on |TermEnter|)
 
-Primary status is basically a convenience mechanism to denote the kernel you're
-using "right now". E.g. you can get the primary kernel for the `python`
+Current status is basically a convenience mechanism to denote the kernel you're
+using "right now". E.g. you can get the current kernel for the `python`
 filetype like so:
 
 ``` lua
 local api = require("jet.api")
-api.get_kernel({ filetype = "python", primary = true }, function(k)
+api.get_kernel({ filetype = "python", current = true }, function(k)
 	-- Do stuff with the kernel here
 end)
 ```
 
-You can set primary status using `Kernel:set_primary()`.
+You can set current status using `Kernel:set_current()`.
 
 ### Default kernels
 

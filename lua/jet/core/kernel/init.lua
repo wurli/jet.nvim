@@ -168,7 +168,7 @@ Kernel.do_message_received        = hooks.do_message_received        ---@private
 Kernel.do_send_pre                = hooks.do_send_pre                ---@private
 Kernel.do_status_changed          = hooks.do_status_changed          ---@private
 Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
-Kernel.do_primary_status_changed  = hooks.do_primary_status_changed  ---@private
+Kernel.do_currentness_changed  = hooks.do_currentness_changed  ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
@@ -198,8 +198,8 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
----Set this kernel as the primary kernel for its filetype.
-function Kernel:set_primary() manager:set_primary(self) end
+---Set this kernel as the 'current' kernel for its filetype.
+function Kernel:set_current() manager:set_current(self) end
 
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
@@ -211,7 +211,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() self:set_primary() end)
+			self.term:create_autocmd("TermEnter", function() self:set_current() end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
@@ -683,9 +683,9 @@ function Kernel:start_lua_client(callback)
 
 			-- Even though the kernel has not yet been shown in a REPL, if
 			-- there isn't another kernel for this filetype already set as
-			-- primary we should set this one for convenience.
-			if self.filetype and not manager.filetype_primary[self.filetype] then
-				manager:set_primary(self)
+			-- current, we should set this one for convenience.
+			if self.filetype and not manager.filetype_current[self.filetype] then
+				manager:set_current(self)
 			end
 
 			self:handle_stream()
@@ -737,9 +737,9 @@ function Kernel:close(reason)
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
-	for ft, session_id in pairs(manager.filetype_primary) do
+	for ft, session_id in pairs(manager.filetype_current) do
 		if session_id == self.session_id then
-			manager.filetype_primary[ft] = nil
+			manager.filetype_current[ft] = nil
 		end
 	end
 

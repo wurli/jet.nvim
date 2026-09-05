@@ -162,7 +162,7 @@ vim.keymap.set(
 	require("jet.api").handle_motion(function(range, filetype)
 		require("jet.api").get_kernel({
 			filetype = filetype,
-			primary = true,
+			current = true,
 			status = { "connected", "connecting" },
 		}, function(k)
 			local code = range:code({ comments = false })
