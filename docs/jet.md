@@ -20,15 +20,15 @@ require("jet").setup({
 The full set of configuration options is as follows:
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Config.Opts
+python3 scripts/emmylua-to-md.py --type jet.Config
 ```
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Config.Ui.Opts
+python3 scripts/emmylua-to-md.py --type jet.Config.Ui
 ```
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Config.Img.Opts
+python3 scripts/emmylua-to-md.py --type jet.Config.Img
 ```
 
 ```{.sh include=true}

@@ -19,7 +19,7 @@ Configure jet.nvim using `setup()`: >lua
 <
 The full set of configuration options is as follows:
 
-*jet.Config.Opts*
+*jet.Config*
 
     Fields: ~
         • {binary_path}          (`string?`) Path to a custom Jet binary.
@@ -57,12 +57,12 @@ The full set of configuration options is as follows:
                                        truncated. This is due to an upstream
                                        issue in reedline, which powers the Jet
                                        REPL experience..
-        • {ui}                   (`jet.Config.Ui.Opts`)
-        • {image}                (`jet.Config.Img.Opts`) Image config
+        • {ui}                   (`jet.Config.Ui`) UI config
+        • {image}                (`jet.Config.Img`) Image config
         • {hooks}                (`jet.Hooks`) Hooks for custom integrations;
                                  see |jet.Hooks|.
 
-*jet.Config.Ui.Opts*
+*jet.Config.Ui*
 
     Fields: ~
         • {stream_lines}    (`integer`) Number of lines from iopub stream to
@@ -83,7 +83,7 @@ The full set of configuration options is as follows:
                                 })
 <
 
-*jet.Config.Img.Opts*
+*jet.Config.Img*
 
     Fields: ~
         • {handlers}  (`table<string,fun(data: string, mime: jet.Mime, filepath: string) -> (string|false)>`)
@@ -232,6 +232,11 @@ Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
     Parameters: ~
         • {opts}        (`jet.kernel.init_owned.Opts`)
+                        • spec_path (`string`)
+                        • session_name (`string?`)
+                        • spec
+                          (`(jupyter.KernelSpec|jet.Kernel.paritalspec)?`)
+                        • priority (`integer?`)
 
     Return: ~
         (`jet.Kernel`)
@@ -240,12 +245,12 @@ Kernel.init_external({opts})                        *jet-Kernel.init_external()*
 
     Initialise a connection to an kernel running externally
 
-    opts:
-
-    • `session_id`: The session ID of the kernel to connect to
+    opts: * `session_id`: The session ID of the kernel to connect to
 
     Parameters: ~
         • {opts}        (`jet.kernel.init_external.Opts`)
+                        • session_id (`string`)
+                        • priority (`integer?`)
 
     Return: ~
         (`jet.Kernel`)
@@ -369,6 +374,10 @@ Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
         • {name}        (`string`)
         • {data}        (`table?`)
         • {opts}        (`jet.kernel.comm_open.Opts?`)
+                        • listener (`(fun(res: jupyter.Msg))?`)
+                        • listener_interval (`integer?`): In milliseconds,
+                          default 50ms
+                        • callback (`(fun(msg: jupyter.Msg))?`)
 
     Return: ~
         (`string`) Comm id
@@ -552,6 +561,9 @@ api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 
     Parameters: ~
         • {opts}        (`jet.send.next_expr_boundary.Opts?`)
+                        • direction (`(1|-1)?`)
+                        • boundary (`("start"|"end"|"any")?`)
+                        • current_ok (`boolean?`)
         • {p}           (`jet.send.Pos?`)
 
     Return: ~

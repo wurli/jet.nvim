@@ -1,6 +1,6 @@
 local M = {}
 
----@class jet.Config.Ui.Opts
+---@class jet.Config.Ui
 local ui_defaults = {
 	--- Number of lines from iopub stream to show in `:Jet` ui
 	stream_lines = 3,
@@ -22,7 +22,7 @@ local ui_defaults = {
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
 }
 
----@class jet.Config.Img.Opts
+---@class jet.Config.Img
 local img_defaults = {
 	---Some kernels might return media types which require special handling.
 	---
@@ -47,7 +47,7 @@ local img_defaults = {
 	handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
 }
 
----@class jet.Config.Opts
+---@class jet.Config
 M.defaults = {
 	binary_path = nil, ---@type string? Path to a custom Jet binary.
 	library_path = nil, ---@type string? Path to a custom Jet Lua library.
@@ -76,6 +76,7 @@ M.defaults = {
 	send = {
 		send_by_expr = true, ---@type boolean
 	},
+	--- UI config
 	ui = ui_defaults,
 	---Image config
 	image = img_defaults,
@@ -93,13 +94,13 @@ M.data = {
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",
 }
 
----@type jet.Config.Opts
+---@type jet.Config
 M.options = nil
 
 ---Sorry
 ---@alias jet.DeepPartial<T> { [P in keyof T]?: T[P] extends any[] and T[P] or (T[P] extends table and jet.DeepPartial<T[P]> or T[P]) }
 
----@param options? jet.DeepPartial<jet.Config.Opts>
+---@param options? jet.DeepPartial<jet.Config>
 function M.set(options)
 	if options and options.binary_path then
 		local bin = vim.fs.abspath(options.binary_path)
