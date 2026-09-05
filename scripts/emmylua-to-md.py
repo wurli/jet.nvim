@@ -286,7 +286,7 @@ def _render_fn(x: Fn, parent=None):
     )
 
 
-def _render_class(x: Class):
+def _render_class(x: Class | Module):
     fields = [
         [
             f"{{{field.name}}}",
@@ -309,8 +309,20 @@ def _render_class(x: Class):
         if type(member) is Fn and member.visibility != "private"
     ]
 
+    header = ["#### " + x.name] if type(x) is Class else []
+
+    if type(x) is Module and not x.description:
+        x.description = "\n".join(
+            [
+                "``` lua",
+                "-- Access the module from Lua",
+                f'local {x.name.split(".")[-1]} = require("{x.name}")',
+                "```",
+            ]
+        )
+
     return (
-        ["#### " + x.name]
+        header
         + [""]
         + (x.description or "").split("\n")
         + [""]
@@ -326,22 +338,28 @@ def _render_class(x: Class):
 def main() -> int:
     """Render a single class from emmylua_doc_cli/doc.json as Markdown to stdout."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--type", help="Type to render", required=True)
+    parser.add_argument("--type", help="Type to render", required=False)
+    parser.add_argument("--mod", help="Module to render", required=False)
     args = parser.parse_args()
-
-    selected_type = args.type
 
     with open("emmylua_doc_cli/doc.json") as f:
         raw = json.load(f)
 
     doc = parse(raw)
 
-    for emmylua_type in doc.types:
-        if type(emmylua_type) is Class and emmylua_type.name == selected_type:
-            print("\n".join(_render_class(emmylua_type)))
-            return 0
+    if args.type:
+        for emmylua_type in doc.types:
+            if type(emmylua_type) is Class and emmylua_type.name == args.type:
+                print("\n".join(_render_class(emmylua_type)))
+                return 0
 
-    print("Type not found")
+    if args.mod:
+        for emmylua_mod in doc.modules:
+            if type(emmylua_mod) is Module and emmylua_mod.name == args.mod:
+                print("\n".join(_render_class(emmylua_mod)))
+                return 0
+
+    print("No emmylua docs found")
     return 1
 
 

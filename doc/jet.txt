@@ -232,7 +232,7 @@ Kernel:init_owned({opts})                              *jet-Kernel:init_owned()*
     kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
 
     Parameters: ~
-        • {opts}      (`jet.kernel.init_owned.Opts`)
+        • {opts}        (`jet.kernel.init_owned.Opts`)
 
     Return: ~
         (`jet.Kernel`)
@@ -244,7 +244,7 @@ Kernel:init_external({opts})                        *jet-Kernel:init_external()*
     opts: - `session_id`: The session ID of the kernel to connect to
 
     Parameters: ~
-        • {opts}      (`jet.kernel.init_external.Opts`)
+        • {opts}        (`jet.kernel.init_external.Opts`)
 
     Return: ~
         (`jet.Kernel`)
@@ -260,8 +260,8 @@ Kernel:term_open({callback}, {focus})                   *jet-Kernel:term_open()*
     be created and opened
 
     Parameters: ~
-        • {callback}  (`(fun(t: jet.Kernel.Term))?`)
-        • {focus}     (`boolean?`)
+        • {callback}    (`(fun(t: jet.Kernel.Term))?`)
+        • {focus}       (`boolean?`)
 
 Kernel:set_current()                                  *jet-Kernel:set_current()*
 
@@ -283,7 +283,7 @@ Kernel:img_toggle()                                    *jet-Kernel:img_toggle()*
 Kernel:img_open({which})                                 *jet-Kernel:img_open()*
 
     Parameters: ~
-        • {which}     (`(string|integer)?`)
+        • {which}       (`(string|integer)?`)
 
     Return: ~
         (`integer`) Win number
@@ -302,10 +302,10 @@ Kernel:img_save({content}, {mime}, {name})               *jet-Kernel:img_save()*
       the MIME type.
 
     Parameters: ~
-        • {content}   (`string`)
-        • {mime}      (`(string|jet.Mime)`) Describes the format of the
-                      `content`
-        • {name}      (`string`)
+        • {content}     (`string`)
+        • {mime}        (`(string|jet.Mime)`) Describes the format of the
+                        `content`
+        • {name}        (`string`)
 
     Return: ~
         (`(string|false)`) the path to the saved file, or `false` on failure.
@@ -313,12 +313,12 @@ Kernel:img_save({content}, {mime}, {name})               *jet-Kernel:img_save()*
 Kernel:handle_input_request({msg})           *jet-Kernel:handle_input_request()*
 
     Parameters: ~
-        • {msg}       (`jupyter.Msg`)
+        • {msg}         (`jupyter.Msg`)
 
 Kernel:handle_comm_open({msg})                   *jet-Kernel:handle_comm_open()*
 
     Parameters: ~
-        • {msg}       (`jupyter.Msg`)
+        • {msg}         (`jupyter.Msg`)
 
 Kernel:start_lua_client({callback})              *jet-Kernel:start_lua_client()*
 
@@ -329,7 +329,7 @@ Kernel:start_lua_client({callback})              *jet-Kernel:start_lua_client()*
     (possibly freshly started) kernel session.
 
     Parameters: ~
-        • {callback}  (`(fun(k: jet.Kernel))?`)
+        • {callback}    (`(fun(k: jet.Kernel))?`)
 
 Kernel:close({reason})                                      *jet-Kernel:close()*
 
@@ -339,7 +339,7 @@ Kernel:close({reason})                                      *jet-Kernel:close()*
     disconnected.
 
     Parameters: ~
-        • {reason}    (`(boolean|string)?`)
+        • {reason}      (`(boolean|string)?`)
 
 Kernel:stop({callback})                                      *jet-Kernel:stop()*
 
@@ -349,7 +349,7 @@ Kernel:stop({callback})                                      *jet-Kernel:stop()*
     any resources on the nvim side.
 
     Parameters: ~
-        • {callback}  (`fun(success: boolean, failure_msg: string?)`)
+        • {callback}    (`fun(success: boolean, failure_msg: string?)`)
 
     See: ~
         • |Kernel:close|
@@ -365,9 +365,9 @@ Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
     jet.nvim!
 
     Parameters: ~
-        • {name}      (`string`)
-        • {data}      (`table?`)
-        • {opts}      (`jet.kernel.comm_open.Opts?`)
+        • {name}        (`string`)
+        • {data}        (`table?`)
+        • {opts}        (`jet.kernel.comm_open.Opts?`)
 
     Return: ~
         (`string`) Comm id
@@ -382,8 +382,8 @@ Kernel:comm_send({comm_id}, {data})                     *jet-Kernel:comm_send()*
     Send a message via a comm channel
 
     Parameters: ~
-        • {comm_id}   (`string`)
-        • {data}      (`table`)
+        • {comm_id}     (`string`)
+        • {data}        (`table`)
 
     Return: ~
         (`string`) Message id
@@ -394,7 +394,7 @@ Kernel:comm_send({comm_id}, {data})                     *jet-Kernel:comm_send()*
 Kernel:comm_close({comm_id})                           *jet-Kernel:comm_close()*
 
     Parameters: ~
-        • {comm_id}   (`string`)
+        • {comm_id}     (`string`)
 
     Return: ~
         (`string`) Message id
@@ -404,9 +404,9 @@ Kernel:send_repl({code}, {tabstop})                     *jet-Kernel:send_repl()*
     Send code to the kernel via the terminal repl
 
     Parameters: ~
-        • {code}      (`(string|string[])`) Code to be sent
-        • {tabstop}   (`integer?`) Optional; number of spaces to use for tab
-                      characters
+        • {code}        (`(string|string[])`) Code to be sent
+        • {tabstop}     (`integer?`) Optional; number of spaces to use for tab
+                        characters
 
 Kernel:send_lua({code}, {silent}, {callback})            *jet-Kernel:send_lua()*
 
@@ -417,9 +417,9 @@ Kernel:send_lua({code}, {silent}, {callback})            *jet-Kernel:send_lua()*
     be sent to the terminal.
 
     Parameters: ~
-        • {code}      (`(string|string[])`)
-        • {silent}    (`boolean`)
-        • {callback}  (`(fun(res: jupyter.Msg))?`)
+        • {code}        (`(string|string[])`)
+        • {silent}      (`boolean`)
+        • {callback}    (`(fun(res: jupyter.Msg))?`)
 
     Return: ~
         (`string`) Message id
@@ -460,6 +460,18 @@ The image buffer                                          *jet-the-image-buffer*
 ------------------------------------------------------------------------------
 Filetypes                                                        *jet-filetypes*
 
+jet.nvim tries to determine the filetype of each running kernel, but may
+occasionally fail to do so, or might guess the wrong filetype. In such cases
+you can set the kernel filetype manually using hooks: >lua
+    -- Woxi is a jupyter kernel for the wolfram language: https://github.com/ad-si/Woxi
+    local hooks = require("jet.core.config").options.hooks
+    hooks.on_kernel_init.set_woxi_filetype = function(k)
+        if k.display_name:match("woxi") then
+            k.filetype = "mma"
+        end
+    end
+<
+
 ------------------------------------------------------------------------------
 AI integration                                              *jet-ai-integration*
 
@@ -486,7 +498,7 @@ E.g. on macOS the path to a `session.json` file might be
 • The session start time
 • The path to the kernel's connection file, relative to the `session.json`
 
-You can find this data in nvim in the `Kernel.session_info` field.
+jet.nvim loads this data into each kernel's `session_info` field.
 
 CLIENTS                                                            *jet-clients*
 
@@ -511,12 +523,87 @@ filetype like so: >lua
         -- Do stuff with the kernel here
     end)
 <
-You can set current status using `Kernel:set_current()`.
+You can set a kernel as current using `Kernel:set_current()`.
 
-DEFAULT KERNELS                                            *jet-default-kernels*
+------------------------------------------------------------------------------
+The API module                                                     *jet-jet.api*
 
-==============================================================================
-API                                                                    *jet-api*
+>lua
+    -- Access the module from Lua
+    local api = require("jet.api")
+<
+
+api:next_expr_boundary({opts}, {p})               *jet-api:next_expr_boundary()*
+
+    Parameters: ~
+        • {opts}        (`jet.send.next_expr_boundary.Opts?`)
+        • {p}           (`jet.send.Pos?`)
+
+    Return: ~
+        (`jet.send.Pos?`)
+
+api:get_expr({p})                                           *jet-api:get_expr()*
+
+    Parameters: ~
+        • {p}           (`jet.send.Pos?`)
+
+    Return: ~
+        (`jet.send.Range?`)
+
+api:handle_motion({callback})                          *jet-api:handle_motion()*
+
+    Can be used in mappings to handle the code moved over by a motion: >lua
+        vim.keymap.set(
+        { "n", "v" },
+        "gj",
+        require("jet.api").get_motion(vim.print),
+        { expr = true }
+        )
+<
+    Parameters: ~
+        • {callback}    (`fun(code: jet.send.Range, filetype: string?)`)
+
+    Return: ~
+        (`fun() -> "g@"`) A function that can be used in an operator-pending
+        mapping
+
+api:list_kernels({filters}, {callback})                 *jet-api:list_kernels()*
+
+    Parameters: ~
+        • {filters}     (`jet.api.Filters?`)
+        • {callback}    (`(fun(kernels: jet.Kernel[]))?`)
+
+    Return: ~
+        (`jet.Kernel[]?`)
+
+api:get_kernel({filters}, {callback})                     *jet-api:get_kernel()*
+
+    Get a kernel and do some stuff with it
+
+    First looks for connected/connecting kernels, then falls back to inactive
+    kernels. Filtering always uses `priority`; see |jet.api.Filters|.
+
+    If multiple kernels match the `filters`, the user is prompted to select
+    one.
+
+    Parameters: ~
+        • {filters}     (`jet.api.Filters`)
+        • {callback}    (`fun(k: jet.Kernel)`)
+
+api:get_kernel_by_id({session_id})                  *jet-api:get_kernel_by_id()*
+
+    Get a running kernel by its session id
+
+    This can be useful, e.g. if you want to get the running `Kernel` object
+    powering the repl: >lua
+        local jet = require("jet")
+        local kernel = jet.get_by_id(vim.b.jet.session_id)
+<
+    Parameters: ~
+        • {session_id}  (`string`)
+
+    Return: ~
+        (`jet.Kernel?`)
 
 ==============================================================================
 Extending jet.nvim                                      *jet-extending-jet.nvim*

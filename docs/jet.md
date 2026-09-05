@@ -133,7 +133,11 @@ end)
 
 You can set a kernel as current using `Kernel:set_current()`.
 
-# API
+## The API module{#jet.api}
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --mod jet.api
+```
 
 # Extending jet.nvim
 
