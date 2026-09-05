@@ -6,8 +6,8 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@alias jet.Kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
----@alias jet.Kernel.paritalspec { display_name: string, language: string }
+---@alias jet.Kernel.LastExecution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
+---@alias jet.Kernel.PartialSpec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
 ---The `Kernel` class is jet.nvim's central abstraction for working with
@@ -30,7 +30,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field session_name? string
 ---See https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
 ---for a primer on kernel specs.
----@field spec jupyter.KernelSpec | jet.Kernel.paritalspec
+---@field spec jupyter.KernelSpec | jet.Kernel.PartialSpec
 ---Path to the `kernelspec` file
 ---@field spec_path string
 ---Kernel info as returned by the kernel in response to a `kernel_info_request`
@@ -51,16 +51,17 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---`true` if the kernel session was started by this nvim session; `false`
 ---otherwise.
 ---@field owned boolean
----The kernel's filetype. jet.nvim will try to guess this but may fail. You can
----set it manually, e.g. using |jet.Hooks|.
+---The kernel's filetype. jet.nvim will try to guess this but may fail. In such
+---cases you can set it manually, e.g. using |jet.Hooks|.
 ---@field filetype? string
 ---Information about the last executed code.
----@field last_execution? jet.Kernel.last_execution
+---@field last_execution? jet.Kernel.LastExecution
 ---Either "busy", "idle", or "starting"
 ---@field execution_state? jet.Kernel.execution_state
----Handlers for "known" comms which the backend may try to open. If the kernel
----backend attempts to open a comm not in this list, jet.nvim just replies
----with a `comm_close` message as per the Jupyter spec:
+---Handlers for "known" comms which the backend may try to open. Typically
+---should only be touched by plugins which extend jet.nvim. If the kernel
+---backend attempts to open a comm not in this list, jet.nvim just replies with
+---a `comm_close` message as per the Jupyter spec:
 ---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 ---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
 ---Open comm channels. Table keys are comm ids. See
@@ -75,9 +76,9 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field hooks jet.Hooks
 ---Arbitrary extra data, e.g. for use by extensions
 ---@field metadata table<string, any>
----Defaults to 100. `api.get_kernel()` will use this field to select a kernel.
----Typically you would set the priority using the kernel's init hook (see
----|jet.Hooks|).
+---Defaults to 100. `api.get_kernel()` will try to use this field to select a
+---single kernel. Typically you would set the priority using the kernel's init
+---hook (see |jet.Hooks|).
 ---@field priority integer
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
@@ -106,7 +107,7 @@ end
 ---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.Kernel.PartialSpec
 ---@field priority? integer
 
 ---Initialise a `Kernel` object which will start its own "owned" jupyter process.
@@ -399,6 +400,7 @@ function Kernel:update_execution_state(msg)
 	self:do_execution_state_changed(new_state)
 end
 
+---The directory where the kernel stores any produced image files
 function Kernel:img_dir()
 	assert(self.session_id, "Kernel has no session id")
 	local dir = require("jet.core.config").data.jet_nvim_data_dir .. "/images/" .. self.session_id
@@ -406,6 +408,7 @@ function Kernel:img_dir()
 	return dir
 end
 
+---Toggle the image display
 function Kernel:img_toggle()
 	if self.img then
 		self.img:toggle()
@@ -414,6 +417,7 @@ function Kernel:img_toggle()
 	end
 end
 
+---Open the image display
 ---@param which? string | integer
 ---@return integer # Win number
 function Kernel:img_open(which)
@@ -424,6 +428,10 @@ function Kernel:img_open(which)
 	return self.img:open(false, which)
 end
 
+---Get a unique, human-readable name for the kernel
+---
+---Note, you can also use `Kernel.spec.display_name`
+---
 ---@return string
 function Kernel:friendly_name()
 	local session_hash = (self.session_id or ""):match("_([^_]+)$")
@@ -515,6 +523,7 @@ function Kernel:handle_image_msg(msg)
 	end
 end
 
+---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_input_request(msg)
 	if msg.header.msg_type ~= "input_request" then
@@ -544,6 +553,7 @@ function Kernel:handle_input_request(msg)
 	end)
 end
 
+---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_comm_open(msg)
 	if msg.header.msg_type ~= "comm_open" then

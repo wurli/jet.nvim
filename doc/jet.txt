@@ -9,7 +9,7 @@
 jet.nvim is a Jupyter client/API for Neovim, built on top of the Jet CLI/Lua
 library (https://github.com/wurli/jet).
 
-==============================================================================
+------------------------------------------------------------------------------
 Configuration                                                *jet-configuration*
 
 Configure jet.nvim using `setup()`: >lua
@@ -59,8 +59,7 @@ The full set of configuration options is as follows:
                                        REPL experience..
         • {ui}                   (`jet.Config.Ui`) UI config
         • {image}                (`jet.Config.Img`) Image config
-        • {hooks}                (`jet.Hooks`) Hooks for custom integrations;
-                                 see |jet.Hooks|.
+        • {hooks}                (`jet.Hooks`) Hooks for custom integrations
 
 *jet.Config.Ui*
 
@@ -157,6 +156,9 @@ The full set of configuration options is as follows:
                                         becoming the 'current' kernel for its
                                         filetype.
 
+------------------------------------------------------------------------------
+The Kernel Class                                          *jet-the-kernel-class*
+
 *jet.Kernel*
 
     The `Kernel` class is jet.nvim's central abstraction for working with
@@ -176,7 +178,7 @@ The full set of configuration options is as follows:
     Fields: ~
         • {session_name}     (`string?`) Shows up in the `:Jet` UI, but can
                              also be used, e.g. in statuslines and stuff
-        • {spec}             (`(jupyter.KernelSpec|jet.Kernel.paritalspec)`)
+        • {spec}             (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)`)
                              See
                              https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
                              for a primer on kernel specs.
@@ -197,18 +199,19 @@ The full set of configuration options is as follows:
         • {owned}            (`boolean`) `true` if the kernel session was
                              started by this nvim session; `false` otherwise.
         • {filetype}         (`string?`) The kernel's filetype. jet.nvim will
-                             try to guess this but may fail. You can set it
-                             manually, e.g. using |jet.Hooks|.
-        • {last_execution}   (`jet.Kernel.last_execution?`) Information about
+                             try to guess this but may fail. In such cases you
+                             can set it manually, e.g. using |jet.Hooks|.
+        • {last_execution}   (`jet.Kernel.LastExecution?`) Information about
                              the last executed code.
         • {execution_state}  (`("busy"|"idle"|"starting")?`) Either "busy",
                              "idle", or "starting"
         • {known_comms}      (`table<string,fun(kernel: jet.Kernel, comm_id: string, data: table)>`)
                              Handlers for "known" comms which the backend may
-                             try to open. If the kernel backend attempts to
-                             open a comm not in this list, jet.nvim just
-                             replies with a `comm_close` message as per the
-                             Jupyter spec:
+                             try to open. Typically should only be touched by
+                             plugins which extend jet.nvim. If the kernel
+                             backend attempts to open a comm not in this list,
+                             jet.nvim just replies with a `comm_close` message
+                             as per the Jupyter spec:
                              https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
         • {open_comms}       (`table<string,{ data: table?, name: string }>`)
                              Open comm channels. Table keys are comm ids. See
@@ -223,7 +226,10 @@ The full set of configuration options is as follows:
                              can set in |jet.Config.Opts|
         • {metadata}         (`table<string,any>`) Arbitrary extra data,
                              e.g. for use by extensions
-        • {priority}         (`integer`)
+        • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
+                             will try to use this field to select a single
+                             kernel. Typically you would set the priority
+                             using the kernel's init hook (see |jet.Hooks|).
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
@@ -235,7 +241,7 @@ Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
                         • spec_path (`string`)
                         • session_name (`string?`)
                         • spec
-                          (`(jupyter.KernelSpec|jet.Kernel.paritalspec)?`)
+                          (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)?`)
                         • priority (`integer?`)
 
     Return: ~
@@ -281,12 +287,18 @@ Kernel:status()                                            *jet-Kernel:status()*
 
 Kernel:img_dir()                                          *jet-Kernel:img_dir()*
 
+    The directory where the kernel stores any produced image files
+
     Return: ~
         (`string`)
 
 Kernel:img_toggle()                                    *jet-Kernel:img_toggle()*
 
+    Toggle the image display
+
 Kernel:img_open({which})                                 *jet-Kernel:img_open()*
+
+    Open the image display
 
     Parameters: ~
         • {which}       (`(string|integer)?`)
@@ -295,6 +307,10 @@ Kernel:img_open({which})                                 *jet-Kernel:img_open()*
         (`integer`) Win number
 
 Kernel:friendly_name()                              *jet-Kernel:friendly_name()*
+
+    Get a unique, human-readable name for the kernel
+
+    Note, you can also use `Kernel.spec.display_name`
 
     Return: ~
         (`string`)
@@ -315,16 +331,6 @@ Kernel:img_save({content}, {mime}, {name})               *jet-Kernel:img_save()*
 
     Return: ~
         (`(string|false)`) the path to the saved file, or `false` on failure.
-
-Kernel:handle_input_request({msg})           *jet-Kernel:handle_input_request()*
-
-    Parameters: ~
-        • {msg}         (`jupyter.Msg`)
-
-Kernel:handle_comm_open({msg})                   *jet-Kernel:handle_comm_open()*
-
-    Parameters: ~
-        • {msg}         (`jupyter.Msg`)
 
 Kernel:start_lua_client({callback})              *jet-Kernel:start_lua_client()*
 
@@ -440,11 +446,10 @@ Kernel:interrupt()                                      *jet-Kernel:interrupt()*
 
     Can also be done using `<c-c>` in the terminal.
 
-==============================================================================
+------------------------------------------------------------------------------
 UI                                                                      *jet-ui*
 
-------------------------------------------------------------------------------
-Kernel management                                        *jet-kernel-management*
+KERNEL MANAGEMENT                                        *jet-kernel-management*
 
 `:Jet` without args brings up a UI for kernel management. This allows:
 
@@ -454,16 +459,14 @@ Kernel management                                        *jet-kernel-management*
   Neovim session
 • Execution information (hit over a running kernel to expand information)
 
-------------------------------------------------------------------------------
-The repl buffer                                            *jet-the-repl-buffer*
+THE REPL BUFFER                                            *jet-the-repl-buffer*
 
 The Jet repl buffer is just `jet start` (or `jet attach`) running in neovim's
 built-in terminal.
 
 `vim.b.jet.session_id` is set to the kernel's `session_id`
 
-------------------------------------------------------------------------------
-Image display                                                *jet-image-display*
+IMAGE DISPLAY                                                *jet-image-display*
 
 When a connected kernel produces an image, jet.nvim saves the image to the
 kernel's image directory (see |jet-Kernel:img_dir()|). The kernel image buffer
@@ -581,10 +584,10 @@ api.handle_motion({callback})                          *jet-api.handle_motion()*
 
     Can be used in mappings to handle the code moved over by a motion: >lua
         vim.keymap.set(
-        { "n", "v" },
-        "gj",
-        require("jet.api").get_motion(vim.print),
-        { expr = true }
+            { "n", "v" },
+            "gj",
+            require("jet.api").get_motion(vim.print),
+            { expr = true }
         )
 <
     Parameters: ~
@@ -631,6 +634,37 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
     Return: ~
         (`jet.Kernel?`)
+
+*jet.api.Filters*
+
+    Get kernels which match some criteria
+
+    If multiple filters are used they will be tried in order; when a filter
+    matches at least one kernel, those kernels are returned and the remaining
+    filters are discarded.
+
+    E.g. to get a python kernel, prioritising ones belonging to a virtual
+    environment you could use the following: >lua
+        local api = require("jet.api")
+        api.get_kernel({
+            { ft = "python", predicate = function(k) return k.spec_path:match("%.venv/") end },
+            { ft = "python" }
+        }, function(k)
+            -- ... Do stuff with the found kernel here
+        end)
+<
+    Fields: ~
+        • {session_id}    (`string?`) Implies `status` = "connected" or
+                          "external"
+        • {spec_path}     (`string?`)
+        • {filetype}      (`(boolean|string)?`) `true` gets the filetype at
+                          the cursor position
+        • {ft}            (`(boolean|string)?`) alias for `filetype`
+        • {display_name}  (`string?`)
+        • {current}       (`boolean?`) Implies `status` = "connected"
+        • {status}        (`(jet.kernel.status|jet.kernel.status[])?`)
+        • {predicate}     (`(fun(k: jet.Kernel) -> boolean)?`)
+        • {priority}      (`boolean?`)
 
 ==============================================================================
 Extending jet.nvim                                      *jet-extending-jet.nvim*

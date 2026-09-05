@@ -17,11 +17,11 @@ M.get_expr = function(p) return range_get.get_expr(p) end
 ---
 ---```lua
 ---vim.keymap.set(
---    { "n", "v" },
---    "gj",
---    require("jet.api").get_motion(vim.print),
---    { expr = true }
---)
+---    { "n", "v" },
+---    "gj",
+---    require("jet.api").get_motion(vim.print),
+---    { expr = true }
+---)
 ---```
 ---
 ---@param callback fun(code: jet.send.Range, filetype: string?)

@@ -7,7 +7,7 @@ vimdoc-prefix: jet
 jet.nvim is a Jupyter client/API for Neovim, built on top of the
 Jet CLI/Lua library (https://github.com/wurli/jet).
 
-# Configuration
+## Configuration
 
 Configure jet.nvim using `setup()`:
 
@@ -35,13 +35,15 @@ python3 scripts/emmylua-to-md.py --type jet.Config.Img
 python3 scripts/emmylua-to-md.py --type jet.Hooks
 ```
 
+## The Kernel Class
+
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --type jet.Kernel
 ```
 
-# UI
+## UI
 
-## Kernel management
+### Kernel management
 
 `:Jet` without args brings up a UI for kernel management. This allows:
 
@@ -52,14 +54,14 @@ python3 scripts/emmylua-to-md.py --type jet.Kernel
 * Execution information (hit <Enter> over a running kernel to expand
   information)
 
-## The repl buffer
+### The repl buffer
 
 The Jet repl buffer is just `jet start` (or `jet attach`) running in neovim's
 built-in terminal.
 
 `vim.b.jet.session_id` is set to the kernel's `session_id`
 
-## Image display
+### Image display
 
 When a connected kernel produces an image, jet.nvim saves the image to the
 kernel's image directory (see |jet-Kernel:img_dir()|). The kernel image buffer
@@ -151,6 +153,10 @@ You can set a kernel as current using `Kernel:set_current()`.
 
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --mod jet.api
+```
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --type jet.api.Filters
 ```
 
 # Extending jet.nvim

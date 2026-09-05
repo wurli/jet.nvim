@@ -80,7 +80,7 @@ M.defaults = {
 	ui = ui_defaults,
 	---Image config
 	image = img_defaults,
-	---Hooks for custom integrations; see |jet.Hooks|.
+	---Hooks for custom integrations
 	hooks = require("jet.core.hooks").init_hooks(),
 }
 
