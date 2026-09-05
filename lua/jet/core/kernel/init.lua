@@ -73,6 +73,9 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field hooks jet.Hooks
 ---Arbitrary extra data, e.g. for use by extensions
 ---@field metadata table<string, any>
+---Defaults to 100. `api.get_kernel()` will use this field to select a kernel.
+---Typically you would set the priority using the kernel's init hook (see |jet.Hooks|).
+---@field priority integer
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
 ---@field private on_started table<string, fun(k: jet.Kernel)>
@@ -92,6 +95,7 @@ local init_defaults = function()
 		},
 		on_started = {},
 		metadata = {},
+		priority = 100,
 		hooks = hooks.init_hooks(),
 	}
 end
@@ -100,6 +104,7 @@ end
 ---@field spec_path string
 ---@field session_name? string
 ---@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
+---@field priority? integer
 
 ---Represents a kernel which is not active. Turn it into an 'owned'/connected
 ---kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
@@ -110,9 +115,10 @@ function Kernel.init_owned(opts)
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
 	end
 
-	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
-	out:try_resolve_filetype()
+	local base = vim.tbl_extend("keep", opts, init_defaults(), { owned = true })
+	local out = setmetatable(base, Kernel)
 
+	out:try_resolve_filetype()
 	out:do_kernel_init()
 
 	return out
@@ -120,6 +126,7 @@ end
 
 ---@class jet.kernel.init_external.Opts
 ---@field session_id string
+---@field priority? integer
 
 ---Initialise a connection to an kernel running externally
 ---
@@ -134,7 +141,7 @@ function Kernel.init_external(opts)
 	local view = require("jet.core.engine").show_session(opts.session_id)
 
 	local out = setmetatable(
-		vim.tbl_extend("force", init_defaults(), {
+		vim.tbl_extend("keep", init_defaults(), {
 			session_id = opts.session_id,
 			spec = view.spec,
 			spec_path = view.session.kernelspec_path,
