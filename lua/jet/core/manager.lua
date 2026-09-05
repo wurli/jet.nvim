@@ -75,75 +75,75 @@ end
 ---@field primary? boolean Implies `status` = "connected"
 ---@field status? jet.kernel.status | jet.kernel.status[]
 ---@field predicate? fun(k: jet.Kernel): boolean Predicate function for custom filtering
+---If `true` then do a final pass after all other filters have been applied and
+---only return kernels with the highest `priority`.
+---@field priority? boolean
 
 ---@param kernels jet.Kernel[]
----@param filters jet.api.Filters | jet.api.Filters[]
+---@param filters jet.api.Filters
 ---@return jet.Kernel[]
 Manager.filter_kernels = function(kernels, filters)
-	if not vim.isarray(filters) then
-		filters = { filters }
+	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
+	filters.status = type(filters.status) == "string" and { filters.status } or filters.status
+	filters.filetype = filters.filetype or filters.ft
+	if filters.filetype == true then
+		filters.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
 	end
 
-	for _, f in ipairs(filters) do
-		f.filetype = f.filetype or f.ft
-		f.status = f.status or { "connecting", "connected", "external", "inactive" }
-		f.status = type(f.status) == "string" and { f.status } or f.status
-		if f.filetype == true then
-			f.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
+	---@param k jet.Kernel
+	local predicate = function(k)
+		local status, _ = k:status()
+		if not vim.tbl_contains(filters.status, status) then
+			return false
 		end
 
-		---@param k jet.Kernel
-		local predicate = function(k)
-			local status, _ = k:status()
-			if not vim.tbl_contains(f.status, status) then
-				return false
-			end
-
-			if f.spec_path and k.spec_path ~= f.spec_path then
-				return false
-			end
-
-			if f.display_name and not k.spec.display_name:lower():match(f.display_name:lower()) then
-				return false
-			end
-
-			-- implies `status` = "connected" or "external"
-			if f.session_id and k.session_id ~= f.session_id then
-				return false
-			end
-
-			if f.filetype then
-				-- filetype is present for connected kernels if added through hooks,
-				-- and for other kernels if explicitly configured
-				if f.filetype ~= k.filetype then
-					return false
-				end
-			end
-
-			if
-				f.primary
-				and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_primary), k.session_id))
-			then
-				return false
-			end
-
-			if f.predicate then
-				return f.predicate(k)
-			end
-
-			return true
+		if filters.spec_path and k.spec_path ~= filters.spec_path then
+			return false
 		end
 
-		local out = vim.tbl_filter(predicate, kernels)
-		if #out > 0 then
-			return out
+		if filters.display_name and not k.spec.display_name:lower():match(filters.display_name:lower()) then
+			return false
 		end
+
+		-- implies `status` = "connected" or "external"
+		if filters.session_id and k.session_id ~= filters.session_id then
+			return false
+		end
+
+		if filters.filetype then
+			-- filetype is present for connected kernels if added through hooks,
+			-- and for other kernels if explicitly configured
+			if filters.filetype ~= k.filetype then
+				return false
+			end
+		end
+
+		if
+			filters.primary
+			and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_primary), k.session_id))
+		then
+			return false
+		end
+
+		if filters.predicate then
+			return filters.predicate(k)
+		end
+
+		return true
 	end
 
-	return {}
+	local out = vim.tbl_filter(predicate, kernels)
+
+	if filters.priority and #out > 0 then
+		local priorities = vim.tbl_map(function(k) return k.priority or 0 end, out) --[[@as integer[] ]]
+		local max_priority = math.max(0, unpack(priorities)) ---@diagnostic disable: param-type-mismatch
+		out = vim.tbl_filter(function(k) return k.priority == max_priority end, out)
+	end
+
+	return out
 end
 
----@param filters? jet.api.Filters | jet.api.Filters[]
+---@param filters? jet.api.Filters
 ---@param callback? fun(kernels: jet.Kernel[])
 ---@return jet.Kernel[]?
 Manager.list = function(filters, callback)
@@ -236,9 +236,11 @@ Manager.get_by_id = function(session_id)
 end
 
 ---See `jet/api.lua` for docs.
----@param filters jet.api.Filters | jet.api.Filters[]
+---@param filters jet.api.Filters
 ---@param callback fun(k: jet.Kernel)
 Manager.get = function(filters, callback)
+	filters.priority = true
+
 	local choose = function(kernels)
 		if #kernels == 1 then
 			callback(kernels[1])
@@ -257,6 +259,7 @@ Manager.get = function(filters, callback)
 
 		Manager.list({ status = { "inactive" } }, function(kernels2)
 			kernels2 = Manager.filter_kernels(kernels2, filters)
+
 			if #kernels2 > 0 then
 				choose(kernels2)
 				return
