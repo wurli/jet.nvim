@@ -1,6 +1,7 @@
 local config = require("jet.core.config")
 local buf = require("jet.core.kernel.buf")
 
+---Inherits from |jet.Buf|
 ---@class jet.Kernel.Term : jet.Buf
 ---@field job_id integer
 local Term = setmetatable({}, { __index = buf })

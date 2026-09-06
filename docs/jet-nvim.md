@@ -201,6 +201,10 @@ AI agents can interact with your Jet session. To enable this:
 1. Make sure the `jet` CLI is on the `PATH`
 2. Install the jet skill (run `:!jet skill` to view the full skill text)
 
+After this AI integration should "just work". You can confirm, e.g. by starting
+a repl in jet.nvim and asking your agent of choice to "Say hi in my
+\<language\> session using jet".
+
 ## Concepts
 
 ### Sessions
@@ -281,6 +285,14 @@ python3 scripts/emmylua-to-md.py --type jet.api.Filters
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --type jet.Kernel
 ```
+
+## Versioning policy
+
+I guess jet.nvim uses semver? Pin your install to a tagged version if you make
+serious use of jet.nvim's Lua internals. From `0.1.0` we will strive to bump
+the minor version for breaking changes.
+
+TODO: think about how best to document changes. Use a `CHANGELOG.md`? 
 
 ## Extending jet.nvim
 
