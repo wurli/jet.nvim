@@ -21,7 +21,6 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   ```
 ---2. To connect to a session running externally:
 ---   ``` lua
----   local kernel = require("jet.core.kernel")
 ---   local external = Kernel.init_external({ session_id = "jet-session-id" })
 ---   external:start_lua_client()
 ---   ```
@@ -72,7 +71,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---last 3 lines, but this can be configured using `config.ui.stream_lines`.
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
 ---Kernel-specific hooks. Basically for convenience on top of the 'global'
----hooks you can set in |jet.Config.Opts|
+---hooks you can set in |jet.Config|
 ---@field hooks jet.Hooks
 ---Arbitrary extra data, e.g. for use by extensions
 ---@field metadata table<string, any>
@@ -131,10 +130,7 @@ end
 ---@field session_id string
 ---@field priority? integer
 
----Initialise a connection to an kernel running externally
----
----opts:
----* `session_id`: The session ID of the kernel to connect to
+---Initialise a connection to a kernel running outside the current nvim session
 ---
 ---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
@@ -787,7 +783,7 @@ end
 ---resources on the nvim side.
 ---
 ---@param callback fun(success: boolean, failure_msg?: string)
----@see |Kernel:close|
+---@see |Kernel:close()|
 function Kernel:stop(callback)
 	if not self.session_id then
 		return

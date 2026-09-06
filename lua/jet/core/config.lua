@@ -72,7 +72,7 @@ M.defaults = {
 	---    * If too much code is sent at once (more than the height of the
 	---      screen), it causes the REPL history to be truncated. This is due
 	---      to an upstream issue in reedline, which powers the Jet REPL
-	---      experience..
+	---      experience.
 	send = {
 		send_by_expr = true, ---@type boolean
 	},

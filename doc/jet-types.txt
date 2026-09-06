@@ -1,0 +1,126 @@
+*jet-types.txt*	
+
+                                jet.nvim types
+
+
+                                       Type |gO| to see the table of contents.
+
+
+Types defined by jet.nvim which extensions/ambitious users may want to use.
+
+*jet.send.Pos*
+
+    TODO: swap for vim.Pos once it's stabilised
+
+    Fields: ~
+        • {buf}      (`integer`)
+        • {row}      (`integer`) 0-indexed
+        • {col}      (`integer`) 0-indexed
+        • {__index}  (`jet.send.Pos`)
+
+Pos.new({opts})                                            *jet-types-Pos.new()*
+
+    Parameters: ~
+        • {opts}  (`Partial<jet.send.Pos>`)
+
+    Return: ~
+        (`jet.send.Pos`)
+
+Pos:eq({p})                                                 *jet-types-Pos:eq()*
+
+    Parameters: ~
+        • {p}     (`jet.send.Pos`)
+
+    Return: ~
+        (`boolean`)
+
+Pos:nudge({n})                                           *jet-types-Pos:nudge()*
+
+    Parameters: ~
+        • {n}     (`(-1|1)?`)
+
+    Return: ~
+        (`jet.send.Pos?`)
+
+Pos:lt({p})                                                 *jet-types-Pos:lt()*
+
+    Parameters: ~
+        • {p}     (`jet.send.Pos`)
+
+    Return: ~
+        (`boolean`)
+
+Pos.get_curr()                                        *jet-types-Pos.get_curr()*
+
+    Return: ~
+        (`jet.send.Pos`)
+
+Pos:to_char()                                          *jet-types-Pos:to_char()*
+
+    Return: ~
+        (`string?`)
+
+Pos:to_cursor()                                      *jet-types-Pos:to_cursor()*
+
+    Return: ~
+        (`integer`)
+        (`integer`)
+
+Pos:lang_info()                                      *jet-types-Pos:lang_info()*
+
+    Adapted from
+    https://github.com/neovim/neovim/blob/master/runtime/lua/vim/_comment.lua
+    NOTE: if this causes issues in the future (e.g. we don't actually want the
+    range-specific filetype) we could instead return a table of candidate
+    filetypes and commentstrings, then match these against kernel filetypes
+    until we find a match. Don't do this until it's clear that it's a real
+    issue.
+
+    Return: ~
+        (`{ commentstring: string?, filetype: string? }`)
+
+*jet.send.Range*
+
+    TODO: swap for vim.Range once it's stabilised
+
+    Fields: ~
+        • {buf}        (`integer`)
+        • {start_row}  (`integer`) 0-indexed
+        • {start_col}  (`integer`) 0-indexed
+        • {end_row}    (`integer`) 0-indexed
+        • {end_col}    (`integer`) 0-indexed
+        • {__index}    (`jet.send.Range`)
+
+Range.new({opts})                                        *jet-types-Range.new()*
+
+    Parameters: ~
+        • {opts}  (`Partial<jet.send.Range>`)
+
+    Return: ~
+        (`jet.send.Range`)
+
+Range:text()                                            *jet-types-Range:text()*
+
+    Return: ~
+        (`string[]?`)
+
+Range:code({opts})                                      *jet-types-Range:code()*
+
+    Parameters: ~
+        • {opts}  (`jet.send.range_code.Opts?`)
+                  • comments (`boolean?`): Set to `true` to include comments
+                    in the returned code.
+
+Range:start()                                          *jet-types-Range:start()*
+
+    Return: ~
+        (`jet.send.Pos`)
+
+Range:_end()                                            *jet-types-Range:_end()*
+
+    Return: ~
+        (`jet.send.Pos`)
+
+Range:textobject()                                *jet-types-Range:textobject()*
+
+ vim:tw=78:sw=4:ts=4:ft=help:norl:et:

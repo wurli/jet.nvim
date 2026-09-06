@@ -31,10 +31,20 @@ local modify_jupyter_path = function()
 	vim.env.JUPYTER_PATH = table.concat({ config.data.jet_nvim_data_dir, vim.env.JUPYTER_PATH }, pathsep)
 end
 
+local did_setup = false
+
 ---@param opts jet.DeepPartial<jet.Config>
 M.setup = function(opts)
+	if did_setup then
+		return
+	end
+	did_setup = true
+
 	modify_jupyter_path()
 	config.set(opts)
+	---Convenience access to jet.nvim's hooks
+	---@type jet.Hooks
+	M.hooks = config.options.hooks
 	require("jet.core.cmd").setup()
 	require("jet.core.ui.colours").setup()
 end

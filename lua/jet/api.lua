@@ -19,7 +19,7 @@ M.get_expr = function(p) return range_get.get_expr(p) end
 ---vim.keymap.set(
 ---    { "n", "v" },
 ---    "gj",
----    require("jet.api").get_motion(vim.print),
+---    require("jet.api").handle_motion(vim.print),
 ---    { expr = true }
 ---)
 ---```
@@ -50,8 +50,8 @@ M.get_kernel = function(filters, callback) return manager.get(filters, callback)
 ---powering the repl:
 ---
 ---``` lua
----local jet = require("jet")
----local kernel = jet.get_by_id(vim.b.jet.session_id)
+---local api = require("jet.api")
+---local kernel = api.get_kernel_by_id(vim.b.jet.session_id)
 ---```
 ---
 ---@param session_id string

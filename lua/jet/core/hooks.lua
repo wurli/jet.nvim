@@ -15,7 +15,7 @@ M.init_hooks = function()
 	---end
 	---
 	-----And to disable the hook:
-	---hooks.on_message_received.my_notified = nil
+	---hooks.on_message_received.my_notifier = nil
 	---```
 	---
 	---Note that each set of hooks is a table!
