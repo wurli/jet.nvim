@@ -215,6 +215,21 @@ def parse(raw: dict) -> Doc:
     )
 
 
+# ---------- Find stuff in the Doc ---------------------------
+
+
+def _get_type(doc: Doc, t: str) -> Class | None:
+    for emmylua_type in doc.types:
+        if type(emmylua_type) is Class and emmylua_type.name == t:
+            return emmylua_type
+
+
+def _get_mod(doc: Doc, m: str) -> Module | None:
+    for emmylua_mod in doc.modules:
+        if type(emmylua_mod) is Module and emmylua_mod.name == m:
+            return emmylua_mod
+
+
 # ---------- Render ---------------------------
 
 
@@ -239,8 +254,9 @@ def _render_tags(tags: list[Tag] | None) -> list[str]:
     return [line for block in tag_blocks for line in block]
 
 
-def _render_fn(x: Fn, parent=None):
-    name = x.name if parent is None else f"{parent}:{x.name}"
+def _render_fn(doc: Doc, x: Fn, parent=None):
+    sep = ":" if x.is_meth else "."
+    name = x.name if parent is None else f"{parent}{sep}{x.name}"
     params = ", ".join([f"{{{param.name}}}" for param in x.params])
     title_line = f"##### {name}({params}){{#{name}()}}"
 
@@ -255,6 +271,7 @@ def _render_fn(x: Fn, parent=None):
             f"{{{param.name}}}",
             f": (`{param.typ or 'any'}`)",
             *([] if param.desc is None else [param.desc]),
+            *_render_opts_fields(doc, param.typ),
             "",
         ]
         for param in x.params
@@ -286,7 +303,36 @@ def _render_fn(x: Fn, parent=None):
     )
 
 
-def _render_class(x: Class):
+def _render_opts_fields(doc: Doc, which: str | None, indent=2) -> list[str]:
+    if which is not None and which.endswith("?"):
+        which = which[0:-1]
+
+    if which is None or not which.endswith("Opts") or indent > 8:
+        return []
+
+    x = _get_type(doc, which)
+    if x is None or x.visibility == "private":
+        return []
+
+    ind = " " * indent
+
+    def render_one(item: Field | Fn) -> list[str]:
+        if type(item) is Field:
+            return [
+                f"{ind}* {item.name} (`{item.typ}`)"
+                + ("" if item.description is None else f": {item.description}"),
+                *_render_opts_fields(doc, item.typ, indent + 2),
+            ]
+        elif type(item) is Fn:
+            return [f"{ind}* {item.name} (function): {item.description}"]
+        else:
+            raise ValueError("Value is not a Field or Fn")
+
+    fields = [line for f in x.members for line in render_one(f)]
+    return ["", *fields]
+
+
+def _render_class(x: Class | Module, doc: Doc):
     fields = [
         [
             f"{{{field.name}}}",
@@ -296,6 +342,7 @@ def _render_class(x: Class):
                 if field.description is None or field.description == ""
                 else ["  " + line for line in field.description.split("\n")] + [""]
             ),
+            *_render_opts_fields(doc, field.typ),
             "",
         ]
         for field in x.members
@@ -304,13 +351,25 @@ def _render_class(x: Class):
     field_lines = [line for f in fields for line in f]
 
     method_lines = [
-        _render_fn(member, x.name.split(".")[-1])
+        _render_fn(doc, member, x.name.split(".")[-1])
         for member in x.members
         if type(member) is Fn and member.visibility != "private"
     ]
 
+    header = ["#### " + x.name] if type(x) is Class else []
+
+    if type(x) is Module and not x.description:
+        x.description = "\n".join(
+            [
+                "``` lua",
+                "-- Access the module from Lua",
+                f'local {x.name.split(".")[-1]} = require("{x.name}")',
+                "```",
+            ]
+        )
+
     return (
-        ["#### " + x.name]
+        header
         + [""]
         + (x.description or "").split("\n")
         + [""]
@@ -326,22 +385,28 @@ def _render_class(x: Class):
 def main() -> int:
     """Render a single class from emmylua_doc_cli/doc.json as Markdown to stdout."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--type", help="Type to render", required=True)
+    parser.add_argument("--type", help="Type to render", required=False)
+    parser.add_argument("--mod", help="Module to render", required=False)
     args = parser.parse_args()
-
-    selected_type = args.type
 
     with open("emmylua_doc_cli/doc.json") as f:
         raw = json.load(f)
 
     doc = parse(raw)
 
-    for emmylua_type in doc.types:
-        if type(emmylua_type) is Class and emmylua_type.name == selected_type:
-            print("\n".join(_render_class(emmylua_type)))
+    if args.type:
+        emmylua_type = _get_type(doc, args.type)
+        if emmylua_type is not None:
+            print("\n".join(_render_class(emmylua_type, doc)))
             return 0
 
-    print("Type not found")
+    if args.mod:
+        emmylua_mod = _get_mod(doc, args.mod)
+        if emmylua_mod is not None:
+            print("\n".join(_render_class(emmylua_mod, doc)))
+            return 0
+
+    print("No emmylua docs found")
     return 1
 
 

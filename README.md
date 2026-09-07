@@ -1,21 +1,95 @@
-<h1 align="center">jet.nvim ✈️</h1>
+# <p align="center">jet.nvim ✈️</p>
 
-A Jupyter kernel supervisor for Neovim, built on top of
-[Jet](https://github.com/wurli/jet).
+<p align="center">A Jupyter kernel supervisor for Neovim, built on top of <a href=https://github.com/wurli/jet>Jet</a></p>
+
+<!-- ![demo](https://github.com/user-attachments/assets/3e091499-eee3-43d8-ad75-8bfa7a2113f7) -->
+https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
 
 ## Features
 
-*   A REPL which runs in Neovim's built-in terminal
-*   Integration with Jet's LSP server which surfaces completions from the kernel
-    in your Neovim session
-*   A Lua API which gives fine-grained control over running kernels, down to
-    the level of individual Jupyter messages
+*   A repl which runs in Neovim's built-in terminal
+*   An LSP server which provides live completions from the kernel
+*   A Lua API with fine-grained control over running kernels, down to the level
+    of individual Jupyter messages
 *   Ability to connect to kernel sessions running outside of Neovim
-*   Work alongside your favourite AI agent using Jet
+*   AI-friendly: agents can use the Jet CLI to interact with your kernel
+    sessions
 *   Plug and play - No remote plugin stuff. No python requirements. 
 
 **Not yet implemented**
-*   Notebooks!
+*   Notebooks
+*   Windows support (contributions welcome!)
+
+## More demos
+
+<details>
+<summary><strong>Send from buffer using custom motions/textobjects</strong></summary>
+
+jet.nvim provides an 'expression' text object, which can be used to send
+discrete chunks of code to the Jet repl. The textobject is configurable per
+filetype, so for example, installing jet.nvim extensions like
+[jet.ark](https://github.com/wurli/jet.ark) will give better expression
+detection in R scripts.
+
+In the demo below, `]e` and `[e` are used to go the next/previous expression,
+and `ie` is used as the expression textobject. These compose nicely, so e.g.
+the following keymap can be used to send the current expression to the repl
+with a single keypress:
+
+``` lua
+vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
+```
+
+![motions](https://github.com/user-attachments/assets/f9c58f37-f084-43c4-9f33-413f26f016d3)
+
+</details>
+
+<details>
+<summary><strong>AI integration</strong></summary>
+
+The [Jet CLI](https://github.com/wurli/jet) allows multiple users to connect to
+the same kernel session. Jet provides a simple
+[skill](https://github.com/wurli/jet/blob/main/crates/cli/src/skill.md)
+teaching AI agents how to do this. Agent code is clearly marked as such in the
+repl:
+
+![claude](https://github.com/user-attachments/assets/0d34eefe-db6f-43f8-b58f-34abea99ada7)
+
+**Why is this kind of AI integration useful?** Say you have some Python code
+which produces a single DataFrame and takes 10 minutes to run. Once you have
+the resulting DataFrame loaded in your Python session, to perform any analysis
+using AI in a traditional workflow, you will either need to first tell the AI
+how to reproduce the DataFrame, or serialise it to a file which the AI can
+quickly read. Both of these options take time and introduce plenty of room for
+things to go wrong. Using Jet however, the AI acts as 'player 2' in your
+session and can work with the data directly. This can save a tonne of time and
+greatly reduce context/token usage for certain types of problem.
+
+bla bla
+
+</details>
+
+<details>
+<summary><strong>LSP Server</strong></summary>
+
+jet.nvim provides kernel completions via an LSP middle-layer. These can include
+runtime information not available to other LSP servers, e.g. the column names in
+a Pandas DataFrame:
+
+![completions](https://github.com/user-attachments/assets/37322d81-1972-42fd-9b79-eaaf5692bb2b)
+
+</details>
+
+
+<details>
+<summary><strong>Jet UI</strong></summary>
+
+jet.nvim provides a UI for kernel management, allowing you to easily
+start, stop or rename kernel sessions from Neovim:
+
+![ui](https://github.com/user-attachments/assets/dae00ec1-59cf-490a-9536-7be2973e64bd)
+
+</details>
 
 ## Installation
 
@@ -23,31 +97,140 @@ Using `vim.pack`:
 
 ``` lua
 vim.pack.add({ "https://github.com/wurli/jet.nvim" })
-
--- You'll need to call setup() for things to work correctly
 require("jet").setup({})
 ```
 
-Recommended keymaps:
+This will enable the `:Jet` command to bring up the jet.nvim kernel management
+UI.
+
+Since most users will want to work with running kernels in different ways,
+jet.nvim avoids setting default keymaps and instead aims to provide a flexible,
+low-level Lua API to allow users to implement the behaviour that works for
+_them_. The following mappings should give some idea of what's possible:
+
+<details>
+<summary>Repl togglers by filetype</summary>
+
+jet.nvim supports running many kernels simultaneously, and each kernel may also
+run many instances. `get_kernel()` uses some heuristics to determine the best
+kernel to use; see the docs for more information:
 
 ``` lua
-local open_ft = function(ft)
+local toggle_repl = function(ft)
 	return function()
-		---@param k jet.kernel
-		require("jet.core.api").get_any({ filetype = ft }, {}, function(k) k:toggle_term() end)
+		require("jet.api").get_kernel({ filetype = ft }, function(k) k:term_toggle() end)
 	end
 end
 
-vim.keymap.set("n", "<leader>jp", open_ft("python"), { desc = "Open Python (Jet)" })
-vim.keymap.set("n", "<leader>jr", open_ft("r"), { desc = "Open R (Jet)" })
+vim.keymap.set("n", "<leader>jp", toggle_repl("python"), { desc = "Open Python (Jet)" })
+vim.keymap.set("n", "<leader>jr", toggle_repl("r"), { desc = "Open R (Jet)" })
+```
 
+</details>
+
+<details>
+<summary>Toggle image window</summary>
+
+The Jet repl and image buffers set `vim.b.jet.session_id`, which can be used to
+get the `Kernel` object which 'owns' the buffers. This mechanism can be used to
+set toggle keymaps like so:
+
+``` lua
+vim.api.nvim_create_autocmd("BufWinEnter", {
+	callback = function()
+		local session_id = vim.b.jet and vim.b.jet.session_id
+		local k = session_id and require("jet.api").get_kernel_by_id(session_id)
+		if k then
+			vim.keymap.set({ "n", "t" }, "<c-o>", function() k:img_toggle() end, { buffer = 0 })
+		end
+	end,
+})
+```
+</details>
+
+<details>
+<summary>Send code to the repl</summary>
+
+The following keymap adds `go` as an operator which sends the current motion to
+the repl. So, for example, `goi(` will send everything within the current
+parentheses to an active jet repl matching the current filetype:
+
+``` lua
 vim.keymap.set(
-	{ "n", "v" },
-	"<enter>",
-	function() require("jet.core.send").send_auto() end,
-	{ desc = "Execute code (Jet)" }
+	{ "n", "x" },
+	"go",
+	require("jet.api").handle_motion(function(range, filetype)
+		require("jet.api").get_kernel({
+			filetype = filetype,
+			current = true,
+			status = { "connected", "connecting" },
+		}, function(k)
+			local code = range:code({ comments = false })
+			if code then
+				k:send_repl(code)
+			end
+		end)
+	end),
+	{ desc = "Execute code (Jet)", expr = true }
 )
 ```
+</details>
+
+<details>
+<summary>'Expression' textobject</summary>
+
+Jet allows you to configure what a current 'expression' looks like for a given
+language. For jet.nvim's purposes, an expression is just the smallest block of
+code around (or ahead of) the cursor which it makes sense to send to the kernel
+in one go. This works great with `go` above, so with the combined mappings you
+could use `goie` to send the current/next expression to the repl:
+
+``` lua
+local api = require("jet.api")
+
+vim.keymap.set({ "x", "o" }, "ie", function()
+	local expr = api.get_expr()
+	if not expr then
+		local pos = api.next_expr_boundary({
+			current_ok = false,
+			boundary = "start",
+		})
+		expr = pos and api.get_expr(pos)
+	end
+	if expr then
+		expr:textobject()
+	end
+end, { desc = "textobject (jet): [i]n [e]xpression" })
+```
+
+`]e` and `[e` can be used to navigate between 'expressions':
+
+``` lua
+vim.keymap.set("n", "]e", function()
+	local pos = api.next_expr_boundary({ direction = 1, boundary = "start" })
+	if pos then
+		vim.fn.cursor(pos:to_cursor())
+	end
+end)
+vim.keymap.set("n", "[e", function()
+	local pos = api.next_expr_boundary({ direction = -1, boundary = "start" })
+	if pos then
+		vim.fn.cursor(pos:to_cursor())
+	end
+end)
+```
+
+Finally, if you like to blast through a script sending expressions to the repl
+as you go, you might like a mapping to send the current expression and move to
+the next one in a single keypress:
+
+``` lua
+vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
+vim.keymap.set("x", "<enter>", "go", { remap = true })
+```
+
+</details>
+
 
 ## Extending jet.nvim
 
@@ -63,19 +246,19 @@ expose kernel-specific functionality.
 
 ## jet.nvim vs similar plugins
 
-Many other plugins provide some level of Jupyter integration, mostly by
-implementing a Python backend. jet.nvim takes a different approach, offloading
-implementation details such as ZMQ and Jupyter's wire protocol to Jet's Rust
-backend. This happens in two ways:
+Many other plugins provide some level of Jupyter integration, mostly via some
+kind of Python backend. jet.nvim takes a different approach, using a custom
+Rust library (Jet) to handle implementation details such as ZMQ and Jupyter's
+wire protocol. Jet's integration with Neovim happens via 2 mechanisms:
 
-* **Jet's Lua API**: jet.nvim bundles the Jet Lua library, allowing a fully
+* **The Jet Lua API**: jet.nvim bundles the Jet Lua library, allowing a fully
   featured kernel supervisor to be built in Neovim's Lua runtime. This makes
   jet.nvim more extensible than any other Jupyter plugin in Neovim's ecosystem,
   and allows jet.nvim itself to stay fairly lean, delegating kernel-specific
   problems to extension plugins such as
   [jet.ark](https://github.com/wurli/jet.ark).
 
-* **Jet's CLI**: Jet provides a command-line tool implementing a full,
+* **The Jet CLI**: Jet provides a command-line tool implementing a full,
   completion-enabled repl which runs in any terminal emulator. jet.nvim runs
   the Jet CLI in Neovim's built-in terminal to provide a repl experience which
   _feels_ like native Neovim. A bonus of this architecture is that, since any
@@ -245,34 +428,43 @@ Architecture differences aside, a high-level feature comparison is as follows:
 ## FAQ
 
 <details>
+<summary>Was jet.nvim vibe coded?</summary>
+
+> No. I did use AI quite a bit to develop Jet proper, i.e. the Rust backend. I
+> wrote this README with a keyboard using my own two mucky paws.
+
+</details>
+
+<details>
 <summary>
 For a 'Jupyter kernel supervisor' this plugin doesn't have much to do with
 notebooks?
 </summary>
 
-> It's a common misconception that Jupyter == notebooks. Jupyter is really
-> standard for how interactive languages can tell editors about execution
-> results. It's somewhat analogous to LSP as a standard for how code analysis
-> software can tell editors about code state.
+> Jupyter ~= notebooks. Jupyter is really a standard/protocol for how
+> interactive languages tell editors about results and environment state.
 > 
-> If you want to implement the Jupyter standard for a language, you wrap the
-> language in a Jupyter kernel. Ipykernel is a popular kernel for 🐍, Ark is
-> another for R. There are many other kernels which exist for other languages.
+> If you want to implement the Jupyter protocol for a language, you wrap the
+> language in a Jupyter kernel. IPykernel is a popular kernel for Python, Ark
+> is another for R. There are many other kernels which exist for other
+> languages.
 > 
 > Once you've got a kernel, your editor needs to implement a Jupyter client to
-> talk to it. Most editors which implement a Jupyter client use it for some kind
-> of notebook experience, but many also include some kind of REPL (notable
+> talk to it. Most editors which implement a Jupyter client use it for some
+> kind of notebook experience, but many also include some kind of REPL (notable
 > examples are Positron and Jupyter's Qt Console).
 > 
-> Jet is a Jupyter client and kernel supervisor purpose-built for Neovim. So far
-> jet.nvim only supports a REPL experience, but the infrastructure is there to
-> support notebooks too, I just haven't implemented them on the Neovim side yet.
-> But it's on the roadmap!
-> 
-> NB, one of the main benefits of a purpose-built client like Jet is that it will
-> Neovim to tap into special/non-standard features that some kernels implement
+> One of the main benefits of a purpose-built client like Jet is that it allows
+> Neovim to access special/non-standard features that some kernels implement
 > above and beyond the Jupyter spec. E.g. Ark adds a debugger, LSP server,
-> variables pane, a dedicated help window, etc, all of which I'd like to expose
-> in Neovim.
+> variables pane, a dedicated help window, etc, all of which are unlocked by
+> jet.nvim's Lua API.
 
+</details>
+
+<details>
+<summary>Y no notebook???? >:(</summary>
+jet.nvim is influenced by RStudio and Positron, which are primarily
+repl-focussed. jet.nvim will eventually support a notebook mode though - but
+for now development focus is on the repl.
 </details>

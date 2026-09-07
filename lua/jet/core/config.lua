@@ -1,34 +1,9 @@
 local M = {}
 
----@class jet.Config.Opts
-M.defaults = {
-	binary_path = nil, ---@type string? Path to a custom Jet binary.
-	library_path = nil, ---@type string? Path to a custom Jet Lua library.
-	---Set to `false` to keep the kernel running when the terminal buffer is
-	---deleted - see |BufWipeout|.
-	stop_on_buf_wipeout = true,
-	stop_on_nvim_quit = true, ---Set to `false` to keep the kernel running when Neovim exits.
-	auto_set_primary = true, ---@type boolean Set a kernel as primary when its repl is focussed.
-	---Tell jet.nvim which kernel to use for a given filetype. E.g. to prefer
-	---a python3 virtual env if present, use a function like so:
-	---``` lua
-	---default_kernels = {
-	---    python = function()
-	---        return vim.fs.find("kernel.json", {
-	---            -- This requires the venv to have ipykernel installed!
-	---            path = ".venv/share/jupyter/kernels/python3"
-	---        })[1]
-	---    end,
-	---}
-	---```
-	---@type table<string, string | fun(): string?>
-	default_kernels = {},
-	ui = {
-		stream_lines = 3, --- Number of lines from iopub stream to show in `:Jet` ui
-	},
-	image = {
-		handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
-	},
+---@class jet.Config.Ui
+local ui_defaults = {
+	--- Number of lines from iopub stream to show in `:Jet` ui
+	stream_lines = 3,
 	--- Control how Jet displays how long stuff is taking:
 	--- ``` lua
 	--- -- E.g. to display as hours, minutes, or seconds depending on the duration:
@@ -45,9 +20,42 @@ M.defaults = {
 	--- })
 	--- ```
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
-	---Hooks for custom integrations; see |jet.Hooks|.
-	hooks = require("jet.core.hooks").init_hooks(),
-	---* `send.send_by_expr`: If `true` (the default) then each expression will
+}
+
+---@class jet.Config.Img
+local img_defaults = {
+	---Some kernels might return media types which require special handling.
+	---
+	---Handlers should take image data, process it, and write the resulting
+	---image to `filepath`. Handlers should return `filepath` on a successful
+	---write, or `false` otherwise.
+	---
+	---E.g. to handle SVG data using `resvg` you could use the following:
+	---
+	---``` lua
+	---handlers = {
+	---    svg = function(data, _mime, filepath)
+	---        local res = vim.system(
+	---            { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
+	---            { stdin = data }
+	---        )
+	---            :wait()
+	---        return res.code == 0 and filepath or false
+	---    end,
+	---},
+	---```
+	handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
+}
+
+---@class jet.Config
+M.defaults = {
+	binary_path = nil, ---@type string? Path to a custom Jet binary.
+	library_path = nil, ---@type string? Path to a custom Jet Lua library.
+	---Set to `false` to keep the kernel running when the terminal buffer is
+	---deleted - see |BufWipeout|.
+	stop_on_buf_wipeout = true,
+	---Ui config
+	---* `send_by_expr`: If `true` (the default) then each expression will
 	---  be sent and results shown one at a time. If `false`, then when sending
 	---  several complete expressions to the repl in one go, all will be
 	---  executed together and results will be emitted after the input code.
@@ -64,10 +72,16 @@ M.defaults = {
 	---    * If too much code is sent at once (more than the height of the
 	---      screen), it causes the REPL history to be truncated. This is due
 	---      to an upstream issue in reedline, which powers the Jet REPL
-	---      experience..
+	---      experience.
 	send = {
 		send_by_expr = true, ---@type boolean
 	},
+	--- UI config
+	ui = ui_defaults,
+	---Image config
+	image = img_defaults,
+	---Hooks for custom integrations
+	hooks = require("jet.core.hooks").init_hooks(),
 }
 
 M.jet_nvim_version = "0.0.1"
@@ -80,13 +94,13 @@ M.data = {
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",
 }
 
----@type jet.Config.Opts
+---@type jet.Config
 M.options = nil
 
 ---Sorry
 ---@alias jet.DeepPartial<T> { [P in keyof T]?: T[P] extends any[] and T[P] or (T[P] extends table and jet.DeepPartial<T[P]> or T[P]) }
 
----@param options? jet.DeepPartial<jet.Config.Opts>
+---@param options? jet.DeepPartial<jet.Config>
 function M.set(options)
 	if options and options.binary_path then
 		local bin = vim.fs.abspath(options.binary_path)

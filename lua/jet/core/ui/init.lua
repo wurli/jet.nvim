@@ -10,7 +10,7 @@ local icons = {
 	item_separator = " · ",
 	divider = "·",
 	progress = { "⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠" },
-	primary = "★",
+	current = "★",
 	failure = " ",
 	success = " ",
 }
@@ -100,16 +100,16 @@ local session_info_line = function(k)
 			end
 		end
 
-		local ft_for_which_k_is_primary = nil ---@type string?
-		for ft, session_id in pairs(require("jet.core.manager").filetype_primary) do
+		local ft_for_which_k_is_current = nil ---@type string?
+		for ft, session_id in pairs(require("jet.core.manager").filetype_current) do
 			if session_id == k.session_id then
-				ft_for_which_k_is_primary = ft
+				ft_for_which_k_is_current = ft
 				break
 			end
 		end
 
-		if ft_for_which_k_is_primary and n_kernels_with_k_filetype > 1 then
-			table.insert(parts, { icons.primary .. " ", "JetSpecial" })
+		if ft_for_which_k_is_current and n_kernels_with_k_filetype > 1 then
+			table.insert(parts, { icons.current .. " ", "JetSpecial" })
 		else
 			table.insert(parts, { "  " })
 		end
@@ -209,6 +209,7 @@ end
 ---@param k jet.Kernel
 ---@return jet.ui.Line[]
 local expand_active = function(k)
+	---@diagnostic disable-next-line: access-invisible
 	if not k.ui_expand then
 		return {}
 	end
@@ -320,10 +321,22 @@ end
 local list_kernel_groups = function(callback)
 	manager.list({}, function(kernel_list)
 		table.sort(kernel_list, function(a, b)
+			if a.session_id and b.session_id and a.session_id == b.session_id then
+				error("Found two kernel with session id " .. a.session_id)
+			end
+
 			if a:status() == "inactive" and b:status() ~= "inactive" then
 				return true
+			elseif utils.path_normalise(a.spec_path) ~= utils.path_normalise(b.spec_path) then
+				return utils.path_normalise(a.spec_path) < utils.path_normalise(b.spec_path)
+			elseif a.session_info and not b.session_info then
+				return true
+			elseif not a.session_info and b.session_info then
+				return false
+			elseif a.session_id and b.session_id then
+				return a.session_id < b.session_id
 			end
-			return a.spec_path < b.spec_path
+			return false -- Something has gone wrong if we get down to here
 		end)
 
 		---@type table<string, { kernel: jet.Kernel, external: jet.Kernel[], connected: jet.Kernel[] }>
@@ -455,6 +468,7 @@ M.show = function()
 	-- expensive though, so we want to be as accurate as possible when
 	-- detecting cases which should cause a change in size.
 	hooks.on_message_received.update_ui = function(k, msg)
+		---@diagnostic disable-next-line: access-invisible
 		if not k.ui_expand or not msg.channel == "iopub" then
 			return
 		end
@@ -550,6 +564,7 @@ M.show = function()
 				local path = utils.path_normalise(k.spec_path)
 				expanded_inactive_kernels[path] = not expanded_inactive_kernels[path]
 			else
+				---@diagnostic disable-next-line: access-invisible
 				k.ui_expand = not k.ui_expand
 			end
 

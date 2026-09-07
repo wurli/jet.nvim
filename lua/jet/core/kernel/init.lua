@@ -6,16 +6,16 @@ local hooks = require("jet.core.hooks")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
----@alias jet.Kernel.last_execution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
----@alias jet.Kernel.paritalspec { display_name: string, language: string }
+---@alias jet.Kernel.LastExecution { start_time: integer, end_time?: integer, code: string?, is_error?: boolean, count: integer }
+---@alias jet.Kernel.PartialSpec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
 ---The `Kernel` class is jet.nvim's central abstraction for working with
----Jupyter kernels using Jet. You can create a new instance using two
----methods
+---Jupyter kernels. You can create a new instance using two methods:
 ---
 ---1. To start a fresh session:
 ---   ``` lua
+---   local Kernel = require("jet.core.kernel")
 ---   local owned = Kernel.init_owned({ spec_path = "path/to/spec/kernel.json" })
 ---   owned:start_lua_client()
 ---   ```
@@ -25,30 +25,63 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---   external:start_lua_client()
 ---   ```
 ---@class jet.Kernel
+---Shows up in the `:Jet` UI, but can also be used, e.g. in statuslines and stuff
 ---@field session_name? string
----@field spec jupyter.KernelSpec | jet.Kernel.paritalspec
+---See https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
+---for a primer on kernel specs.
+---@field spec jupyter.KernelSpec | jet.Kernel.PartialSpec
+---Path to the `kernelspec` file
 ---@field spec_path string
+---Kernel info as returned by the kernel in response to a `kernel_info_request`
 ---@field kernel_info? jupyter.KernelInfo
+---The Jet session identifier.
 ---@field session_id? string
+---The contents of the Jet `session.json`, e.g. kernel start time, process PID,
+---etc.
 ---@field session_info? jet.SessionInfo
+---The client ID of the current nvim connection to the kernel.
 ---@field client_id? string
+---Information about the kernel's Jet LSP process.
 ---@field lsp jet.Lsp
+---Repl buffer data
 ---@field term? jet.Kernel.Term
+---Image buffer data
 ---@field img? jet.Kernel.Img
----@field cmd string[]
+---`true` if the kernel session was started by this nvim session; `false`
+---otherwise.
 ---@field owned boolean
+---The kernel's filetype. jet.nvim will try to guess this but may fail. In such
+---cases you can set it manually, e.g. using |jet.Hooks|.
 ---@field filetype? string
----@field last_execution? jet.Kernel.last_execution
+---Information about the last executed code.
+---@field last_execution? jet.Kernel.LastExecution
+---Either "busy", "idle", or "starting"
 ---@field execution_state? jet.Kernel.execution_state
----@field ui_expand boolean
+---Handlers for "known" comms which the backend may try to open. Typically
+---should only be touched by plugins which extend jet.nvim. If the kernel
+---backend attempts to open a comm not in this list, jet.nvim just replies with
+---a `comm_close` message as per the Jupyter spec:
+---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
 ---@field known_comms table<string, fun(kernel: jet.Kernel, comm_id: string, data: table)>
+---Open comm channels. Table keys are comm ids. See
+---https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
+---for more info.
 ---@field open_comms table<string, { name: string, data?: table }>
+---Latest output from the kernel's `iopub` channel. By default only holds the
+---last 3 lines, but this can be configured using `config.ui.stream_lines`.
 ---@field output_stream { complete_lines: jet.utils.Queue<string>, incomplete_line: string }
----@field on_message_received table<string, fun(k: jet.Kernel, msg: jupyter.Msg)>
----@field on_started table<string, fun(k: jet.Kernel)>
----@field metadata table<string, any> Arbitrary data, e.g. for use by extensions
----@field stream jet.callback<jupyter.Msg>
+---Kernel-specific hooks. Basically for convenience on top of the 'global'
+---hooks you can set in |jet.Config|
 ---@field hooks jet.Hooks
+---Arbitrary extra data, e.g. for use by extensions
+---@field metadata table<string, any>
+---Defaults to 100. `api.get_kernel()` will try to use this field to select a
+---single kernel. Typically you would set the priority using the kernel's init
+---hook (see |jet.Hooks|).
+---@field priority integer
+---@field private stream jet.callback<jupyter.Msg>
+---@field private ui_expand boolean
+---@field private on_started table<string, fun(k: jet.Kernel)>
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
@@ -63,9 +96,9 @@ local init_defaults = function()
 			complete_lines = require("jet.core.utils.queue").new(cfg.ui.stream_lines, {}),
 			incomplete_line = "",
 		},
-		on_message_received = {},
 		on_started = {},
 		metadata = {},
+		priority = 100,
 		hooks = hooks.init_hooks(),
 	}
 end
@@ -73,10 +106,10 @@ end
 ---@class jet.kernel.init_owned.Opts
 ---@field spec_path string
 ---@field session_name? string
----@field spec? jupyter.KernelSpec | jet.Kernel.paritalspec
+---@field spec? jupyter.KernelSpec | jet.Kernel.PartialSpec
+---@field priority? integer
 
----Represents a kernel which is not active. Turn it into an 'owned'/connected
----kernel using `Kernel:start_lua_client()` or `Kernel:open_term()`.
+---Initialise a `Kernel` object which will start its own "owned" jupyter process.
 ---
 ---@param opts jet.kernel.init_owned.Opts
 function Kernel.init_owned(opts)
@@ -84,9 +117,10 @@ function Kernel.init_owned(opts)
 		opts.spec = require("jet.core.engine").show_spec(opts.spec_path)
 	end
 
-	local out = setmetatable(vim.tbl_extend("force", opts, init_defaults(), { owned = true }), Kernel)
-	out:try_resolve_filetype()
+	local base = vim.tbl_extend("keep", opts, init_defaults(), { owned = true })
+	local out = setmetatable(base, Kernel)
 
+	out:try_resolve_filetype()
 	out:do_kernel_init()
 
 	return out
@@ -94,11 +128,9 @@ end
 
 ---@class jet.kernel.init_external.Opts
 ---@field session_id string
+---@field priority? integer
 
----Initialise a connection to an kernel running externally
----
----opts:
----- `session_id`: The session ID of the kernel to connect to
+---Initialise a connection to a kernel running outside the current nvim session
 ---
 ---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
@@ -108,7 +140,7 @@ function Kernel.init_external(opts)
 	local view = require("jet.core.engine").show_session(opts.session_id)
 
 	local out = setmetatable(
-		vim.tbl_extend("force", init_defaults(), {
+		vim.tbl_extend("keep", init_defaults(), {
 			session_id = opts.session_id,
 			spec = view.spec,
 			spec_path = view.session.kernelspec_path,
@@ -135,7 +167,7 @@ Kernel.do_message_received        = hooks.do_message_received        ---@private
 Kernel.do_send_pre                = hooks.do_send_pre                ---@private
 Kernel.do_status_changed          = hooks.do_status_changed          ---@private
 Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
-Kernel.do_primary_status_changed  = hooks.do_primary_status_changed  ---@private
+Kernel.do_currentness_changed  = hooks.do_currentness_changed  ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
@@ -165,8 +197,8 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
----Set this kernel as the primary kernel for its filetype.
-function Kernel:set_primary() manager:set_primary(self) end
+---Set this kernel as the 'current' kernel for its filetype.
+function Kernel:set_current() manager:set_current(self) end
 
 ---Connect a Jet repl using nvim's built-in terminal.
 ---Internally uses `jet attach` to connect to a session started using the
@@ -178,7 +210,7 @@ function Kernel:term_create(callback)
 		if not self.term then
 			assert(self.session_id, "Kernel has no session id")
 			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() self:set_primary() end)
+			self.term:create_autocmd("TermEnter", function() self:set_current() end)
 			if cfg.stop_on_buf_wipeout then
 				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
@@ -364,6 +396,7 @@ function Kernel:update_execution_state(msg)
 	self:do_execution_state_changed(new_state)
 end
 
+---The directory where the kernel stores any produced image files
 function Kernel:img_dir()
 	assert(self.session_id, "Kernel has no session id")
 	local dir = require("jet.core.config").data.jet_nvim_data_dir .. "/images/" .. self.session_id
@@ -371,6 +404,7 @@ function Kernel:img_dir()
 	return dir
 end
 
+---Toggle the image display
 function Kernel:img_toggle()
 	if self.img then
 		self.img:toggle()
@@ -379,6 +413,7 @@ function Kernel:img_toggle()
 	end
 end
 
+---Open the image display
 ---@param which? string | integer
 ---@return integer # Win number
 function Kernel:img_open(which)
@@ -389,6 +424,10 @@ function Kernel:img_open(which)
 	return self.img:open(false, which)
 end
 
+---Get a unique, human-readable name for the kernel
+---
+---Note, you can also use `Kernel.spec.display_name`
+---
 ---@return string
 function Kernel:friendly_name()
 	local session_hash = (self.session_id or ""):match("_([^_]+)$")
@@ -480,6 +519,7 @@ function Kernel:handle_image_msg(msg)
 	end
 end
 
+---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_input_request(msg)
 	if msg.header.msg_type ~= "input_request" then
@@ -509,6 +549,7 @@ function Kernel:handle_input_request(msg)
 	end)
 end
 
+---@private
 ---@param msg jupyter.Msg
 function Kernel:handle_comm_open(msg)
 	if msg.header.msg_type ~= "comm_open" then
@@ -559,9 +600,6 @@ function Kernel:handle_stream()
 			self:handle_comm_open(msg)
 
 			self:do_message_received(msg)
-			for _, hook in pairs(self.on_message_received) do
-				hook(self, msg)
-			end
 		end
 
 		return res.status
@@ -653,9 +691,9 @@ function Kernel:start_lua_client(callback)
 
 			-- Even though the kernel has not yet been shown in a REPL, if
 			-- there isn't another kernel for this filetype already set as
-			-- primary we should set this one for convenience.
-			if self.filetype and not manager.filetype_primary[self.filetype] then
-				manager:set_primary(self)
+			-- current, we should set this one for convenience.
+			if self.filetype and not manager.filetype_current[self.filetype] then
+				manager:set_current(self)
 			end
 
 			self:handle_stream()
@@ -681,17 +719,7 @@ function Kernel:try_resolve_filetype()
 	if self.filetype then
 		return
 	end
-	local shorten = require("jet.core.utils").path_shorten
-	for ft, default_spec in pairs(cfg.default_kernels) do
-		local s = type(default_spec) == "string" and default_spec or default_spec()
-		if s and shorten(s) == shorten(self.spec_path) then
-			self.filetype = ft
-			return
-		end
-	end
-
 	if self.kernel_info then
-		---@diagnostic disable-next-line: unnecessary-if
 		if self.kernel_info.language_info and self.kernel_info.language_info.file_extension then
 			local ft, _, is_fallback = vim.filetype.match({
 				-- Idk if 'dummy-file' is ever gonna make a difference, felt right tho
@@ -717,9 +745,9 @@ function Kernel:close(reason)
 	assert(self.session_id, "Kernel has no session id")
 
 	manager.kernels[self.session_id] = nil
-	for ft, session_id in pairs(manager.filetype_primary) do
+	for ft, session_id in pairs(manager.filetype_current) do
 		if session_id == self.session_id then
-			manager.filetype_primary[ft] = nil
+			manager.filetype_current[ft] = nil
 		end
 	end
 
@@ -755,7 +783,7 @@ end
 ---resources on the nvim side.
 ---
 ---@param callback fun(success: boolean, failure_msg?: string)
----@see |Kernel:close|
+---@see |Kernel:close()|
 function Kernel:stop(callback)
 	if not self.session_id then
 		return
@@ -867,9 +895,13 @@ end
 ---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
-	if type(code) == "table" then
-		code = table.concat(code, "\n")
+	if type(code) == "string" then
+		code = vim.split(code, "[\n\r]")
 	end
+	self:do_send_pre(code)
+
+	code = table.concat(code, "\n")
+
 	local responder, msg_id = require("jet.core.engine").execute_code(self.client_id, code, silent, true, {})
 
 	if callback then

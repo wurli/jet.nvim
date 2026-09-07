@@ -1,6 +1,7 @@
 local utils = require("jet.core.utils")
 local buf = require("jet.core.kernel.buf")
 
+---Inherits from |jet.Buf|
 ---@class jet.Kernel.Img : jet.Buf
 ---@field img_file? string
 local Img = setmetatable({}, { __index = buf })

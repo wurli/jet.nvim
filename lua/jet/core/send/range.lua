@@ -8,12 +8,13 @@ local pos = require("jet.core.send.pos")
 ---@field end_row integer 0-indexed
 ---@field end_col integer 0-indexed
 local Range = {}
-Range.__index = Range
+Range.__index = Range ---@private
 
 ---@param opts Partial<jet.send.Range>
 ---@return jet.send.Range
 Range.new = function(opts) return setmetatable(opts, Range) end
 
+---Get the buffer text covered by the `Range`
 ---@return string[]?
 function Range:text()
 	local ok, text =
@@ -30,12 +31,15 @@ end
 ---@class jet.send.range_code.Opts
 ---@field comments boolean? Set to `true` to include comments in the returned code.
 
+---Get the code covered by the `Range`.
+---
+---Also returns the local filetype at the range start.
 ---@param opts jet.send.range_code.Opts?
 ---@return nil
 ---@return_overload string[], string
 function Range:code(opts)
 	opts = opts or {}
-	local text = Range.text(self)
+	local text = self:text()
 
 	if not text then
 		return
@@ -64,6 +68,7 @@ function Range:code(opts)
 	return text, ft
 end
 
+---Get the `Range` start boundary as a |jet.Pos|
 ---@return jet.send.Pos
 function Range:start()
 	return pos.new({
@@ -73,6 +78,7 @@ function Range:start()
 	})
 end
 
+---Get the `Range` end boundary as a |jet.Pos|
 ---@return jet.send.Pos
 function Range:_end()
 	-- Gotta nudge since range end is exclusive
@@ -81,6 +87,7 @@ function Range:_end()
 	return out
 end
 
+---Select the `Range` as a "text-object" (see |omap-info|)
 function Range:textobject()
 	vim.api.nvim_buf_set_mark(0, "<", self.start_row + 1, self.start_col, {})
 	vim.api.nvim_buf_set_mark(0, ">", self.end_row + 1, self.end_col - 1, {})

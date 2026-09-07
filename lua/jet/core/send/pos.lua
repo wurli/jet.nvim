@@ -4,16 +4,18 @@
 ---@field row integer 0-indexed
 ---@field col integer 0-indexed
 local Pos = {}
-Pos.__index = Pos
+Pos.__index = Pos ---@private
 
 ---@param opts Partial<jet.send.Pos>
 ---@return jet.send.Pos
 Pos.new = function(opts) return setmetatable(opts, Pos) end
 
+---Check equality against another `Pos`
 ---@param p jet.send.Pos
 ---@return boolean
 function Pos:eq(p) return self.buf == p.buf and self.row == p.row and self.col == p.col end
 
+---Move a Pos forward/backward by one byte
 ---@param n? -1 | 1
 ---@return jet.send.Pos?
 function Pos:nudge(n)
@@ -50,6 +52,7 @@ function Pos:nudge(n)
 	end
 end
 
+---Check if a position is before another one
 ---@param p jet.send.Pos
 function Pos:lt(p)
 	assert(self.buf == p.buf, "Cannot compare positions in different buffers")
@@ -63,6 +66,7 @@ function Pos:lt(p)
 	end
 end
 
+---Get the cursor `Pos`
 ---@return jet.send.Pos
 Pos.get_curr = function()
 	local cursor = vim.api.nvim_win_get_cursor(0)
@@ -73,6 +77,7 @@ Pos.get_curr = function()
 	})
 end
 
+---Get the character at the `Pos`
 ---@return string?
 function Pos:to_char()
 	local line = vim.api.nvim_buf_get_lines(self.buf, self.row, self.row + 1, false)[1]
@@ -82,6 +87,7 @@ function Pos:to_char()
 	return line:sub(self.col + 1, self.col + 1)
 end
 
+---Get a row, col pair for use with `vim.fn.cursor()`
 ---@return integer, integer
 function Pos:to_cursor() return self.row + 1, self.col + 1 end
 
