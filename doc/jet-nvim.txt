@@ -64,23 +64,30 @@ The full set of configuration options is as follows:
 *jet.Config.Ui*
 
     Fields: ~
-        • {stream_lines}    (`integer`) Number of lines from iopub stream to
-                            show in `:Jet` ui
-        • {time_formatter}  (`(fun(hh: integer, mm: integer, ss: integer) -> string)?`)
-                            Control how Jet displays how long stuff is taking: >lua
-                                -- E.g. to display as hours, minutes, or seconds depending on the duration:
-                                require("jet").setup({
-                                    time_formatter = function(hh, mm, ss)
-                                        if hh > 0 then
-                                            return string.format("%.1fh", hh + mm/60 + ss/(60 * 60))
-                                        elseif mm > 0 then
-                                            return string.format("%.1fm", mm + ss/60)
-                                        else
-                                            return string.format("%ds", ss)
-                                        end
-                                    end
-                                })
+        • {stream_lines}         (`integer`) Number of lines from iopub stream
+                                 to show in `:Jet` ui
+        • {time_formatter}       (`(fun(hh: integer, mm: integer, ss: integer) -> string)?`)
+                                 Control how Jet displays how long stuff is
+                                 taking: >lua
+                                     -- E.g. to display as hours, minutes, or seconds depending on the duration:
+                                     require("jet").setup({
+                                         time_formatter = function(hh, mm, ss)
+                                             if hh > 0 then
+                                                 return string.format("%.1fh", hh + mm/60 + ss/(60 * 60))
+                                             elseif mm > 0 then
+                                                 return string.format("%.1fm", mm + ss/60)
+                                             else
+                                                 return string.format("%ds", ss)
+                                             end
+                                         end
+                                     })
 <
+        • {lualine_timer_delay}  (`integer`) Seconds to wait before showing a
+                                 lualine timer for long-running executions;
+                                 defaults to `30`
+        • {lualine_busy_icon}    (`string`)
+        • {lualine_idle_icon}    (`string`)
+        • {lualine_icon_chart}   (`string`)
 
 *jet.Config.Img*
 
@@ -279,6 +286,21 @@ go, you could combine the above mappings to send the current expression and
 move to the next one in a single keypress: >lua
     vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
     vim.keymap.set("x", "<enter>", "go", { remap = true })
+<
+
+------------------------------------------------------------------------------
+Integrations                                                  *jet-integrations*
+
+LUALINE                                                            *jet-lualine*
+
+jet.nvim provides a lualine extension. This shows the kernel name plus:
+
+• Busy status and execution duration (after a delay) for the repl window
+• {Chart number}/{total number of produced charts} for the image window
+
+Some config is exposed in `config.ui`. The extension needs to be enabled
+explicitly: >lua
+    require("lualine").setup({ extensions = { "jet" } })
 <
 
 ------------------------------------------------------------------------------
@@ -805,6 +827,33 @@ Kernel:interrupt()                                      *jet-Kernel:interrupt()*
     Interrupt the current execution
 
     Can also be done using `<c-c>` in the terminal.
+
+HIGHLIGHTS                                                      *jet-highlights*
+
+jet.nvim uses the following highlight groups, which can be overridden:
+
+*jet.Colours*
+
+    Fields: ~
+        • {JetBold}      (`{ bold = true }`)
+        • {JetBusy}      (`{ link = "DiagnosticWarn" }`)
+        • {JetButton}    (`{ link = "CursorLine" }`)
+        • {JetCode}      (`{ link = "@markup.raw" }`)
+        • {JetDim1}      (`{ link = "Comment" }`)
+        • {JetDim2}      (`{ link = "ComplHint" }`)
+        • {JetDim3}      (`{ link = "WhiteSpace" }`)
+        • {JetExternal}  (`{ link = "@variable.builtin" }`)
+        • {JetFailure}   (`{ link = "DiagnosticError" }`)
+        • {JetH1}        (`{ link = "Title" }`)
+        • {JetH2}        (`{ link = "Bold" }`)
+        • {JetId}        (`{ link = "Operator" }`)
+        • {JetIdle}      (`{ link = "DiagnosticOk" }`)
+        • {JetItalic}    (`{ italic = true }`)
+        • {JetLabel}     (`{ link = "@label" }`)
+        • {JetRepl}      (`{ link = "NormalFloat" }`)
+        • {JetSpecial}   (`{ link = "@punctuation.special" }`)
+        • {JetSuccess}   (`{ link = "DiagnosticOk" }`)
+        • {JetUrl}       (`{ link = "@markup.link" }`)
 
 ------------------------------------------------------------------------------
 Versioning policy                                        *jet-versioning-policy*

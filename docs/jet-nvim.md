@@ -168,6 +168,22 @@ vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
 vim.keymap.set("x", "<enter>", "go", { remap = true })
 ```
 
+## Integrations
+
+### Lualine
+
+jet.nvim provides a lualine extension. This shows the kernel name plus:
+
+* Busy status and execution duration (after a delay) for the repl window
+* {Chart number}/{total number of produced charts} for the image window
+
+Some config is exposed in `config.ui`. The extension needs to be enabled
+explicitly:
+
+``` lua
+require("lualine").setup({ extensions = { "jet" } })
+```
+
 ## UI
 
 ### Kernel management
@@ -307,6 +323,14 @@ python3 scripts/emmylua-to-md.py --type jet.api.Filters
 
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --type jet.Kernel
+```
+
+### Highlights
+
+jet.nvim uses the following highlight groups, which can be overridden:
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --type jet.Colours
 ```
 
 ## Versioning policy
