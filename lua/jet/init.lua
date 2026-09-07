@@ -33,6 +33,10 @@ end
 
 local did_setup = false
 
+---@return boolean
+---Check if jet.nvim is configured; useful for plugins.
+M.did_setup = function() return did_setup end
+
 ---@param opts jet.DeepPartial<jet.Config>
 M.setup = function(opts)
 	if did_setup then
