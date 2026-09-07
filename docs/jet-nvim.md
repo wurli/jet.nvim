@@ -35,6 +35,29 @@ python3 scripts/emmylua-to-md.py --type jet.Config.Img
 python3 scripts/emmylua-to-md.py --type jet.Hooks
 ```
 
+## Extensions
+
+jet.nvim relies on extensions to provide language/kernel specific features.
+Here's the current list of known extensions (if you create one please submit a
+PR to extend this list!):
+
+* jet.ark
+  * Repo: https://github.com/wurli/jet.ark
+  * Language: R
+  * Features:
+    * Full-featured LSP Server
+    * Resizable plots
+    * R "expression" resolution (see |jet-expression-textobject|)
+    * In the future: variables/connections panes, DAP server
+* jet.ipy
+  * Repo: https://github.com/wurli/jet.ipy
+  * Language: Python
+  * Features:
+    * Python "expression" resolution
+    * Prioritisation on kernels in virtual environments
+
+Also see |jet-extending-jet.nvim|.
+
 ## Setting keymaps
 
 jet.nvim is unopinionated about how you should work with Jupyter kernels, and
