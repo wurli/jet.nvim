@@ -168,6 +168,22 @@ vim.keymap.set("n", "<enter>", "goie]e", { remap = true })
 vim.keymap.set("x", "<enter>", "go", { remap = true })
 ```
 
+## Integrations
+
+### Lualine
+
+jet.nvim provides a lualine extension. This shows the kernel name plus:
+
+* Busy status and execution duration (after a delay) for the repl window
+* {Chart number}/{total number of produced charts} for the image window
+
+Some config is exposed in `config.ui`. The extension needs to be enabled
+explicitly:
+
+``` lua
+require("lualine").setup({ extensions = { "jet" } })
+```
+
 ## UI
 
 ### Kernel management
@@ -309,6 +325,14 @@ python3 scripts/emmylua-to-md.py --type jet.api.Filters
 python3 scripts/emmylua-to-md.py --type jet.Kernel
 ```
 
+### Highlights
+
+jet.nvim uses the following highlight groups, which can be overridden:
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --type jet.Colours
+```
+
 ## Versioning policy
 
 I guess jet.nvim uses semver? Pin your install to a tagged version if you make
@@ -333,8 +357,7 @@ A typical extension may implement stuff like:
   (https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages)
 * Etc
 
-An extension that does all the above is
-[jet.ark](https://github.com/wurli/jet.ark).
+jet.ark does all the above - see |jet-extensions|.
 
 ### Custom filetype expressions
 

@@ -20,6 +20,12 @@ local ui_defaults = {
 	--- })
 	--- ```
 	time_formatter = nil, ---@type nil | fun(hh: integer, mm: integer, ss: integer): string
+	---Seconds to wait before showing a lualine timer for long-running
+	---executions; defaults to `30`
+	lualine_timer_delay = 30,
+	lualine_busy_icon = "󰪥",
+	lualine_idle_icon = "",
+	lualine_icon_chart = "",
 }
 
 ---@class jet.Config.Img

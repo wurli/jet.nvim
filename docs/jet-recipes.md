@@ -7,7 +7,7 @@ vimdoc-prefix: jet-recipes
 The following document shows how jet.nvim's Lua API can be used to achieve
 cool stuff.
 
-### Execution notifications
+## Execution notifications
 
 Shows a notification when execution requests complete. The notification shows
 both the executed code and the result, and only fires if the repl is not
@@ -60,3 +60,32 @@ end
 Note: this doesn't report errors or other output types than `text/plain`, but
 you can read the Jupyter spec to implement these pretty easily. Or just get AI
 to do it for you, I'm not your mum.
+
+## Auto-update repl width
+
+Kernels/languages have different ways of detecting terminal width, and not all
+of them work with Jet/Neovim's built-in terminal. Thankfully if you can figure
+out how to just tell the kernel when the width changes, jet.nvim makes this
+very easy. Here's an example with ipython/pandas:
+
+``` lua
+vim.api.nvim_create_autocmd("WinResized", {
+	callback = function()
+		local wins = vim.v.event.windows --[[@as integer[] ]]
+		for _, win in ipairs(wins) do
+			local buf = vim.api.nvim_win_get_buf(win)
+			local session_id = vim.b[buf].jet and vim.b[buf].jet.session_id
+			local kernel = session_id and api.get_kernel_by_id(session_id)
+			if kernel and kernel.filetype == "python" then
+				local code = string.format(
+					"import sys\n"
+						.. 'if "pandas" in sys.modules: sys.modules.get("pandas").set_option("display.width", %d)',
+					vim.api.nvim_win_get_width(win)
+				)
+				-- Send 'silently' so the code isn't echoed in the repl
+				kernel:send_lua(code, true)
+			end
+		end
+	end,
+})
+```

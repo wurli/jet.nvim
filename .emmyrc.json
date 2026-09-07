@@ -24,7 +24,8 @@
       "$VIMRUNTIME",
       "./deps",
       "$HOME/.local/share/nvim/lazy/image.nvim/",
-      "$HOME/.local/share/nvim/lazy/snacks.nvim/"
+      "$HOME/.local/share/nvim/lazy/snacks.nvim/",
+      "$HOME/.local/share/nvim/lazy/lualine.nvim/"
     ],
 	"workspaceRoots": [
 		"./lua"
