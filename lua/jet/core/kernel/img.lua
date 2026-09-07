@@ -115,6 +115,9 @@ function Img:display(which)
 			inline = true,
 			type = "image",
 			pos = { 1, 0 },
+			on_update = function()
+				vim.bo[self.buf].filetype = "jetimg" -- Note: Snacks.image overrides to "image"
+			end,
 		})
 		return
 	end
