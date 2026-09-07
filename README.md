@@ -14,6 +14,7 @@ https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
 *   Ability to connect to kernel sessions running outside of Neovim
 *   AI-friendly: agents can use the Jet CLI to interact with your kernel
     sessions
+*   Detailed (non-vibed) vimdoc documentation
 *   Plug and play - No remote plugin stuff. No python requirements. 
 
 **Not yet implemented**
