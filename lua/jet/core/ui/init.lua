@@ -320,26 +320,6 @@ end
 ---@param callback fun(kernels: jet.ui._KernelGroup[])
 local list_kernel_groups = function(callback)
 	manager.list({}, function(kernel_list)
-		table.sort(kernel_list, function(a, b)
-			if a.session_id and b.session_id and a.session_id == b.session_id then
-				error("Found two kernel with session id " .. a.session_id)
-			end
-
-			if a:status() == "inactive" and b:status() ~= "inactive" then
-				return true
-			elseif utils.path_normalise(a.spec_path) ~= utils.path_normalise(b.spec_path) then
-				return utils.path_normalise(a.spec_path) < utils.path_normalise(b.spec_path)
-			elseif a.session_info and not b.session_info then
-				return true
-			elseif not a.session_info and b.session_info then
-				return false
-			elseif a.session_id and b.session_id then
-				return a.session_id < b.session_id
-			end
-			return false -- Something has gone wrong if we get down to here
-		end)
-
-		---@type table<string, { kernel: jet.Kernel, external: jet.Kernel[], connected: jet.Kernel[] }>
 		local kernels_grouped = {}
 
 		for _, k in ipairs(manager.filter_kernels(kernel_list, { status = "inactive" })) do
