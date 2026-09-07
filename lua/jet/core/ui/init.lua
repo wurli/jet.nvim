@@ -209,6 +209,7 @@ end
 ---@param k jet.Kernel
 ---@return jet.ui.Line[]
 local expand_active = function(k)
+	---@diagnostic disable-next-line: access-invisible
 	if not k.ui_expand then
 		return {}
 	end
@@ -467,6 +468,7 @@ M.show = function()
 	-- expensive though, so we want to be as accurate as possible when
 	-- detecting cases which should cause a change in size.
 	hooks.on_message_received.update_ui = function(k, msg)
+		---@diagnostic disable-next-line: access-invisible
 		if not k.ui_expand or not msg.channel == "iopub" then
 			return
 		end
@@ -562,6 +564,7 @@ M.show = function()
 				local path = utils.path_normalise(k.spec_path)
 				expanded_inactive_kernels[path] = not expanded_inactive_kernels[path]
 			else
+				---@diagnostic disable-next-line: access-invisible
 				k.ui_expand = not k.ui_expand
 			end
 

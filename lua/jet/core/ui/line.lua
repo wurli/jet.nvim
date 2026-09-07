@@ -51,7 +51,7 @@ function Line:resolve()
 	---@param x jet.ui.line.extmark_shorthand
 	---@return vim.api.keyset.set_extmark[]
 	local to_extmarks = function(x)
-		x = vim.isarray(x) and x or { x } ---@type string[] | vim.api.keyset.set_extmark[]
+		x = type(x) == "table" and vim.isarray(x) and x or { x } ---@type string[] | vim.api.keyset.set_extmark[]
 		return vim.tbl_map(function(xi) return type(xi) == "string" and { hl_group = xi } or xi end, x)
 	end
 
