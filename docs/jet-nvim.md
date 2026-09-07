@@ -357,8 +357,7 @@ A typical extension may implement stuff like:
   (https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages)
 * Etc
 
-An extension that does all the above is
-[jet.ark](https://github.com/wurli/jet.ark).
+jet.ark does all the above - see |jet-extensions|.
 
 ### Custom filetype expressions
 
