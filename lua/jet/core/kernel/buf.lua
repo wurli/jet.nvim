@@ -36,6 +36,8 @@ function Buf.init(class, opts)
 	return out
 end
 
+---Get a window displaying the buffer, if there is one
+---@return integer?
 function Buf:win() return utils.buf_get_win(self.buf) end
 
 ---@param focus? boolean

@@ -238,6 +238,8 @@ Buf.init({class}, {opts})                                 *jet-types-Buf.init()*
 
 Buf:win()                                                  *jet-types-Buf:win()*
 
+    Get a window displaying the buffer, if there is one
+
     Return: ~
         (`integer?`)
 
