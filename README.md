@@ -240,9 +240,10 @@ expose kernel-specific functionality.
 
 **Existing extensions**
 
-| Repo                                        | Kernel                                  | Language | Features             |
-| ----                                        | ------                                  | -------- | --------             |
-| [jet.ark](https://github.com/wurli/jet.ark) | [Ark](https://github.com/posit-dev/ark) | R        | LSP server, debugger |
+| Repo                                        | Kernel                                            | Language | Features                                                                      |
+| ----                                        | ------                                            | -------- | --------                                                                      |
+| [jet.ark](https://github.com/wurli/jet.ark) | [Ark](https://github.com/posit-dev/ark)           | R        | LSP server, resizable plots, kernel prioritisation, R 'expression' resolution |
+| [jet.ipy](https://github.com/wurli/jet.ipy) | [ipykernel](https://github.com/ipython/ipykernel) | Python   | Venv kernel prioritisation, python 'expression' resolution                    |
 
 ## jet.nvim vs similar plugins
 
