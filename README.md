@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
 *   AI-friendly: agents can use the Jet CLI to interact with your kernel
     sessions
 *   Detailed (non-vibed) vimdoc documentation
-*   Plug and play - No remote plugin stuff. No python requirements. 
+*   Plug and play - No remote plugin stuff. No python requirements.
 
 **Not yet implemented**
 *   Notebooks
@@ -62,11 +62,9 @@ the resulting DataFrame loaded in your Python session, to perform any analysis
 using AI in a traditional workflow, you will either need to first tell the AI
 how to reproduce the DataFrame, or serialise it to a file which the AI can
 quickly read. Both of these options take time and introduce plenty of room for
-things to go wrong. Using Jet however, the AI acts as 'player 2' in your
-session and can work with the data directly. This can save a tonne of time and
-greatly reduce context/token usage for certain types of problem.
-
-bla bla
+things to go wrong. Using Jet, the AI acts as 'player 2' in your session and
+can work with the data directly. This can save a tonne of time, and greatly
+reduces context/token usage for certain types of problems.
 
 </details>
 
