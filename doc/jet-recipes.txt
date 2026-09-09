@@ -89,4 +89,48 @@ very easy. Here's an example with ipython/pandas: >lua
     })
 <
 
+------------------------------------------------------------------------------
+Custom data viewer                              *jet-recipes-custom-data-viewer*
+
+Here's how you could set `visidata` up as a data viewer for pandas
+`DataFrame`s.
+
+First register a custom mimetype in Python: >python
+    import pandas as pd
+
+
+    # Custom object handling for pandas DataFrames: write the DataFrame to a
+    # tempfile and define a custom mimetype, which is just the path to the file
+    def dataframe_mimebundle(self, **args):
+        import tempfile as tf
+
+        with tf.NamedTemporaryFile(delete=False, suffix=".csv") as file:
+            self.to_csv(file)
+            return {"text/x.vd-file": file.name}
+
+
+    # Monkey-patch DataFrame to register the new mimetype
+    pd.DataFrame._repr_mimebundle_ = dataframe_mimebundle
+<
+ipykernel will then emit the `text/x.vd-file` MIME type whenever a `DataFrame`
+gets printed in the console, which is easy to handle in Neovim: >lua
+    local jet = require("jet")
+
+    jet.hooks.on_message_received.pd_visidata = function(_k, msg)
+        local file = msg.content and msg.content.data and msg.content.data["text/x.vd-file"]
+
+        if file then
+            local vd_buf = vim.api.nvim_create_buf(false, true)
+            vim.api.nvim_open_win(vd_buf, true, { split = "right", win = -1, style = "minimal" })
+            vim.fn.jobstart({ "vd", file }, { term = true })
+            vim.cmd.startinsert()
+        end
+    end
+<
+Note: not all kernels make it so simple to implement custom MIME types. An
+alternative approach, e.g. for R, would be to override the `print` method for
+`data.frame`s to write the tempfile, then simply print the file path to the
+console. jet.nvim could then pick up the `execute_reply` message and continue
+to call visidata as above.
+
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:
