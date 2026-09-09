@@ -1,6 +1,14 @@
-# <p align="center">jet.nvim ✈️</p>
+<div align="center">
 
-<p align="center">A Jupyter kernel supervisor for Neovim, built on top of <a href=https://github.com/wurli/jet>Jet</a></p>
+# jet.nvim ✈️
+
+A Jupyter kernel supervisor for Neovim, built on top of [Jet](https://github.com/wurli/jet)
+
+![GitHub Tag](https://img.shields.io/github/v/tag/wurli/jet.nvim?style=flat-square)
+![Nvim](https://img.shields.io/badge/Neovim-0.11+-57A143?logo=neovim&logoColor=white&style=flat-square)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
+
+</div>
 
 <!-- ![demo](https://github.com/user-attachments/assets/3e091499-eee3-43d8-ad75-8bfa7a2113f7) -->
 https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
