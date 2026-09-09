@@ -108,7 +108,11 @@ def dataframe_mimebundle(self, **args):
 
     with tf.NamedTemporaryFile(delete=False, suffix=".csv") as file:
         self.to_csv(file)
-        return {"text/x.vd-file": file.name}
+        return {
+            "text/x.vd-file": file.name,
+            # Omit this line to retain normal DataFrame printing
+            "text/plain": f"[pd.DataFrame: {file.name}]",
+        }
 
 
 # Monkey-patch DataFrame to register the new mimetype
