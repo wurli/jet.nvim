@@ -102,6 +102,8 @@ require("jet").setup({})
 This will enable the `:Jet` command to bring up the jet.nvim kernel management
 UI.
 
+### Keymaps
+
 Since most users will want to work with running kernels in different ways,
 jet.nvim avoids setting default keymaps and instead aims to provide a flexible,
 low-level Lua API to allow users to implement the behaviour that works for
