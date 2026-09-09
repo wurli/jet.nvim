@@ -1,6 +1,14 @@
-# <p align="center">jet.nvim ✈️</p>
+<div align="center">
 
-<p align="center">A Jupyter kernel supervisor for Neovim, built on top of <a href=https://github.com/wurli/jet>Jet</a></p>
+# jet.nvim ✈️
+
+A Jupyter kernel supervisor for Neovim, built on top of [Jet](https://github.com/wurli/jet)
+
+![GitHub Tag](https://img.shields.io/github/v/tag/wurli/jet.nvim?style=flat-square)
+![Nvim](https://img.shields.io/badge/Neovim-0.11+-57A143?logo=neovim&logoColor=white&style=flat-square)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
+
+</div>
 
 <!-- ![demo](https://github.com/user-attachments/assets/3e091499-eee3-43d8-ad75-8bfa7a2113f7) -->
 https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
@@ -15,7 +23,7 @@ https://github.com/user-attachments/assets/940430ed-f0f3-498c-807e-efa6ae85cf86
 *   AI-friendly: agents can use the Jet CLI to interact with your kernel
     sessions
 *   Detailed (non-vibed) vimdoc documentation
-*   Plug and play - No remote plugin stuff. No python requirements. 
+*   Plug and play - No remote plugin stuff. No python requirements.
 
 **Not yet implemented**
 *   Notebooks
@@ -62,11 +70,9 @@ the resulting DataFrame loaded in your Python session, to perform any analysis
 using AI in a traditional workflow, you will either need to first tell the AI
 how to reproduce the DataFrame, or serialise it to a file which the AI can
 quickly read. Both of these options take time and introduce plenty of room for
-things to go wrong. Using Jet however, the AI acts as 'player 2' in your
-session and can work with the data directly. This can save a tonne of time and
-greatly reduce context/token usage for certain types of problem.
-
-bla bla
+things to go wrong. Using Jet, the AI acts as 'player 2' in your session and
+can work with the data directly. This can save a tonne of time, and greatly
+reduces context/token usage for certain types of problems.
 
 </details>
 
@@ -103,6 +109,8 @@ require("jet").setup({})
 
 This will enable the `:Jet` command to bring up the jet.nvim kernel management
 UI.
+
+### Keymaps
 
 Since most users will want to work with running kernels in different ways,
 jet.nvim avoids setting default keymaps and instead aims to provide a flexible,
