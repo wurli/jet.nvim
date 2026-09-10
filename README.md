@@ -5,7 +5,7 @@
 A Jupyter kernel supervisor for Neovim, built on top of [Jet](https://github.com/wurli/jet)
 
 ![GitHub Tag](https://img.shields.io/github/v/tag/wurli/jet.nvim?style=flat-square)
-![Nvim](https://img.shields.io/badge/Neovim-0.11+-57A143?logo=neovim&logoColor=white&style=flat-square)
+![Nvim](https://img.shields.io/badge/nvim-0.11+-57A143?style=flat-square)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
 
 </div>
