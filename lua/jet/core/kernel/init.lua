@@ -73,8 +73,6 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---Kernel-specific hooks. Basically for convenience on top of the 'global'
 ---hooks you can set in |jet.Config|
 ---@field hooks jet.Hooks
----Arbitrary extra data, e.g. for use by extensions
----@field metadata table<string, any>
 ---Defaults to 100. `api.get_kernel()` will try to use this field to select a
 ---single kernel. Typically you would set the priority using the kernel's init
 ---hook (see |jet.Hooks|).
@@ -97,7 +95,6 @@ local init_defaults = function()
 			incomplete_line = "",
 		},
 		on_started = {},
-		metadata = {},
 		priority = 100,
 		hooks = hooks.init_hooks(),
 	}
@@ -805,6 +802,19 @@ end
 ---@field listener? fun(res: jupyter.Msg)
 ---@field listener_interval? integer In milliseconds, default 50ms
 ---@field callback? fun(msg: jupyter.Msg)
+
+---Find a comm id using the comm name
+---@param name string
+---@param pattern boolean?
+---@return string?, table?
+function Kernel:get_comm(name, pattern)
+	for comm_id, comm in pairs(self.open_comms) do
+		local is_match = pattern and comm.name:match(name) or comm.name == name
+		if is_match then
+			return comm_id, comm.data
+		end
+	end
+end
 
 ---Open a comm channel to the kernel
 ---
