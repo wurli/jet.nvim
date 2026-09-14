@@ -77,6 +77,8 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---single kernel. Typically you would set the priority using the kernel's init
 ---hook (see |jet.Hooks|).
 ---@field priority integer
+---For use by extensions which may want to extend the `Kernel` class
+---@field subclass string?
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
 ---@field private on_started table<string, fun(k: jet.Kernel)>
@@ -803,7 +805,7 @@ end
 ---@field listener_interval? integer In milliseconds, default 50ms
 ---@field callback? fun(msg: jupyter.Msg)
 
----Find a comm id using the comm name
+---Convenience; find a comm id (from `Kernel.open_comms`) using the comm name
 ---@param name string
 ---@param pattern boolean?
 ---@return string?, table?

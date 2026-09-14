@@ -607,12 +607,12 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
         • {hooks}            (`jet.Hooks`) Kernel-specific hooks. Basically
                              for convenience on top of the 'global' hooks you
                              can set in |jet.Config|
-        • {metadata}         (`table<string,any>`) Arbitrary extra data,
-                             e.g. for use by extensions
         • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
                              will try to use this field to select a single
                              kernel. Typically you would set the priority
                              using the kernel's init hook (see |jet.Hooks|).
+        • {subclass}         (`string?`) For use by extensions which may want
+                             to extend the `Kernel` class
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
@@ -747,6 +747,18 @@ Kernel:stop({callback})                                      *jet-Kernel:stop()*
 
     See: ~
         • |Kernel:close()|
+
+Kernel:get_comm({name}, {pattern})                       *jet-Kernel:get_comm()*
+
+    Convenience; find a comm id (from `Kernel.open_comms`) using the comm name
+
+    Parameters: ~
+        • {name}        (`string`)
+        • {pattern}     (`boolean?`)
+
+    Return: ~
+        (`string?`)
+        (`table?`)
 
 Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
 
