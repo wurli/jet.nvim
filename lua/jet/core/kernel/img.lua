@@ -20,14 +20,7 @@ function Img.init(opts)
 		name = opts.kernel:friendly_name() .. " - Images",
 		ns = opts.ns,
 		kernel = opts.kernel,
-		open_opts = function()
-			local term_win = opts.kernel.term and opts.kernel.term:win()
-			return {
-				split = term_win and "above" or "right",
-				win = term_win or -1,
-				style = "minimal",
-			}
-		end,
+		layout_pos = 2,
 	})
 
 	out.kernel = opts.kernel
@@ -45,7 +38,7 @@ end
 ---@param which? string | integer
 ---@return integer # Win number
 function Img:open(focus, which)
-	local win = buf.open(self, focus)
+	local win = buf.open(self, nil, focus)
 	self:display(which)
 	-- For folks who want to display image stuff in the winbar/statusline
 	vim.api.nvim__redraw({ win = win, winbar = true, statusline = true })
@@ -92,9 +85,7 @@ function Img:display(which)
 		return
 	end
 
-	local win = self:win()
-
-	if not win then
+	if not self:win():get_curr_jet_buf(self) then
 		return
 	end
 
@@ -132,7 +123,6 @@ function Img:display(which)
 	if ok and image_api then
 		local img = image_api.from_file(src, {
 			buffer = self.buf,
-			window = win,
 		})
 		if img then
 			img:render()

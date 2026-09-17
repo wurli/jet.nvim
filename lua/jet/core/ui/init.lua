@@ -477,7 +477,7 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.Kernel
 			local k = l.data.kernel
-			local should_focus = k.term and k.term:win()
+			local should_focus = k.term and k.term:layout_pos()
 			k:term_open(function()
 				if should_focus then
 					ui:close()

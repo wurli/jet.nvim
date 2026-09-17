@@ -20,14 +20,7 @@ function Term.init(opts)
 		name = opts.kernel:friendly_name(),
 		ns = opts.ns,
 		kernel = opts.kernel,
-		open_opts = function()
-			local img_win = opts.kernel.img and opts.kernel.img:win()
-			return {
-				split = img_win and "below" or "right",
-				win = img_win or -1,
-				style = "minimal",
-			}
-		end,
+		layout_pos = 1,
 	})
 
 	out.kernel = opts.kernel

@@ -3,6 +3,7 @@ local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
 local lsp = require("jet.core.kernel.lsp")
 local hooks = require("jet.core.hooks")
+local win = require("jet.core.kernel.win")
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -77,7 +78,9 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---single kernel. Typically you would set the priority using the kernel's init
 ---hook (see |jet.Hooks|).
 ---@field priority integer
----For use by extensions which may want to extend the `Kernel` class
+---Windows used to show kernel UI. Kernels use 2 windows by default (one for
+---the repl, one for all other stuff). This field is extensible!
+---@field windows jet.Win[]
 ---@field subclass string?
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
@@ -85,6 +88,37 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field private augroup? integer
 local Kernel = {}
 Kernel.__index = Kernel ---@private
+
+local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
+vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
+
+---@param k jet.Kernel
+local init_wins = function(k)
+	local repl_win = win.init({
+		ns = jet_hl_ns,
+		kernel = k,
+		focus = true,
+		open_opts = function()
+			---@type vim.api.keyset.win_config
+			return { split = "right", win = -1 }
+		end,
+	})
+
+	local secondary_win = win.init({
+		ns = jet_hl_ns,
+		kernel = k,
+		focus = true,
+		open_opts = function(wins)
+			vim.print(wins)
+			return {
+				split = wins[1] and "above" or "right",
+				win = wins[1] or -1,
+			}
+		end,
+	})
+
+	return { repl_win, secondary_win }
+end
 
 ---@return Partial<jet.Kernel>
 local init_defaults = function()
@@ -99,6 +133,7 @@ local init_defaults = function()
 		on_started = {},
 		priority = 100,
 		hooks = hooks.init_hooks(),
+		windows = {},
 	}
 end
 
@@ -119,6 +154,7 @@ function Kernel.init_owned(opts)
 	local base = vim.tbl_extend("keep", opts, init_defaults(), { owned = true })
 	local out = setmetatable(base, Kernel)
 
+	out.windows = init_wins(out)
 	out:try_resolve_filetype()
 	out:do_kernel_init()
 
@@ -148,6 +184,8 @@ function Kernel.init_external(opts)
 		}),
 		Kernel
 	)
+
+	out.windows = init_wins(out)
 
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
@@ -179,9 +217,6 @@ function Kernel:term_toggle()
 	end
 end
 
-local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
-vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
-
 ---Open a terminal window for the kernel.
 ---If no terminal is active, one will be created and opened
 ---@param callback? fun(t: jet.Kernel.Term)
@@ -189,7 +224,7 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 function Kernel:term_open(callback, focus)
 	self:term_create(function()
 		assert(self.term, "kernel.term is nil")
-		self.term:open(focus)
+		self.term:open(nil, focus)
 		if callback then
 			callback(self.term)
 		end
