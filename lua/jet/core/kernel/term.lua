@@ -61,7 +61,7 @@ end
 function Term:send(code, tabstop)
 	tabstop = tabstop or vim.bo.tabstop or 4
 	if type(code) == "string" then
-		code = vim.split(code, "[\n\r]", { plain = false })
+		code = vim.split(code, "[\n\r]", { plain = false }) --[[@as string[] ]]
 	end
 
 	-- Remove trailing empty lines
