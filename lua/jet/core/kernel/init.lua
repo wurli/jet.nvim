@@ -1,9 +1,9 @@
 local manager = require("jet.core.manager")
-local cfg = require("jet.core.config").options
 local utils = require("jet.core.utils")
-local lsp = require("jet.core.kernel.lsp")
 local hooks = require("jet.core.hooks")
 local win = require("jet.core.kernel.win")
+local lsp = require("jet.core.kernel.lsp")
+local cfg = require("jet.core.config").options
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -226,7 +226,7 @@ Kernel.do_message_received        = hooks.do_message_received        ---@private
 Kernel.do_send_pre                = hooks.do_send_pre                ---@private
 Kernel.do_status_changed          = hooks.do_status_changed          ---@private
 Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
-Kernel.do_currentness_changed  = hooks.do_currentness_changed  ---@private
+Kernel.do_currentness_changed     = hooks.do_currentness_changed  ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.
