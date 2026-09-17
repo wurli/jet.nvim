@@ -5,18 +5,18 @@
 ---it's a no-op.
 ---@field focus boolean
 ---@field kernel jet.Kernel
----@field open_opts? vim.api.keyset.win_config | fun(wins: integer[]): vim.api.keyset.win_config
+---@field open_opts? vim.api.keyset.win_config | fun(k: jet.Kernel): vim.api.keyset.win_config
 local Win = {}
 Win.__index = Win
+
+---@param buf integer | jet.Buf
+local to_bufnr = function(buf) return type(buf) == "number" and buf or buf.buf end
 
 ---@class jet.Win.init.Opts
 ---@field open_opts jet.Win["open_opts"]
 ---@field ns jet.Win["ns"]
----@field focus jet.Win["focus"]
 ---@field kernel jet.Win["kernel"]
-
----@param buf integer | jet.Buf
-local to_bufnr = function(buf) return type(buf) == "number" and buf or buf.buf end
+---@field focus jet.Win["focus"]
 
 ---@param opts jet.Win.init.Opts
 Win.init = function(opts)
@@ -26,11 +26,11 @@ Win.init = function(opts)
 	return setmetatable(vim.tbl_extend("force", opts, { win = -99 }), Win)
 end
 
----@return integer
-function Win:layout_pos()
-	for i, w in ipairs(self.kernel.windows) do
+---@return string
+function Win:name()
+	for name, w in pairs(self.kernel.wins) do
 		if w == self then
-			return i
+			return name
 		end
 	end
 	error("Could not determine the window layout position")
@@ -84,8 +84,7 @@ end
 ---@return vim.api.keyset.win_config
 function Win:make_open_opts()
 	if type(self.open_opts) == "function" then
-		local wins = vim.tbl_map(function(win) return win:winnr() end, self.kernel.windows)
-		local out = self.open_opts(wins)
+		local out = self.open_opts(self.kernel)
 		out.style = "minimal"
 		return out
 	elseif type(self.open_opts) == "table" then
@@ -124,8 +123,11 @@ function Win:get_curr_jet_buf(buf)
 	if buf and to_bufnr(buf) ~= curr_buf then
 		return nil
 	end
-	local buf_pos = curr_buf and vim.b[curr_buf].jet and vim.b[curr_buf].jet.layout_pos
-	return buf_pos == self:layout_pos() and curr_buf or nil
+	for _, kernel_buf in pairs(self.kernel.bufs) do
+		if kernel_buf.buf == curr_buf and kernel_buf.win_name == self.name then
+			return curr_buf
+		end
+	end
 end
 
 ---@param buf? integer | jet.Buf

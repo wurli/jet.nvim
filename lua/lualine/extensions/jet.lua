@@ -41,11 +41,11 @@ end
 
 ---@param k jet.Kernel
 local jet_img = function(k)
-	if not k.img then
+	if not k.bufs.img then
 		return ""
 	end
 
-	local files, curr_file_index = k.img:list_files()
+	local files, curr_file_index = k.bufs.img:list_files()
 
 	if not curr_file_index then
 		return ""

@@ -1,6 +1,6 @@
 ---@class jet.Buf
 ---@field buf integer
----@field layout_pos integer
+---@field win_name string
 ---@field name string
 ---@field augroup integer
 ---@field ns integer
@@ -10,9 +10,9 @@ Buf.__index = Buf ---@private
 
 ---@class jet.Buf.init.Opts
 ---@field name string
+---@field win_name string | keyof jet.Kernel.Windows
 ---@field ns integer
 ---@field kernel jet.Kernel
----@field layout_pos integer
 
 ---@generic T
 ---@param class? T
@@ -23,26 +23,30 @@ function Buf.init(class, opts)
 		kernel = opts.kernel,
 		ns = opts.ns,
 		name = opts.name,
-		layout_pos = opts.layout_pos,
+		win_name = opts.win_name,
 		augroup = vim.api.nvim_create_augroup(opts.name, { clear = true }),
 		buf = vim.api.nvim_create_buf(false, true),
 	}, class or Buf)
 
-	vim.b[out.buf].jet = {
-		session_id = out.kernel.session_id,
-		layout_pos = out.layout_pos,
-	}
+	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
 	vim.api.nvim_buf_set_name(out.buf, out.name)
 
 	return out
 end
 
----Get a window displaying the buffer, if there is one
+---Get the kernel window associated with the buffer
 ---@return jet.Win
 function Buf:win()
-	local w = self.kernel.windows[self.layout_pos]
-	assert(w, "Kernel window %d not found. Kernel has %d registered windows", self.layout_pos, #self.kernel.windows)
-	return w
+	local out = self.kernel.wins[self.win_name]
+	assert(
+		out,
+		string.format(
+			"Kernel window '%s' not found. Kernel has windows %s",
+			self.win_name,
+			vim.inspect(vim.tbl_keys(self.kernel.wins))
+		)
+	)
+	return out
 end
 
 ---@param opts vim.api.keyset.win_config?

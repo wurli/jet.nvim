@@ -11,6 +11,19 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@alias jet.Kernel.PartialSpec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
+---@class jet.Kernel.Buffers
+---@field term? jet.Kernel.Term
+---@field img? jet.Kernel.Img
+
+---Windows 'owned' by the kernel
+---
+---Note, you can extend this to add additional windows, or modify the default
+---windows directly.
+---
+---@class jet.Kernel.Windows
+---@field primary jet.Win
+---@field secondary jet.Win
+
 ---The `Kernel` class is jet.nvim's central abstraction for working with
 ---Jupyter kernels. You can create a new instance using two methods:
 ---
@@ -44,10 +57,6 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field client_id? string
 ---Information about the kernel's Jet LSP process.
 ---@field lsp jet.Lsp
----Repl buffer data
----@field term? jet.Kernel.Term
----Image buffer data
----@field img? jet.Kernel.Img
 ---`true` if the kernel session was started by this nvim session; `false`
 ---otherwise.
 ---@field owned boolean
@@ -80,7 +89,10 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@field priority integer
 ---Windows used to show kernel UI. Kernels use 2 windows by default (one for
 ---the repl, one for all other stuff). This field is extensible!
----@field windows jet.Win[]
+---@field wins jet.Kernel.Windows
+---Buffers used to show kernel UI. By default includes the repl and a plots
+---buffer.
+---@field bufs jet.Kernel.Buffers
 ---@field subclass string?
 ---@field private stream jet.callback<jupyter.Msg>
 ---@field private ui_expand boolean
@@ -94,30 +106,33 @@ vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 
 ---@param k jet.Kernel
 local init_wins = function(k)
-	local repl_win = win.init({
+	k.wins.primary = win.init({
 		ns = jet_hl_ns,
 		kernel = k,
 		focus = true,
-		open_opts = function()
-			---@type vim.api.keyset.win_config
-			return { split = "right", win = -1 }
-		end,
-	})
-
-	local secondary_win = win.init({
-		ns = jet_hl_ns,
-		kernel = k,
-		focus = true,
-		open_opts = function(wins)
-			vim.print(wins)
+		---@param kernel jet.Kernel
+		open_opts = function(kernel)
+			local secondary_win = kernel.wins.secondary:winnr()
 			return {
-				split = wins[1] and "above" or "right",
-				win = wins[1] or -1,
+				split = secondary_win and "below" or "right",
+				win = secondary_win or -1,
 			}
 		end,
 	})
 
-	return { repl_win, secondary_win }
+	k.wins.secondary = win.init({
+		ns = jet_hl_ns,
+		kernel = k,
+		focus = true,
+		---@param kernel jet.Kernel
+		open_opts = function(kernel)
+			local primary_win = kernel.wins.primary:winnr()
+			return {
+				split = primary_win and "above" or "right",
+				win = primary_win or -1,
+			}
+		end,
+	})
 end
 
 ---@return Partial<jet.Kernel>
@@ -133,7 +148,7 @@ local init_defaults = function()
 		on_started = {},
 		priority = 100,
 		hooks = hooks.init_hooks(),
-		windows = {},
+		buf = {},
 	}
 end
 
@@ -154,7 +169,7 @@ function Kernel.init_owned(opts)
 	local base = vim.tbl_extend("keep", opts, init_defaults(), { owned = true })
 	local out = setmetatable(base, Kernel)
 
-	out.windows = init_wins(out)
+	out.wins = init_wins(out)
 	out:try_resolve_filetype()
 	out:do_kernel_init()
 
@@ -185,7 +200,7 @@ function Kernel.init_external(opts)
 		Kernel
 	)
 
-	out.windows = init_wins(out)
+	out.wins = init_wins(out)
 
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
@@ -210,8 +225,8 @@ Kernel.do_currentness_changed  = hooks.do_currentness_changed  ---@private
 ---Toggle the terminal window for the kernel.
 ---If no terminal is active, one will be created and opened.
 function Kernel:term_toggle()
-	if self.term then
-		self.term:toggle()
+	if self.bufs.term then
+		self.bufs.term:toggle()
 	else
 		self:term_open()
 	end
@@ -223,10 +238,10 @@ end
 ---@param focus? boolean
 function Kernel:term_open(callback, focus)
 	self:term_create(function()
-		assert(self.term, "kernel.term is nil")
-		self.term:open(nil, focus)
+		assert(self.bufs.term, "kernel.buf.term is nil")
+		self.bufs.term:open(nil, focus)
 		if callback then
-			callback(self.term)
+			callback(self.bufs.term)
 		end
 	end)
 end
@@ -241,12 +256,12 @@ function Kernel:set_current() manager:set_current(self) end
 ---@param callback? fun(k: jet.Kernel)
 function Kernel:term_create(callback)
 	self:start_lua_client(function()
-		if not self.term then
+		if not self.bufs.term then
 			assert(self.session_id, "Kernel has no session id")
-			self.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
-			self.term:create_autocmd("TermEnter", function() self:set_current() end)
+			self.bufs.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
+			self.bufs.term:create_autocmd("TermEnter", function() self:set_current() end)
 			if cfg.stop_on_buf_wipeout then
-				self.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
+				self.bufs.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
 			end
 		end
 		if callback then
@@ -423,8 +438,8 @@ function Kernel:update_execution_state(msg)
 		self.last_execution.end_time = os.time()
 	end
 
-	if self.term and self.term.buf and vim.api.nvim_buf_is_valid(self.term.buf) then
-		vim.api.nvim__redraw({ statusline = true, buf = self.term.buf })
+	if self.bufs.term and self.bufs.term.buf and vim.api.nvim_buf_is_valid(self.bufs.term.buf) then
+		vim.api.nvim__redraw({ statusline = true, buf = self.bufs.term.buf })
 	end
 
 	self:do_execution_state_changed(new_state)
@@ -440,8 +455,8 @@ end
 
 ---Toggle the image display
 function Kernel:img_toggle()
-	if self.img then
-		self.img:toggle()
+	if self.bufs.img then
+		self.bufs.img:toggle()
 	else
 		self:img_open()
 	end
@@ -451,11 +466,11 @@ end
 ---@param which? string | integer
 ---@return integer # Win number
 function Kernel:img_open(which)
-	if not self.img then
+	if not self.bufs.img then
 		assert(self.session_id, "Kernel has no session id")
-		self.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
+		self.bufs.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
 	end
-	return self.img:open(false, which)
+	return self.bufs.img:open(false, which)
 end
 
 ---Get a unique, human-readable name for the kernel
@@ -788,8 +803,8 @@ function Kernel:close(reason)
 	if self.augroup then
 		pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
 	end
-	if self.term then
-		self.term:delete()
+	if self.bufs.term then
+		self.bufs.term:delete()
 	end
 
 	if self.owned then

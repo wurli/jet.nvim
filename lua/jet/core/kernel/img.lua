@@ -20,7 +20,7 @@ function Img.init(opts)
 		name = opts.kernel:friendly_name() .. " - Images",
 		ns = opts.ns,
 		kernel = opts.kernel,
-		layout_pos = 2,
+		win_name = "secondary",
 	})
 
 	out.kernel = opts.kernel
