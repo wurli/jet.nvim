@@ -392,3 +392,21 @@ end
 local jet = require("jet")
 jet.filetype.python = { get_expr = get_python_expr }
 ```
+
+### Custom UI components
+
+Extensions may want to add custom UI for a particular kernel. For example,
+jet.ark adds a custom variables pane. jet.nvim has a mechanism for this:
+
+* Each kernel owns some 'windows', any of which may or may not be displayed at
+  a given time. The default number of windows owned by a kernel is 2, but you
+  can add more. 
+
+  * By default the first window opens as a right split
+  * By default the second window opens as a split above the first window if the
+    first window exists; otherwise it opens as a right split.
+
+* Each kernel also owns some buffers, each of which is associated with a.
+  Multiple buffers may be associated with the same window. If you open a kernel
+  buffer, the buffer will replace any other buffer the associated window.
+

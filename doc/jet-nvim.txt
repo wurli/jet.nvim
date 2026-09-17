@@ -577,8 +577,6 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
                              connection to the kernel.
         • {lsp}              (`jet.Lsp`) Information about the kernel's Jet
                              LSP process.
-        • {term}             (`jet.Kernel.Term?`) Repl buffer data
-        • {img}              (`jet.Kernel.Img?`) Image buffer data
         • {owned}            (`boolean`) `true` if the kernel session was
                              started by this nvim session; `false` otherwise.
         • {filetype}         (`string?`) The kernel's filetype. jet.nvim will
@@ -611,8 +609,14 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
                              will try to use this field to select a single
                              kernel. Typically you would set the priority
                              using the kernel's init hook (see |jet.Hooks|).
-        • {subclass}         (`string?`) For use by extensions which may want
-                             to extend the `Kernel` class
+        • {wins}             (`jet.Kernel.Windows`) Windows used to show
+                             kernel UI. Kernels use 2 windows by default (one
+                             for the repl, one for all other stuff). This
+                             field is extensible!
+        • {bufs}             (`jet.Kernel.Buffers`) Buffers used to show
+                             kernel UI. By default includes the repl and a
+                             plots buffer.
+        • {subclass}         (`string?`)
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
@@ -927,5 +931,22 @@ tree-sitter node: >lua
     local jet = require("jet")
     jet.filetype.python = { get_expr = get_python_expr }
 <
+
+CUSTOM UI COMPONENTS                                  *jet-custom-ui-components*
+
+Extensions may want to add custom UI for a particular kernel. For example,
+jet.ark adds a custom variables pane. jet.nvim has a mechanism for this:
+
+• Each kernel owns some 'windows', any of which may or may not be displayed at
+  a given time. The default number of windows owned by a kernel is 2, but you
+  can add more.
+
+  • By default the first window opens as a right split
+  • By default the second window opens as a split above the first window if
+    the first window exists; otherwise it opens as a right split.
+• Each kernel also owns some buffers, each of which is associated with a.
+  Multiple buffers may be associated with the same window. If you open a
+  kernel buffer, the buffer will replace any other buffer the associated
+  window.
 
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

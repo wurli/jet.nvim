@@ -212,15 +212,18 @@ Img:display({which})                                   *jet-types-Img:display()*
     Parameters: ~
         • {which}     (`(string|integer)?`)
 
+------------------------------------------------------------------------------
+Buffer/window abstractions                 *jet-types-bufferwindow-abstractions*
+
 *jet.Buf*
 
     Fields: ~
-        • {buf}        (`integer`)
-        • {name}       (`string`)
-        • {augroup}    (`integer`)
-        • {ns}         (`integer`)
-        • {kernel}     (`jet.Kernel`)
-        • {open_opts}  (`(vim.api.keyset.win_config|fun() -> vim.api.keyset.win_config)`)
+        • {buf}       (`integer`)
+        • {win_name}  (`string`)
+        • {name}      (`string`)
+        • {augroup}   (`integer`)
+        • {ns}        (`integer`)
+        • {kernel}    (`jet.Kernel`)
 
 Buf.init({class}, {opts})                                 *jet-types-Buf.init()*
 
@@ -228,26 +231,25 @@ Buf.init({class}, {opts})                                 *jet-types-Buf.init()*
         • {class}     (`T?`)
         • {opts}      (`jet.Buf.init.Opts`)
                       • name (`string`)
+                      • win_name (`(string|keyof jet.Kernel.Windows)`)
                       • ns (`integer`)
                       • kernel (`jet.Kernel`)
-                      • open_opts
-                        (`(vim.api.keyset.win_config|fun() -> vim.api.keyset.win_config)`)
 
     Return: ~
         (`T`)
 
 Buf:win()                                                  *jet-types-Buf:win()*
 
-    Get a window displaying the buffer, if there is one
+    Get the kernel window associated with the buffer
 
     Return: ~
-        (`integer?`)
+        (`jet.Win`)
 
-Buf:open({focus}, {opts})                                 *jet-types-Buf:open()*
+Buf:open({opts}, {focus})                                 *jet-types-Buf:open()*
 
     Parameters: ~
-        • {focus}     (`boolean?`)
         • {opts}      (`vim.api.keyset.win_config?`)
+        • {focus}     (`boolean?`)
 
     Return: ~
         (`integer`) The opened window
@@ -261,5 +263,81 @@ Buf:create_autocmd({event}, {callback})         *jet-types-Buf:create_autocmd()*
     Parameters: ~
         • {event}     (`(vim.api.keyset.events|vim.api.keyset.events[])`)
         • {callback}  (`(string|fun(args: vim.api.keyset.create_autocmd.callback_args) -> boolean?)`)
+
+*jet.Win*
+
+    Fields: ~
+        • {ns}         (`integer`)
+        • {focus}      (`boolean`) If `true` then `Win:open()` will focus an
+                       already open window, otherwise it's a no-op.
+        • {kernel}     (`jet.Kernel`)
+        • {open_opts}  (`(vim.api.keyset.win_config|fun(k: jet.Kernel) -> vim.api.keyset.win_config)?`)
+        • {__index}    (`jet.Win`)
+
+Win.init({opts})                                          *jet-types-Win.init()*
+
+    Parameters: ~
+        • {opts}      (`jet.Win.init.Opts`)
+                      • open_opts (`jet.Win["open_opts"]`)
+                      • ns (`jet.Win["ns"]`)
+                      • kernel (`jet.Win["kernel"]`)
+                      • focus (`jet.Win["focus"]`)
+
+    Return: ~
+        (`jet.Win`)
+
+Win:name()                                                *jet-types-Win:name()*
+
+    Return: ~
+        (`string`)
+
+Win:open({buf}, {opts}, {focus})                          *jet-types-Win:open()*
+
+    Opens with the following algorithm
+
+    • If the window is not open, opens with `buf`
+    • If the window is open with `buf`, focus the window (if `Win.focus`)
+    • Otherwise, if the window is open with another buffer:
+      • Does the buffer have `vim.b.jet` set? If so, show `buf` in the window
+      • Otherwise, open a fresh window, resetting `self.win`.
+
+    Parameters: ~
+        • {buf}       (`(integer|jet.Buf)`)
+        • {opts}      (`vim.api.keyset.win_config?`)
+        • {focus}     (`boolean?`)
+
+    Return: ~
+        (`integer`)
+
+Win:close({buf})                                         *jet-types-Win:close()*
+
+    Parameters: ~
+        • {buf}       (`(jet.Buf|integer)?`)
+
+Win:toggle({buf})                                       *jet-types-Win:toggle()*
+
+    Parameters: ~
+        • {buf}       (`(integer|jet.Buf)`)
+
+Win:get_curr_jet_buf({buf})                   *jet-types-Win:get_curr_jet_buf()*
+
+    Parameters: ~
+        • {buf}       (`(integer|jet.Buf)?`)
+
+    Return: ~
+        (`integer?`)
+
+Win:winnr({buf})                                         *jet-types-Win:winnr()*
+
+    Parameters: ~
+        • {buf}       (`(integer|jet.Buf)?`)
+
+    Return: ~
+        (`integer?`)
+
+Win:get_buf()                                          *jet-types-Win:get_buf()*
+
+    Return: ~
+        (`integer?`)
 
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:
