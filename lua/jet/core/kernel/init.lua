@@ -11,7 +11,11 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---@alias jet.Kernel.PartialSpec { display_name: string, language: string }
 ---@alias jet.Kernel.execution_state "busy" | "idle" | "starting"
 
----@class jet.Kernel.Buffers
+---Buffers used by the kernel
+---
+---Can be extended to implement custom UI.
+---
+---@class (partial) jet.Kernel.Buffers
 ---@field term? jet.Kernel.Term
 ---@field img? jet.Kernel.Img
 
@@ -20,7 +24,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---Note, you can extend this to add additional windows, or modify the default
 ---windows directly.
 ---
----@class jet.Kernel.Windows
+---@class (partial) jet.Kernel.Windows
 ---@field primary jet.Win
 ---@field secondary jet.Win
 
@@ -179,6 +183,7 @@ function Kernel.init_external(opts)
 	return out
 end
 
+---@private
 function Kernel:initialise_wins()
 	self.wins = {
 		primary = win.init({
@@ -201,7 +206,6 @@ function Kernel:initialise_wins()
 			focus = true,
 			---@param kernel jet.Kernel
 			open_opts = function(kernel)
-				print("---------------------------")
 				local primary_win = kernel.wins.primary:winnr()
 				return {
 					split = primary_win and "above" or "right",
@@ -945,7 +949,7 @@ end
 ---@param code string | string[] Code to be sent
 ---@param tabstop? integer Optional; number of spaces to use for tab characters
 function Kernel:send_repl(code, tabstop)
-	self:term_open(function(t) t:send(code, tabstop) end)
+	self:term_open(function(t) t:send(code, tabstop) end, false)
 end
 
 ---Send code to the kernel via the Lua client

@@ -49,10 +49,14 @@ end
 ---@param focus? boolean
 ---@return integer
 function Win:open(buf, opts, focus)
+	if focus == nil then
+		focus = self.focus
+	end
+
 	local curr_jet_buf = self:get_curr_jet_buf()
 
 	if curr_jet_buf == buf then
-		if focus or self.focus then
+		if focus then
 			vim.api.nvim_set_current_win(self.win)
 			if vim.bo[buf].buftype == "terminal" then
 				vim.cmd.startinsert()
