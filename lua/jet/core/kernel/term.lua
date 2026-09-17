@@ -20,7 +20,7 @@ function Term.init(opts)
 		name = opts.kernel:friendly_name(),
 		ns = opts.ns,
 		kernel = opts.kernel,
-		win_name = "Primary",
+		win_name = "primary",
 	})
 
 	out.kernel = opts.kernel

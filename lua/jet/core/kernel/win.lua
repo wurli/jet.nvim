@@ -33,7 +33,7 @@ function Win:name()
 			return name
 		end
 	end
-	error("Could not determine the window layout position")
+	error("Could not determine the window name")
 end
 
 ---Opens with the following algorithm
@@ -123,8 +123,8 @@ function Win:get_curr_jet_buf(buf)
 	if buf and to_bufnr(buf) ~= curr_buf then
 		return nil
 	end
-	for _, kernel_buf in pairs(self.kernel.bufs) do
-		if kernel_buf.buf == curr_buf and kernel_buf.win_name == self.name then
+	for _, k_buf in pairs(self.kernel.bufs) do
+		if k_buf.buf == curr_buf and k_buf.win_name == self:name() then
 			return curr_buf
 		end
 	end

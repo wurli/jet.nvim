@@ -104,37 +104,6 @@ Kernel.__index = Kernel ---@private
 local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
 vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
 
----@param k jet.Kernel
-local init_wins = function(k)
-	k.wins.primary = win.init({
-		ns = jet_hl_ns,
-		kernel = k,
-		focus = true,
-		---@param kernel jet.Kernel
-		open_opts = function(kernel)
-			local secondary_win = kernel.wins.secondary:winnr()
-			return {
-				split = secondary_win and "below" or "right",
-				win = secondary_win or -1,
-			}
-		end,
-	})
-
-	k.wins.secondary = win.init({
-		ns = jet_hl_ns,
-		kernel = k,
-		focus = true,
-		---@param kernel jet.Kernel
-		open_opts = function(kernel)
-			local primary_win = kernel.wins.primary:winnr()
-			return {
-				split = primary_win and "above" or "right",
-				win = primary_win or -1,
-			}
-		end,
-	})
-end
-
 ---@return Partial<jet.Kernel>
 local init_defaults = function()
 	return {
@@ -148,7 +117,7 @@ local init_defaults = function()
 		on_started = {},
 		priority = 100,
 		hooks = hooks.init_hooks(),
-		buf = {},
+		bufs = {},
 	}
 end
 
@@ -169,7 +138,7 @@ function Kernel.init_owned(opts)
 	local base = vim.tbl_extend("keep", opts, init_defaults(), { owned = true })
 	local out = setmetatable(base, Kernel)
 
-	out.wins = init_wins(out)
+	out:initialise_wins()
 	out:try_resolve_filetype()
 	out:do_kernel_init()
 
@@ -200,7 +169,7 @@ function Kernel.init_external(opts)
 		Kernel
 	)
 
-	out.wins = init_wins(out)
+	out:initialise_wins()
 
 	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
@@ -209,6 +178,40 @@ function Kernel.init_external(opts)
 
 	return out
 end
+
+function Kernel:initialise_wins()
+	self.wins = {
+		primary = win.init({
+			ns = jet_hl_ns,
+			kernel = self,
+			focus = true,
+			---@param kernel jet.Kernel
+			open_opts = function(kernel)
+				local secondary_win = kernel.wins.secondary:winnr()
+				return {
+					split = secondary_win and "below" or "right",
+					win = secondary_win or -1,
+				}
+			end,
+		}),
+
+		secondary = win.init({
+			ns = jet_hl_ns,
+			kernel = self,
+			focus = true,
+			---@param kernel jet.Kernel
+			open_opts = function(kernel)
+				print("---------------------------")
+				local primary_win = kernel.wins.primary:winnr()
+				return {
+					split = primary_win and "above" or "right",
+					win = primary_win or -1,
+				}
+			end,
+		}),
+	}
+end
+
 
 -- stylua: ignore start
 Kernel.do_execution_state_changed = hooks.do_execution_state_changed ---@private
