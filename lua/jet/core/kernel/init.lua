@@ -221,7 +221,8 @@ Kernel.do_message_received        = hooks.do_message_received        ---@private
 Kernel.do_send_pre                = hooks.do_send_pre                ---@private
 Kernel.do_status_changed          = hooks.do_status_changed          ---@private
 Kernel.do_image_display_pre       = hooks.do_image_display_pre       ---@private
-Kernel.do_currentness_changed     = hooks.do_currentness_changed  ---@private
+Kernel.do_currentness_changed     = hooks.do_currentness_changed     ---@private
+Kernel.do_win_open                = hooks.do_win_open                ---@private
 -- stylua: ignore end
 
 ---Toggle the terminal window for the kernel.

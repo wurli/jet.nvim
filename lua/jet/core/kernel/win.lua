@@ -71,6 +71,7 @@ function Win:open(buf, opts, focus)
 		vim.api.nvim_win_set_buf(self.win, bufnr)
 	else
 		self.win = vim.api.nvim_open_win(bufnr, false, opts or self:make_open_opts())
+		require("jet.core.hooks").do_win_open(self.kernel, self, buf)
 	end
 
 	vim.api.nvim_win_set_hl_ns(self.win, self.ns)

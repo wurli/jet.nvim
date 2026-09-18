@@ -61,6 +61,10 @@ M.init_hooks = function()
 		---its filetype.
 		---@type table<any, fun(k: jet.Kernel, current: boolean)>
 		on_currentness_changed = {},
+
+		---After a window is opened
+		---@type table<any, fun(k: jet.Kernel, win: jet.Win, buf: jet.Buf | integer)>
+		on_win_open = {},
 	}
 
 	return hooks
@@ -110,6 +114,7 @@ M.do_send_pre                = make_caller(h.on_send_pre)
 M.do_status_changed          = make_caller(h.on_status_changed)
 M.do_image_display_pre       = make_caller(h.on_image_display_pre)
 M.do_currentness_changed     = make_caller(h.on_currentness_changed)
+M.do_win_open                = make_caller(h.on_win_open)
 -- stylua: ignore end
 
 return M
