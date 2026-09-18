@@ -52,7 +52,7 @@ function Line:resolve()
 	---@return vim.api.keyset.set_extmark[]
 	local to_extmarks = function(x)
 		x = type(x) == "table" and vim.isarray(x) and x or { x } ---@type string[] | vim.api.keyset.set_extmark[]
-		return vim.tbl_map(function(xi) return type(xi) == "string" and { hl_group = xi } or xi end, x)
+		return vim.tbl_map(function(xi) return type(xi) == "string" and { hl_group = xi } or xi end, x) --[[@as vim.api.keyset.set_extmark[] ]]
 	end
 
 	for _, part in ipairs(self.parts) do
