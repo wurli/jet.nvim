@@ -83,7 +83,7 @@ function Img:display(which)
 		return
 	end
 
-	if not self:win():get_curr_jet_buf(self) then
+	if not self:win():get_curr_jet_buf(self.buf) then
 		return
 	end
 

@@ -63,7 +63,7 @@ M.init_hooks = function()
 		on_currentness_changed = {},
 
 		---After a window is opened
-		---@type table<any, fun(k: jet.Kernel, win: jet.Win, buf: jet.Buf | integer)>
+		---@type table<any, fun(k: jet.Kernel, win: jet.Win, buf: integer)>
 		on_win_open = {},
 	}
 

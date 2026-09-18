@@ -53,7 +53,7 @@ end
 ---@return integer # The opened window
 function Buf:open(opts, focus) return self:win():open(self.buf, opts, focus) end
 
-function Buf:toggle() self:win():toggle(self) end
+function Buf:toggle() self:win():toggle(self.buf) end
 
 function Buf:delete()
 	vim.schedule(function()

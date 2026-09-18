@@ -44,7 +44,7 @@ end
 ---  * Does the buffer have `vim.b.jet` set? If so, show `buf` in the window
 ---  * Otherwise, open a fresh window, resetting `self.win`.
 ---
----@param buf integer | jet.Buf
+---@param buf integer
 ---@param opts vim.api.keyset.win_config?
 ---@param focus? boolean
 ---@return integer
@@ -105,14 +105,14 @@ function Win:make_open_opts()
 	end
 end
 
----@param buf? jet.Buf | integer
+---@param buf? integer
 function Win:close(buf)
 	if self:get_curr_jet_buf(buf) and vim.api.nvim_win_is_valid(self.win) then
 		vim.api.nvim_win_close(self.win, true)
 	end
 end
 
----@param buf integer | jet.Buf
+---@param buf integer
 function Win:toggle(buf)
 	if self:get_curr_jet_buf(buf) then
 		self:close(buf)
@@ -121,11 +121,14 @@ function Win:toggle(buf)
 	end
 end
 
----@param buf? integer | jet.Buf
+---@param buf? integer
 ---@return integer?
 function Win:get_curr_jet_buf(buf)
 	local curr_buf = self:get_buf()
-	if buf and to_bufnr(buf) ~= curr_buf then
+	if not curr_buf then
+		return nil
+	end
+	if buf and buf ~= curr_buf then
 		return nil
 	end
 	for _, k_buf in pairs(self.kernel.bufs) do
@@ -135,7 +138,7 @@ function Win:get_curr_jet_buf(buf)
 	end
 end
 
----@param buf? integer | jet.Buf
+---@param buf? integer
 function Win:winnr(buf)
 	if self:get_curr_jet_buf(buf) then
 		return self.win
