@@ -254,7 +254,7 @@ def _render_tags(tags: list[Tag] | None) -> list[str]:
     return [line for block in tag_blocks for line in block]
 
 
-def _render_fn(doc: Doc, x: Fn, parent=None):
+def _render_fn(doc: Doc, x: Fn, parent=None, always_inline: list[str] | None = None):
     sep = ":" if x.is_meth else "."
     name = x.name if parent is None else f"{parent}{sep}{x.name}"
     params = ", ".join([f"{{{param.name}}}" for param in x.params])
@@ -271,7 +271,7 @@ def _render_fn(doc: Doc, x: Fn, parent=None):
             f"{{{param.name}}}",
             f": (`{param.typ or 'any'}`)",
             *([] if param.desc is None else [param.desc]),
-            *_render_opts_fields(doc, param.typ),
+            *_inline_type(doc, param.typ, always_inline),
             "",
         ]
         for param in x.params
@@ -303,11 +303,15 @@ def _render_fn(doc: Doc, x: Fn, parent=None):
     )
 
 
-def _render_opts_fields(doc: Doc, which: str | None, indent=2) -> list[str]:
+def _inline_type(
+    doc: Doc, which: str | None, force: list[str] | None = None, indent=2
+) -> list[str]:
     if which is not None and which.endswith("?"):
         which = which[0:-1]
 
-    if which is None or not which.endswith("Opts") or indent > 8:
+    force = force or []
+
+    if which is None or indent > 8 or not (which in force or which.endswith("Opts")):
         return []
 
     x = _get_type(doc, which)
@@ -321,7 +325,7 @@ def _render_opts_fields(doc: Doc, which: str | None, indent=2) -> list[str]:
             return [
                 f"{ind}* {item.name} (`{item.typ}`)"
                 + ("" if item.description is None else f": {item.description}"),
-                *_render_opts_fields(doc, item.typ, indent + 2),
+                *_inline_type(doc, item.typ, force, indent + 2),
             ]
         elif type(item) is Fn:
             return [f"{ind}* {item.name} (function): {item.description}"]
@@ -329,10 +333,10 @@ def _render_opts_fields(doc: Doc, which: str | None, indent=2) -> list[str]:
             raise ValueError("Value is not a Field or Fn")
 
     fields = [line for f in x.members for line in render_one(f)]
-    return ["", *fields]
+    return [f"{ind}Fields:", *fields]
 
 
-def _render_class(x: Class | Module, doc: Doc):
+def _render_class(x: Class | Module, doc: Doc, always_inline: list[str] | None = None):
     fields = [
         [
             f"{{{field.name}}}",
@@ -342,7 +346,7 @@ def _render_class(x: Class | Module, doc: Doc):
                 if field.description is None or field.description == ""
                 else ["  " + line for line in field.description.split("\n")] + [""]
             ),
-            *_render_opts_fields(doc, field.typ),
+            *_inline_type(doc, field.typ, always_inline),
             "",
         ]
         for field in x.members
@@ -387,6 +391,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--type", help="Type to render", required=False)
     parser.add_argument("--mod", help="Module to render", required=False)
+    parser.add_argument("--inline", help="Elements to expand 'inline'", required=False)
     args = parser.parse_args()
 
     with open("emmylua_doc_cli/doc.json") as f:
@@ -394,16 +399,21 @@ def main() -> int:
 
     doc = parse(raw)
 
+    inline = args.inline
+
+    if args.inline is not None:
+        inline = inline.split(",")
+
     if args.type:
         emmylua_type = _get_type(doc, args.type)
         if emmylua_type is not None:
-            print("\n".join(_render_class(emmylua_type, doc)))
+            print("\n".join(_render_class(emmylua_type, doc, inline)))
             return 0
 
     if args.mod:
         emmylua_mod = _get_mod(doc, args.mod)
         if emmylua_mod is not None:
-            print("\n".join(_render_class(emmylua_mod, doc)))
+            print("\n".join(_render_class(emmylua_mod, doc, inline)))
             return 0
 
     print("No emmylua docs found")

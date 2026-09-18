@@ -438,7 +438,7 @@ THE API MODULE                                                     *jet-jet.api*
 api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 
     Parameters: ~
-        • {opts}        (`jet.send.next_expr_boundary.Opts?`)
+        • {opts}        (`jet.send.next_expr_boundary.Opts?`) Fields:
                         • direction (`(1|-1)?`)
                         • boundary (`("start"|"end"|"any")?`)
                         • current_ok (`boolean?`)
@@ -613,9 +613,15 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
                              kernel UI. Kernels use 2 windows by default (one
                              for the repl, one for all other stuff). This
                              field is extensible!
+                             Fields:
+                             • primary (`jet.Win`)
+                             • secondary (`jet.Win`)
         • {bufs}             (`jet.Kernel.Buffers`) Buffers used to show
                              kernel UI. By default includes the repl and a
                              plots buffer.
+                             Fields:
+                             • term (`jet.Kernel.Term?`)
+                             • img (`jet.Kernel.Img?`)
         • {subclass}         (`string?`)
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
@@ -624,7 +630,7 @@ Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
     process.
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_owned.Opts`)
+        • {opts}        (`jet.kernel.init_owned.Opts`) Fields:
                         • spec_path (`string`)
                         • session_name (`string?`)
                         • spec
@@ -640,7 +646,7 @@ Kernel.init_external({opts})                        *jet-Kernel.init_external()*
     session
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_external.Opts`)
+        • {opts}        (`jet.kernel.init_external.Opts`) Fields:
                         • session_id (`string`)
                         • priority (`integer?`)
 
@@ -777,7 +783,7 @@ Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
     Parameters: ~
         • {name}        (`string`)
         • {data}        (`table?`)
-        • {opts}        (`jet.kernel.comm_open.Opts?`)
+        • {opts}        (`jet.kernel.comm_open.Opts?`) Fields:
                         • listener (`(fun(res: jupyter.Msg))?`)
                         • listener_interval (`integer?`): In milliseconds,
                           default 50ms

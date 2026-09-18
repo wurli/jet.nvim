@@ -322,7 +322,7 @@ python3 scripts/emmylua-to-md.py --type jet.api.Filters
 ### The Kernel Class
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Kernel
+python3 scripts/emmylua-to-md.py --type jet.Kernel --inline jet.Kernel.Buffers,jet.Kernel.Windows
 ```
 
 ### Highlights

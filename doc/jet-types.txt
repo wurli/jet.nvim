@@ -126,7 +126,7 @@ Range:code({opts})                                      *jet-types-Range:code()*
     Also returns the local filetype at the range start.
 
     Parameters: ~
-        • {opts}      (`jet.send.range_code.Opts?`)
+        • {opts}      (`jet.send.range_code.Opts?`) Fields:
                       • comments (`boolean?`): Set to `true` to include
                         comments in the returned code.
 
@@ -161,7 +161,7 @@ Repl and image buffers                        *jet-types-repl-and-image-buffers*
 Term.init({opts})                                        *jet-types-Term.init()*
 
     Parameters: ~
-        • {opts}      (`jet.Kernel.Term.init.Opts`)
+        • {opts}      (`jet.Kernel.Term.init.Opts`) Fields:
                       • kernel (`jet.Kernel`)
                       • ns (`integer`)
 
@@ -185,7 +185,7 @@ Term:send({code}, {tabstop})                             *jet-types-Term:send()*
 Img.init({opts})                                          *jet-types-Img.init()*
 
     Parameters: ~
-        • {opts}      (`jet.Kernel.Img.init.Opts`)
+        • {opts}      (`jet.Kernel.Img.init.Opts`) Fields:
                       • kernel (`jet.Kernel`)
                       • ns (`integer`)
 
@@ -229,7 +229,7 @@ Buf.init({class}, {opts})                                 *jet-types-Buf.init()*
 
     Parameters: ~
         • {class}     (`T?`)
-        • {opts}      (`jet.Buf.init.Opts`)
+        • {opts}      (`jet.Buf.init.Opts`) Fields:
                       • name (`string`)
                       • win_name (`(string|keyof jet.Kernel.Windows)`)
                       • ns (`integer`)
@@ -277,7 +277,7 @@ Buf:create_autocmd({event}, {callback})         *jet-types-Buf:create_autocmd()*
 Win.init({opts})                                          *jet-types-Win.init()*
 
     Parameters: ~
-        • {opts}      (`jet.Win.init.Opts`)
+        • {opts}      (`jet.Win.init.Opts`) Fields:
                       • open_opts (`jet.Win["open_opts"]`)
                       • ns (`jet.Win["ns"]`)
                       • kernel (`jet.Win["kernel"]`)

@@ -48,7 +48,7 @@ hooks.on_message_received.notify = function(k, msg)
 
 		local code = input and input.code
 		local text = result and result.data and result.data["text/plain"]
-		local term_is_open = k.term and k.term:win()
+		local term_is_open = k.buf.term and k.buf.term:win()
 
 		if code and text and not term_is_open then
 			vim.notify(string.format("Ran `%s`:\nResult: %s", code, text))
