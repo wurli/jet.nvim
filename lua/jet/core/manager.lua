@@ -97,7 +97,7 @@ Manager.filter_kernels = function(kernels, filters)
 			return false
 		end
 
-		if filters.spec_path and k.spec_path ~= filters.spec_path then
+		if filters.spec_path and utils.path_normalise(k.spec_path) ~= utils.path_normalise(filters.spec_path) then
 			return false
 		end
 

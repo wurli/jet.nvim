@@ -438,10 +438,9 @@ Architecture differences aside, a high-level feature comparison is as follows:
 ## FAQ
 
 <details>
-<summary>Was jet.nvim vibe coded?</summary>
+<summary>Is jet.nvim vibe coded?</summary>
 
-> No. I did use AI quite a bit to develop Jet proper, i.e. the Rust backend. I
-> wrote this README with a keyboard using my own two mucky paws.
+> No. Some AI was used to develop Jet proper, jet.nvim's Rust backend.
 
 </details>
 

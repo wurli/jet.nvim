@@ -162,6 +162,8 @@ The full set of configuration options is as follows:
                                         After a kernel becomes or stops
                                         becoming the 'current' kernel for its
                                         filetype.
+        • {on_win_open}                 (`table<any,fun(k: jet.Kernel, win: jet.Win, buf: integer)>`)
+                                        After a window is opened
 
 ------------------------------------------------------------------------------
 Extensions                                                      *jet-extensions*
@@ -438,7 +440,7 @@ THE API MODULE                                                     *jet-jet.api*
 api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 
     Parameters: ~
-        • {opts}        (`jet.send.next_expr_boundary.Opts?`)
+        • {opts}        (`jet.send.next_expr_boundary.Opts?`) Fields:
                         • direction (`(1|-1)?`)
                         • boundary (`("start"|"end"|"any")?`)
                         • current_ok (`boolean?`)
@@ -577,8 +579,6 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
                              connection to the kernel.
         • {lsp}              (`jet.Lsp`) Information about the kernel's Jet
                              LSP process.
-        • {term}             (`jet.Kernel.Term?`) Repl buffer data
-        • {img}              (`jet.Kernel.Img?`) Image buffer data
         • {owned}            (`boolean`) `true` if the kernel session was
                              started by this nvim session; `false` otherwise.
         • {filetype}         (`string?`) The kernel's filetype. jet.nvim will
@@ -607,12 +607,24 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
         • {hooks}            (`jet.Hooks`) Kernel-specific hooks. Basically
                              for convenience on top of the 'global' hooks you
                              can set in |jet.Config|
-        • {metadata}         (`table<string,any>`) Arbitrary extra data,
-                             e.g. for use by extensions
         • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
                              will try to use this field to select a single
                              kernel. Typically you would set the priority
                              using the kernel's init hook (see |jet.Hooks|).
+        • {wins}             (`jet.Kernel.Windows`) Windows used to show
+                             kernel UI. Kernels use 2 windows by default (one
+                             for the repl, one for all other stuff). This
+                             field is extensible!
+                             Fields:
+                             • primary (`jet.Win`)
+                             • secondary (`jet.Win`)
+        • {bufs}             (`jet.Kernel.Buffers`) Buffers used to show
+                             kernel UI. By default includes the repl and a
+                             plots buffer.
+                             Fields:
+                             • term (`jet.Kernel.Term?`)
+                             • img (`jet.Kernel.Img?`)
+        • {subclass}         (`string?`)
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
@@ -620,7 +632,7 @@ Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
     process.
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_owned.Opts`)
+        • {opts}        (`jet.kernel.init_owned.Opts`) Fields:
                         • spec_path (`string`)
                         • session_name (`string?`)
                         • spec
@@ -636,7 +648,7 @@ Kernel.init_external({opts})                        *jet-Kernel.init_external()*
     session
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_external.Opts`)
+        • {opts}        (`jet.kernel.init_external.Opts`) Fields:
                         • session_id (`string`)
                         • priority (`integer?`)
 
@@ -748,6 +760,18 @@ Kernel:stop({callback})                                      *jet-Kernel:stop()*
     See: ~
         • |Kernel:close()|
 
+Kernel:get_comm({name}, {pattern})                       *jet-Kernel:get_comm()*
+
+    Convenience; find a comm id (from `Kernel.open_comms`) using the comm name
+
+    Parameters: ~
+        • {name}        (`string`)
+        • {pattern}     (`boolean?`)
+
+    Return: ~
+        (`string?`)
+        (`table?`)
+
 Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
 
     Open a comm channel to the kernel
@@ -761,7 +785,7 @@ Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
     Parameters: ~
         • {name}        (`string`)
         • {data}        (`table?`)
-        • {opts}        (`jet.kernel.comm_open.Opts?`)
+        • {opts}        (`jet.kernel.comm_open.Opts?`) Fields:
                         • listener (`(fun(res: jupyter.Msg))?`)
                         • listener_interval (`integer?`): In milliseconds,
                           default 50ms
@@ -850,7 +874,7 @@ jet.nvim uses the following highlight groups, which can be overridden:
         • {JetIdle}      (`{ link = "DiagnosticOk" }`)
         • {JetItalic}    (`{ italic = true }`)
         • {JetLabel}     (`{ link = "@label" }`)
-        • {JetRepl}      (`{ link = "NormalFloat" }`)
+        • {JetNormal}    (`{ link = "NormalFloat" }`)
         • {JetSpecial}   (`{ link = "@punctuation.special" }`)
         • {JetSuccess}   (`{ link = "DiagnosticOk" }`)
         • {JetUrl}       (`{ link = "@markup.link" }`)
@@ -914,6 +938,47 @@ tree-sitter node: >lua
 
     local jet = require("jet")
     jet.filetype.python = { get_expr = get_python_expr }
+<
+
+CUSTOM UI COMPONENTS                                  *jet-custom-ui-components*
+
+Extensions may want to add custom UI for a particular kernel. `Kernel` objects
+manage UI via two fields:
+
+• `Kernel.wins`: a table with the following fields:
+  • `wins.primary` (|jet.Win|)
+  • `wins.secondary` (|jet.Win|)
+• `Kernel.bufs` a table with the following fields
+  • `bufs.term`: (|jet.Kernel.Term|, inherits from |jet.Buf|) targets the
+    `primary` window
+  • `bufs.img`: (|jet.Kernel.Img|, inherits from |jet.Buf|) targets the
+    `secondary` window
+
+You can add more fields to `Kernel.wins` or `Kernel.bufs` to define custom UI,
+or modify existing fields to control behaviour. For example, to open the
+secondary window in a float: >lua
+    local hooks = require("jet").hooks
+
+    -- Patch the secondary window's `open_opts` to open a float
+    ---@param k jet.Kernel
+    table.insert(hooks.on_kernel_init, function(k)
+        ---@type vim.api.keyset.win_config
+        k.wins.secondary.open_opts = {
+            relative = "editor",
+            col = math.floor(vim.o.columns * 0.1),
+            width = math.floor(vim.o.columns * 0.8),
+            row = math.floor(vim.o.lines * 0.1),
+            height = math.floor(vim.o.lines * 0.8),
+        }
+    end)
+
+    -- Focus the window when it opens and add a keymap to close
+    table.insert(k.hooks.on_win_open, function(_, win, buf)
+        if win:name() == "secondary" then
+            vim.keymap.set("n", "q", "<cmd>q<cr>", { buf = buf })
+            vim.api.nvim_set_current_win(assert(win:winnr()))
+        end
+    end)
 <
 
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

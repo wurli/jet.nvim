@@ -26,6 +26,12 @@ python3 scripts/emmylua-to-md.py --type jet.Kernel.Term
 python3 scripts/emmylua-to-md.py --type jet.Kernel.Img
 ```
 
+## Buffer/window abstractions
+
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --type jet.Buf
+```
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --type jet.Win
 ```

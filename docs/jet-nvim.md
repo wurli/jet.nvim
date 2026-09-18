@@ -322,7 +322,7 @@ python3 scripts/emmylua-to-md.py --type jet.api.Filters
 ### The Kernel Class
 
 ```{.sh include=true}
-python3 scripts/emmylua-to-md.py --type jet.Kernel
+python3 scripts/emmylua-to-md.py --type jet.Kernel --inline jet.Kernel.Buffers,jet.Kernel.Windows
 ```
 
 ### Highlights
@@ -392,3 +392,48 @@ end
 local jet = require("jet")
 jet.filetype.python = { get_expr = get_python_expr }
 ```
+
+### Custom UI components
+
+Extensions may want to add custom UI for a particular kernel. `Kernel` objects
+manage UI via two fields:
+
+* `Kernel.wins`: a table with the following fields:
+  * `wins.primary` (|jet.Win|)
+  * `wins.secondary` (|jet.Win|)
+
+* `Kernel.bufs` a table with the following fields
+  * `bufs.term`: (|jet.Kernel.Term|, inherits from |jet.Buf|) targets the
+    `primary` window
+  * `bufs.img`: (|jet.Kernel.Img|, inherits from |jet.Buf|) targets the
+    `secondary` window
+
+You can add more fields to `Kernel.wins` or `Kernel.bufs` to define custom UI,
+or modify existing fields to control behaviour. For example, to open the
+secondary window in a float:
+
+``` lua
+local hooks = require("jet").hooks
+
+-- Patch the secondary window's `open_opts` to open a float
+---@param k jet.Kernel
+table.insert(hooks.on_kernel_init, function(k)
+	---@type vim.api.keyset.win_config
+	k.wins.secondary.open_opts = {
+		relative = "editor",
+		col = math.floor(vim.o.columns * 0.1),
+		width = math.floor(vim.o.columns * 0.8),
+		row = math.floor(vim.o.lines * 0.1),
+		height = math.floor(vim.o.lines * 0.8),
+	}
+end)
+
+-- Focus the window when it opens and add a keymap to close
+table.insert(k.hooks.on_win_open, function(_, win, buf)
+	if win:name() == "secondary" then
+		vim.keymap.set("n", "q", "<cmd>q<cr>", { buf = buf })
+		vim.api.nvim_set_current_win(assert(win:winnr()))
+	end
+end)
+```
+

@@ -2,7 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/EmmyLuaLs/emmylua-analyzer-rust/refs/heads/main/crates/emmylua_code_analysis/resources/schema.json",
   "diagnostics": {
     "disable": [
-      "unnecessary-if"
+      "unnecessary-if",
+      "unnecessary-assert"
     ]
   },
   "runtime": {
@@ -15,20 +16,20 @@
   "workspace": {
     "ignoreDir": [
       "deps",
-	  ".venv"
+      ".venv"
     ],
     "ignoreGlobs": [
       "*.log"
     ],
     "library": [
-      "$VIMRUNTIME",
+      "$VIMRUNTIME/lua",
       "./deps",
       "$HOME/.local/share/nvim/lazy/image.nvim/",
       "$HOME/.local/share/nvim/lazy/snacks.nvim/",
       "$HOME/.local/share/nvim/lazy/lualine.nvim/"
     ],
-	"workspaceRoots": [
-		"./lua"
-	]
+    "workspaceRoots": [
+      "./lua"
+    ]
   }
 }

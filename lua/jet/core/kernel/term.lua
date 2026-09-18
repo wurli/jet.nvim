@@ -9,7 +9,6 @@ Term.__index = Term ---@private
 
 ---@class jet.Kernel.Term.init.Opts
 ---@field kernel jet.Kernel
----@field ns integer
 
 ---@param opts jet.Kernel.Term.init.Opts
 ---@return jet.Kernel.Term
@@ -18,16 +17,8 @@ function Term.init(opts)
 
 	local out = buf.init(Term, {
 		name = opts.kernel:friendly_name(),
-		ns = opts.ns,
 		kernel = opts.kernel,
-		open_opts = function()
-			local img_win = opts.kernel.img and opts.kernel.img:win()
-			return {
-				split = img_win and "below" or "right",
-				win = img_win or -1,
-				style = "minimal",
-			}
-		end,
+		win_name = "primary",
 	})
 
 	out.kernel = opts.kernel
@@ -68,7 +59,7 @@ end
 function Term:send(code, tabstop)
 	tabstop = tabstop or vim.bo.tabstop or 4
 	if type(code) == "string" then
-		code = vim.split(code, "[\n\r]", { plain = false })
+		code = vim.split(code, "[\n\r]", { plain = false }) --[[@as string[] ]]
 	end
 
 	-- Remove trailing empty lines

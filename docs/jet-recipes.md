@@ -48,7 +48,7 @@ hooks.on_message_received.notify = function(k, msg)
 
 		local code = input and input.code
 		local text = result and result.data and result.data["text/plain"]
-		local term_is_open = k.term and k.term:win()
+		local term_is_open = k.buf.term and k.buf.term:win()
 
 		if code and text and not term_is_open then
 			vim.notify(string.format("Ran `%s`:\nResult: %s", code, text))
@@ -142,3 +142,8 @@ alternative approach, e.g. for R, would be to override the `print` method for
 `data.frame`s to write the tempfile, then simply print the file path to the
 console. jet.nvim could then pick up the `execute_reply` message and continue
 to call visidata as above.
+
+## Floating plots window
+
+
+
