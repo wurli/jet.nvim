@@ -22,8 +22,8 @@ local run_send = function()
 		]])
 
 	local TERM_TEXT = [[
-		_G.kernel and _G.kernel.term
-			and table.concat(vim.api.nvim_buf_get_lines(_G.kernel.term.buf, 0, -1, false), "\n")
+		_G.kernel and _G.kernel.bufs.term
+			and table.concat(vim.api.nvim_buf_get_lines(_G.kernel.bufs.term.buf, 0, -1, false), "\n")
 			or ""
 	]]
 
