@@ -105,9 +105,6 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 local Kernel = {}
 Kernel.__index = Kernel ---@private
 
-local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
-vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetRepl" })
-
 ---@return Partial<jet.Kernel>
 local init_defaults = function()
 	return {
@@ -187,7 +184,6 @@ end
 function Kernel:initialise_wins()
 	self.wins = {
 		primary = win.init({
-			ns = jet_hl_ns,
 			kernel = self,
 			focus = true,
 			---@param kernel jet.Kernel
@@ -201,7 +197,6 @@ function Kernel:initialise_wins()
 		}),
 
 		secondary = win.init({
-			ns = jet_hl_ns,
 			kernel = self,
 			focus = true,
 			---@param kernel jet.Kernel
@@ -265,7 +260,7 @@ function Kernel:term_create(callback)
 	self:start_lua_client(function()
 		if not self.bufs.term then
 			assert(self.session_id, "Kernel has no session id")
-			self.bufs.term = require("jet.core.kernel.term").init({ kernel = self, ns = jet_hl_ns })
+			self.bufs.term = require("jet.core.kernel.term").init({ kernel = self })
 			self.bufs.term:create_autocmd("TermEnter", function() self:set_current() end)
 			if cfg.stop_on_buf_wipeout then
 				self.bufs.term:create_autocmd("BufWipeout", function() self:close("BufWipeout") end)
@@ -475,7 +470,7 @@ end
 function Kernel:img_open(which)
 	if not self.bufs.img then
 		assert(self.session_id, "Kernel has no session id")
-		self.bufs.img = require("jet.core.kernel.img").init({ kernel = self, ns = jet_hl_ns })
+		self.bufs.img = require("jet.core.kernel.img").init({ kernel = self })
 	end
 	return self.bufs.img:open(false, which)
 end

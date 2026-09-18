@@ -11,7 +11,6 @@ Buf.__index = Buf ---@private
 ---@class jet.Buf.init.Opts
 ---@field name string
 ---@field win_name string | keyof jet.Kernel.Windows
----@field ns integer
 ---@field kernel jet.Kernel
 
 ---@generic T
@@ -21,7 +20,7 @@ Buf.__index = Buf ---@private
 function Buf.init(class, opts)
 	local out = setmetatable({
 		kernel = opts.kernel,
-		ns = opts.ns,
+		ns = vim.api.nvim_create_namespace("jet_highlights"),
 		name = opts.name,
 		win_name = opts.win_name,
 		augroup = vim.api.nvim_create_augroup(opts.name, { clear = true }),

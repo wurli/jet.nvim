@@ -9,7 +9,6 @@ Term.__index = Term ---@private
 
 ---@class jet.Kernel.Term.init.Opts
 ---@field kernel jet.Kernel
----@field ns integer
 
 ---@param opts jet.Kernel.Term.init.Opts
 ---@return jet.Kernel.Term
@@ -18,7 +17,6 @@ function Term.init(opts)
 
 	local out = buf.init(Term, {
 		name = opts.kernel:friendly_name(),
-		ns = opts.ns,
 		kernel = opts.kernel,
 		win_name = "primary",
 	})

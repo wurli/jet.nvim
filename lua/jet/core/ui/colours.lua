@@ -17,7 +17,7 @@ M.colours = {
 	JetIdle = { link = "DiagnosticOk" },
 	JetItalic = { italic = true },
 	JetLabel = { link = "@label" },
-	JetRepl = { link = "NormalFloat" },
+	JetNormal = { link = "NormalFloat" },
 	JetSpecial = { link = "@punctuation.special" },
 	JetSuccess = { link = "DiagnosticOk" },
 	JetUrl = { link = "@markup.link" },
@@ -38,6 +38,9 @@ M.setup = function()
 	if M.did_setup then
 		return
 	end
+
+	local jet_hl_ns = vim.api.nvim_create_namespace("jet_highlights")
+	vim.api.nvim_set_hl(jet_hl_ns, "Normal", { link = "JetNormal" })
 
 	M.did_setup = true
 

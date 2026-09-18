@@ -9,7 +9,6 @@ Img.__index = Img ---@private
 
 ---@class jet.Kernel.Img.init.Opts
 ---@field kernel jet.Kernel
----@field ns integer
 
 ---@param opts jet.Kernel.Img.init.Opts
 ---@return jet.Kernel.Img
@@ -18,13 +17,12 @@ function Img.init(opts)
 
 	local out = buf.init(Img, {
 		name = opts.kernel:friendly_name() .. " - Images",
-		ns = opts.ns,
 		kernel = opts.kernel,
 		win_name = "secondary",
 	})
 
 	out.kernel = opts.kernel
-	vim.bo[out.buf].filetype = "jetimg" -- Note: Snacks.image overrides to "image"
+	vim.bo[out.buf].filetype = "jetimg"
 
 	out:create_autocmd("BufWinEnter", function() out:display() end)
 

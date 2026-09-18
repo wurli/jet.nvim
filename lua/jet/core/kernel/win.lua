@@ -13,9 +13,8 @@ Win.__index = Win
 local to_bufnr = function(buf) return type(buf) == "number" and buf or buf.buf end
 
 ---@class jet.Win.init.Opts
----@field open_opts jet.Win["open_opts"]
----@field ns jet.Win["ns"]
 ---@field kernel jet.Win["kernel"]
+---@field open_opts jet.Win["open_opts"]
 ---@field focus jet.Win["focus"]
 
 ---@param opts jet.Win.init.Opts
@@ -23,7 +22,8 @@ Win.init = function(opts)
 	if opts.focus == nil then
 		opts.focus = false
 	end
-	return setmetatable(vim.tbl_extend("force", opts, { win = -99 }), Win)
+	local ns = vim.api.nvim_create_namespace("jet_highlights")
+	return setmetatable(vim.tbl_extend("force", opts, { win = -99, ns = ns }), Win)
 end
 
 ---@return string
