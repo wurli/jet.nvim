@@ -142,3 +142,8 @@ alternative approach, e.g. for R, would be to override the `print` method for
 `data.frame`s to write the tempfile, then simply print the file path to the
 console. jet.nvim could then pick up the `execute_reply` message and continue
 to call visidata as above.
+
+## Floating plots window
+
+
+

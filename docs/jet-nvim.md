@@ -395,18 +395,45 @@ jet.filetype.python = { get_expr = get_python_expr }
 
 ### Custom UI components
 
-Extensions may want to add custom UI for a particular kernel. For example,
-jet.ark adds a custom variables pane. jet.nvim has a mechanism for this:
+Extensions may want to add custom UI for a particular kernel. `Kernel` objects
+manage UI via two fields:
 
-* Each kernel owns some 'windows', any of which may or may not be displayed at
-  a given time. The default number of windows owned by a kernel is 2, but you
-  can add more. 
+* `Kernel.wins`: a table with the following fields:
+  * `wins.primary` (|jet.Win|)
+  * `wins.secondary` (|jet.Win|)
 
-  * By default the first window opens as a right split
-  * By default the second window opens as a split above the first window if the
-    first window exists; otherwise it opens as a right split.
+* `Kernel.bufs` a table with the following fields
+  * `bufs.term`: (|jet.Kernel.Term|, inherits from |jet.Buf|) targets the
+    `primary` window
+  * `bufs.img`: (|jet.Kernel.Img|, inherits from |jet.Buf|) targets the
+    `secondary` window
 
-* Each kernel also owns some buffers, each of which is associated with a.
-  Multiple buffers may be associated with the same window. If you open a kernel
-  buffer, the buffer will replace any other buffer the associated window.
+You can add more fields to `Kernel.wins` or `Kernel.bufs` to define custom UI,
+or modify existing fields to control behaviour. For example, to open the
+secondary window in a float:
+
+``` lua
+local hooks = require("jet").hooks
+
+-- Patch the secondary window's `open_opts` to open a float
+---@param k jet.Kernel
+table.insert(hooks.on_kernel_init, function(k)
+	---@type vim.api.keyset.win_config
+	k.wins.secondary.open_opts = {
+		relative = "editor",
+		col = math.floor(vim.o.columns * 0.1),
+		width = math.floor(vim.o.columns * 0.8),
+		row = math.floor(vim.o.lines * 0.1),
+		height = math.floor(vim.o.lines * 0.8),
+	}
+end)
+
+-- Focus the window when it opens and add a keymap to close
+table.insert(k.hooks.on_win_open, function(_, win, buf)
+	if win:name() == "secondary" then
+		vim.keymap.set("n", "q", "<cmd>q<cr>", { buf = buf })
+		vim.api.nvim_set_current_win(assert(win:winnr()))
+	end
+end)
+```
 

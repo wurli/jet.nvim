@@ -137,4 +137,7 @@ alternative approach, e.g. for R, would be to override the `print` method for
 console. jet.nvim could then pick up the `execute_reply` message and continue
 to call visidata as above.
 
+------------------------------------------------------------------------------
+Floating plots window                        *jet-recipes-floating-plots-window*
+
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

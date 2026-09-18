@@ -163,7 +163,6 @@ Term.init({opts})                                        *jet-types-Term.init()*
     Parameters: ~
         • {opts}      (`jet.Kernel.Term.init.Opts`) Fields:
                       • kernel (`jet.Kernel`)
-                      • ns (`integer`)
 
     Return: ~
         (`jet.Kernel.Term`)
@@ -187,7 +186,6 @@ Img.init({opts})                                          *jet-types-Img.init()*
     Parameters: ~
         • {opts}      (`jet.Kernel.Img.init.Opts`) Fields:
                       • kernel (`jet.Kernel`)
-                      • ns (`integer`)
 
     Return: ~
         (`jet.Kernel.Img`)
@@ -232,7 +230,6 @@ Buf.init({class}, {opts})                                 *jet-types-Buf.init()*
         • {opts}      (`jet.Buf.init.Opts`) Fields:
                       • name (`string`)
                       • win_name (`(string|keyof jet.Kernel.Windows)`)
-                      • ns (`integer`)
                       • kernel (`jet.Kernel`)
 
     Return: ~
@@ -278,9 +275,8 @@ Win.init({opts})                                          *jet-types-Win.init()*
 
     Parameters: ~
         • {opts}      (`jet.Win.init.Opts`) Fields:
-                      • open_opts (`jet.Win["open_opts"]`)
-                      • ns (`jet.Win["ns"]`)
                       • kernel (`jet.Win["kernel"]`)
+                      • open_opts (`jet.Win["open_opts"]`)
                       • focus (`jet.Win["focus"]`)
 
     Return: ~
@@ -302,7 +298,7 @@ Win:open({buf}, {opts}, {focus})                          *jet-types-Win:open()*
       • Otherwise, open a fresh window, resetting `self.win`.
 
     Parameters: ~
-        • {buf}       (`(integer|jet.Buf)`)
+        • {buf}       (`integer`)
         • {opts}      (`vim.api.keyset.win_config?`)
         • {focus}     (`boolean?`)
 
@@ -312,17 +308,17 @@ Win:open({buf}, {opts}, {focus})                          *jet-types-Win:open()*
 Win:close({buf})                                         *jet-types-Win:close()*
 
     Parameters: ~
-        • {buf}       (`(jet.Buf|integer)?`)
+        • {buf}       (`integer?`)
 
 Win:toggle({buf})                                       *jet-types-Win:toggle()*
 
     Parameters: ~
-        • {buf}       (`(integer|jet.Buf)`)
+        • {buf}       (`integer`)
 
 Win:get_curr_jet_buf({buf})                   *jet-types-Win:get_curr_jet_buf()*
 
     Parameters: ~
-        • {buf}       (`(integer|jet.Buf)?`)
+        • {buf}       (`integer?`)
 
     Return: ~
         (`integer?`)
@@ -330,7 +326,7 @@ Win:get_curr_jet_buf({buf})                   *jet-types-Win:get_curr_jet_buf()*
 Win:winnr({buf})                                         *jet-types-Win:winnr()*
 
     Parameters: ~
-        • {buf}       (`(integer|jet.Buf)?`)
+        • {buf}       (`integer?`)
 
     Return: ~
         (`integer?`)
