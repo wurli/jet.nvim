@@ -965,7 +965,7 @@ end
 function Kernel:send_lua(code, silent, callback)
 	assert(self.client_id, "Kernel has no client id")
 	if type(code) == "string" then
-		code = vim.split(code, "[\n\r]")
+		code = vim.split(code, "[\n\r]") --[[@as string[] ]]
 	end
 	self:do_send_pre(code)
 
