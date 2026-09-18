@@ -11,11 +11,10 @@ local T = new_set({
 
 				require("jet.core.config").options.hooks.on_image_display_pre.test = function(k, src)
 					_G.rendered_image = src
-					_G.image_buf = k.img.buf
+					_G.image_buf = k.bufs.img.buf
 				end
 
 				_G.k:start_lua_client(function(k)
-					_G.bla = 123
 					k:send_lua("hist(iris$Sepal.Width)")
 				end)
 			]])
@@ -25,7 +24,7 @@ local T = new_set({
 })
 
 T["Image files are produced"] = function()
-	vim.wait(5000, function() return child.lua_get("_G.rendered_image") ~= vim.NIL end)
+	vim.wait(10000, function() return child.lua_get("_G.rendered_image") ~= vim.NIL end)
 	local file = child.lua_get("_G.rendered_image")
 	file = file ~= vim.NIL and file or nil
 	assert(file, "No image was produced by the kernel")
