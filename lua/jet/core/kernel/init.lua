@@ -249,7 +249,8 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
----Set this kernel as the 'current' kernel for its filetype.
+---Set this kernel as the "current" kernel for its filetype.
+---@see |jet-current-kernels|
 function Kernel:set_current() manager:set_current(self) end
 
 ---Connect a Jet repl using nvim's built-in terminal.

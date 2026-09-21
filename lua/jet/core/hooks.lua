@@ -57,8 +57,8 @@ M.init_hooks = function()
 		---@type table<any, fun(k: jet.Kernel, file: string)>
 		on_image_display_pre = {},
 
-		---After a kernel becomes or stops becoming the 'current' kernel for
-		---its filetype.
+		---After a kernel becomes or stops becoming the "current" kernel for
+		---its filetype. See |jet-current-kernels|.
 		---@type table<any, fun(k: jet.Kernel, current: boolean)>
 		on_currentness_changed = {},
 

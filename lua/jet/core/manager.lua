@@ -57,7 +57,7 @@ end
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field ft? string | boolean alias for `filetype`
 ---@field display_name? string
----@field current? boolean Implies `status` = "connected"
+---@field current? boolean See |jet-current-kernels|; implies `status` = "connected"
 ---@field status? jet.kernel.status | jet.kernel.status[]
 ---@field predicate? fun(k: jet.Kernel): boolean Predicate function for custom filtering
 ---If `true` then do a final pass after all other filters have been applied and
