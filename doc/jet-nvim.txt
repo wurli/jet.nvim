@@ -92,26 +92,39 @@ The full set of configuration options is as follows:
 *jet.Config.Img*
 
     Fields: ~
-        • {handlers}  (`table<string,fun(data: string, mime: jet.Mime, filepath: string) -> (string|false)>`)
-                      Some kernels might return media types which require
-                      special handling.
-                      Handlers should take image data, process it, and write
-                      the resulting image to `filepath`. Handlers should
-                      return `filepath` on a successful write, or `false`
-                      otherwise.
-                      E.g. to handle SVG data using `resvg` you could use the
-                      following: >lua
-                          handlers = {
-                              svg = function(data, _mime, filepath)
-                                  local res = vim.system(
-                                      { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
-                                      { stdin = data }
-                                  )
-                                      :wait()
-                                  return res.code == 0 and filepath or false
-                              end,
-                          },
+        • {handler}          (`(fun(data: string, mime: jet.Mime, filepath: string) -> (false|string)?)?`)
+                             Some kernels might return media types which
+                             require special handling.
+                             Custom handling should be added via this
+                             function. If supplied, it should return:
+                             • `nil`: there was no attempt to save the image
+                             • `string`: the filepath of the succesfully saved
+                               image
+                             • `false`: the image could not be saved (unlike
+                               `nil`, a warning will be shown)
+
+                             E.g. to handle SVG images using `resvg`: >lua
+                                 handler = function(data, mime, filepath)
+                                     if mime.type == "svg" and not mime.subtype then
+                                         local res = vim.system(
+                                             { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
+                                             { stdin = data }
+                                         )
+                                             :wait()
+                                         return res.code == 0 and filepath or false
+                                     end
+                                 end
 <
+        • {format_priority}  (`(string|fun(m: jet.Mime) -> boolean)[]`) If a
+                             kernel returns an image in multiple formats, this
+                             specifies the order in which they should be
+                             handled: E.g:
+                             • `{ function(m: jet.Mime) return m.type == "png" end }`
+                               (default): PNG formats will be tried first,
+                               then any others
+                             • `{ "image/png", "image/svg" }`: Mime types
+                               exactly matching "image/png" will be tried
+                               first, then "image/svg", then any others
 
 *jet.Hooks*
 

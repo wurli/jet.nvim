@@ -2,33 +2,33 @@ local utils = require("jet.core.utils")
 
 local M = {}
 
----E.g:
----* In:
----  `"text/plain"`
----* Out:
----  ```
----  { type = "text", subtype = "plain", params = {} }
----  ```
+---Parse media types
 ---
----* In:
----  `"application/vnd.jupyter.widget-view+json; version="2.0"; encoding=utf-8"`
----* Out:
----  ```
----  {
----      type = "application",
----      tree = "vnd",
----      subtype = "jupyter.widget-view",
----      suffix = "json",
----      params = { version = "2.0", encoding = "utf-8" },
----  }
----  ```
+---``` lua
+---local mime = require("jet.core.utils.mime")
 ---
+----- Most MIME types are pretty simple:
+---mime.parse("text/plain")
+----- { type = "text", subtype = "plain", params = {} }
+---
+----- ...but some aren't:
+---mime.parse("application/vnd.jupyter.widget-view+json; version=2.0")
+-----{
+-----    type = "application",
+-----    tree = "vnd",
+-----    subtype = "jupyter.widget-view",
+-----    suffix = "json",
+-----    params = { version = "2.0", encoding = "utf-8" },
+-----}
+---```
 ---@class jet.Mime
 ---@field type string
 ---@field subtype string
 ---@field tree? string
 ---@field suffix? string
 ---@field params table<string, string>
+---
+---@see https://en.wikipedia.org/wiki/Media_type
 
 local mime_grammar ---@type vim.lpeg.Pattern?
 

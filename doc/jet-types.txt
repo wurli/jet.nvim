@@ -336,4 +336,36 @@ Win:get_buf()                                          *jet-types-Win:get_buf()*
     Return: ~
         (`integer?`)
 
+------------------------------------------------------------------------------
+MIME types                                                *jet-types-mime-types*
+
+*jet.Mime*
+
+    Parse media types >lua
+        local mime = require("jet.core.utils.mime")
+
+        -- Most MIME types are pretty simple:
+        mime.parse("text/plain")
+        -- { type = "text", subtype = "plain", params = {} }
+
+        -- ...but some aren't:
+        mime.parse("application/vnd.jupyter.widget-view+json; version=2.0")
+        --{
+        --    type = "application",
+        --    tree = "vnd",
+        --    subtype = "jupyter.widget-view",
+        --    suffix = "json",
+        --    params = { version = "2.0", encoding = "utf-8" },
+        --}
+<
+    Fields: ~
+        • {type}     (`string`)
+        • {subtype}  (`string`)
+        • {tree}     (`string?`)
+        • {suffix}   (`string?`)
+        • {params}   (`table<string,string>`)
+
+    See: ~
+        • https://en.wikipedia.org/wiki/Media_type
+
  vim:tw=78:sw=4:ts=4:ft=help:norl:et:

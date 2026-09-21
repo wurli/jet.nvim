@@ -35,3 +35,9 @@ python3 scripts/emmylua-to-md.py --type jet.Buf
 ```{.sh include=true}
 python3 scripts/emmylua-to-md.py --type jet.Win
 ```
+
+## MIME types
+
+```{.sh include=true}
+python3 scripts/emmylua-to-md.py --type jet.Mime
+```
