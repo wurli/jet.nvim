@@ -486,9 +486,15 @@ api.handle_motion({callback})                          *jet-api.handle_motion()*
 
 api.list_kernels({filters}, {callback})                 *jet-api.list_kernels()*
 
+    Get kernels which match some conditions
+
     Parameters: ~
         • {filters}     (`jet.api.Filters?`)
-        • {callback}    (`(fun(kernels: jet.Kernel[]))?`)
+        • {callback}    (`(fun(kernels: jet.Kernel[]))?`) If given, the
+                        function runs asynchronously and the resulting table
+                        of kernels is passed to the callback. Otherwise the
+                        function runs synchronously, possibly briefly blocking
+                        nvim, and the kernels are returned.
 
     Return: ~
         (`jet.Kernel[]?`)
@@ -506,6 +512,9 @@ api.get_kernel({filters}, {callback})                     *jet-api.get_kernel()*
     Parameters: ~
         • {filters}     (`jet.api.Filters`)
         • {callback}    (`fun(k: jet.Kernel)`)
+
+    See: ~
+        • |jet-api.list_kernels()| to get kernels synchronously
 
 api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
