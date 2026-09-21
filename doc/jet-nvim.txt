@@ -92,26 +92,46 @@ The full set of configuration options is as follows:
 *jet.Config.Img*
 
     Fields: ~
-        • {handlers}  (`table<string,fun(data: string, mime: jet.Mime, filepath: string) -> (string|false)>`)
-                      Some kernels might return media types which require
-                      special handling.
-                      Handlers should take image data, process it, and write
-                      the resulting image to `filepath`. Handlers should
-                      return `filepath` on a successful write, or `false`
-                      otherwise.
-                      E.g. to handle SVG data using `resvg` you could use the
-                      following: >lua
-                          handlers = {
-                              svg = function(data, _mime, filepath)
-                                  local res = vim.system(
-                                      { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
-                                      { stdin = data }
-                                  )
-                                      :wait()
-                                  return res.code == 0 and filepath or false
-                              end,
-                          },
+        • {handler}          (`(fun(data: string, mime: jet.Mime, filepath: string) -> (false|string)?)?`)
+                             Some kernels might return media types which
+                             require special handling.
+                             Custom handling should be added via this
+                             function.
+                             Params:
+                             • `data` (string): The image data, probably
+                               base64-encoded
+                             • `mime` (jet.Mime): The image media type
+                             • `filepath` (string): The filepath which should
+                               be saved to. Always has extension `png`.
+
+                             Return value:
+                             • `nil`: there was no attempt to save the image
+                             • `string`: the filepath of the succesfully saved
+                               image
+                             • `false`: the image could not be saved
+
+                             E.g. to handle SVG images using `resvg`: >lua
+                                 handler = function(data, mime, filepath)
+                                     if mime.subtype == "svg" then
+                                         local res = vim.system(
+                                             { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
+                                             { stdin = data }
+                                         )
+                                             :wait()
+                                         return res.code == 0 and filepath or false
+                                     end
+                                 end
 <
+        • {format_priority}  (`(string|fun(m: jet.Mime) -> boolean)[]`) If a
+                             kernel returns an image in multiple formats, this
+                             specifies the order in which they should be
+                             handled: E.g:
+                             • `{ function(m: jet.Mime) return m.subtype == "png" end }`
+                               (default): PNG formats will be tried first,
+                               then any others
+                             • `{ "image/png", "image/svg" }`: Mime types
+                               exactly matching "image/png" will be tried
+                               first, then "image/svg", then any others
 
 *jet.Hooks*
 
@@ -160,8 +180,8 @@ The full set of configuration options is as follows:
                                         Before an image is displayed in Neovim
         • {on_currentness_changed}      (`table<any,fun(k: jet.Kernel, current: boolean)>`)
                                         After a kernel becomes or stops
-                                        becoming the 'current' kernel for its
-                                        filetype.
+                                        becoming the "current" kernel for its
+                                        filetype. See |jet-current-kernels|.
         • {on_win_open}                 (`table<any,fun(k: jet.Kernel, win: jet.Win, buf: integer)>`)
                                         After a window is opened
 
@@ -430,6 +450,16 @@ parts of this api are:
 
 Also see |jet-recipes.txt| for more worked examples.
 
+TOOLING                                                            *jet-tooling*
+
+jet.nvim is developed using the `emmylua_ls` language server. `lua_ls` should
+be largely compatible, but you are strongly advised to use `emmylua_ls` for
+any serious development using jet.nvim functions.
+
+• `emmylua_ls`: https://github.com/emmyluals/emmylua-analyzer-rust
+• Example `.emmyrc.json` for plugin development:
+  https://github.com/wurli/jet.nvim/blob/main/.emmyrc.json
+
 THE API MODULE                                                     *jet-jet.api*
 
 >lua
@@ -476,9 +506,15 @@ api.handle_motion({callback})                          *jet-api.handle_motion()*
 
 api.list_kernels({filters}, {callback})                 *jet-api.list_kernels()*
 
+    Get kernels which match some conditions
+
     Parameters: ~
         • {filters}     (`jet.api.Filters?`)
-        • {callback}    (`(fun(kernels: jet.Kernel[]))?`)
+        • {callback}    (`(fun(kernels: jet.Kernel[]))?`) If given, the
+                        function runs asynchronously and the resulting table
+                        of kernels is passed to the callback. Otherwise the
+                        function runs synchronously, possibly briefly blocking
+                        nvim, and the kernels are returned.
 
     Return: ~
         (`jet.Kernel[]?`)
@@ -496,6 +532,9 @@ api.get_kernel({filters}, {callback})                     *jet-api.get_kernel()*
     Parameters: ~
         • {filters}     (`jet.api.Filters`)
         • {callback}    (`fun(k: jet.Kernel)`)
+
+    See: ~
+        • |jet-api.list_kernels()| to get kernels synchronously
 
 api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
@@ -516,20 +555,8 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
 
     Get kernels which match some criteria
 
-    If multiple filters are used they will be tried in order; when a filter
-    matches at least one kernel, those kernels are returned and the remaining
-    filters are discarded.
+    Used by |jet-api.get_kernel()| and |jet-api.list_kernels()|.
 
-    E.g. to get a python kernel, prioritising ones belonging to a virtual
-    environment you could use the following: >lua
-        local api = require("jet.api")
-        api.get_kernel({
-            { ft = "python", predicate = function(k) return k.spec_path:match("%.venv/") end },
-            { ft = "python" }
-        }, function(k)
-            -- ... Do stuff with the found kernel here
-        end)
-<
     Fields: ~
         • {session_id}    (`string?`) Implies `status` = "connected" or
                           "external"
@@ -538,7 +565,8 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
                           the cursor position
         • {ft}            (`(boolean|string)?`) alias for `filetype`
         • {display_name}  (`string?`)
-        • {current}       (`boolean?`) Implies `status` = "connected"
+        • {current}       (`boolean?`) See |jet-current-kernels|; implies
+                          `status` = "connected"
         • {status}        (`(jet.kernel.status|jet.kernel.status[])?`)
         • {predicate}     (`(fun(k: jet.Kernel) -> boolean)?`)
         • {priority}      (`boolean?`)
@@ -671,7 +699,10 @@ Kernel:term_open({callback}, {focus})                   *jet-Kernel:term_open()*
 
 Kernel:set_current()                                  *jet-Kernel:set_current()*
 
-    Set this kernel as the 'current' kernel for its filetype.
+    Set this kernel as the "current" kernel for its filetype.
+
+    See: ~
+        • |jet-current-kernels|
 
 Kernel:status()                                            *jet-Kernel:status()*
 
@@ -713,9 +744,9 @@ Kernel:img_save({content}, {mime}, {name})               *jet-Kernel:img_save()*
 
     Write an image to the kernel's `image_dir()`.
 
-    • If the `name` doesn't start with a data prefix, one will be prepended.
-    • If the `name` doesn't have an extension, one will be appended based on
-      the MIME type.
+    • If the `name` doesn't start with a timestamp prefix, one will be
+      prepended.
+    • Extension is always `png`
 
     Parameters: ~
         • {content}     (`string`)

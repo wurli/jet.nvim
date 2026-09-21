@@ -309,6 +309,15 @@ parts of this api are:
 
 Also see |jet-recipes.txt| for more worked examples.
 
+### Tooling
+
+jet.nvim is developed using the `emmylua_ls` language server. `lua_ls` should
+be largely compatible, but you are strongly advised to use `emmylua_ls` for any
+serious development using jet.nvim functions. 
+
+* `emmylua_ls`: https://github.com/emmyluals/emmylua-analyzer-rust
+* Example `.emmyrc.json` for plugin development: https://github.com/wurli/jet.nvim/blob/main/.emmyrc.json
+
 ### The API module{#jet.api}
 
 ```{.sh include=true}

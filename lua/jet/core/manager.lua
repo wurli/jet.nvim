@@ -49,22 +49,7 @@ end
 
 ---Get kernels which match some criteria
 ---
----If multiple filters are used they will be tried in order; when a filter
----matches at least one kernel, those kernels are returned and the remaining
----filters are discarded.
----
----E.g. to get a python kernel, prioritising ones belonging to a virtual
----environment you could use the following:
----
----``` lua
----local api = require("jet.api")
----api.get_kernel({
----    { ft = "python", predicate = function(k) return k.spec_path:match("%.venv/") end },
----    { ft = "python" }
----}, function(k)
----    -- ... Do stuff with the found kernel here
----end)
----```
+---Used by |jet-api.get_kernel()| and |jet-api.list_kernels()|.
 ---
 ---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
@@ -72,7 +57,7 @@ end
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field ft? string | boolean alias for `filetype`
 ---@field display_name? string
----@field current? boolean Implies `status` = "connected"
+---@field current? boolean See |jet-current-kernels|; implies `status` = "connected"
 ---@field status? jet.kernel.status | jet.kernel.status[]
 ---@field predicate? fun(k: jet.Kernel): boolean Predicate function for custom filtering
 ---If `true` then do a final pass after all other filters have been applied and

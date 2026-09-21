@@ -32,25 +32,41 @@ local ui_defaults = {
 local img_defaults = {
 	---Some kernels might return media types which require special handling.
 	---
-	---Handlers should take image data, process it, and write the resulting
-	---image to `filepath`. Handlers should return `filepath` on a successful
-	---write, or `false` otherwise.
+	---Custom handling should be added via this function.
 	---
-	---E.g. to handle SVG data using `resvg` you could use the following:
+	---Params:
+	---* `data` (string): The image data, probably base64-encoded
+	---* `mime` (jet.Mime): The image media type
+	---* `filepath` (string): The filepath which should be saved to. Always has
+	---  extension `png`.
 	---
+	---Return value:
+	---* `nil`: there was no attempt to save the image
+	---* `string`: the filepath of the succesfully saved image
+	---* `false`: the image could not be saved
+	---
+	---E.g. to handle SVG images using `resvg`:
 	---``` lua
-	---handlers = {
-	---    svg = function(data, _mime, filepath)
+	---handler = function(data, mime, filepath)
+	---    if mime.subtype == "svg" then
 	---        local res = vim.system(
 	---            { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
 	---            { stdin = data }
 	---        )
 	---            :wait()
 	---        return res.code == 0 and filepath or false
-	---    end,
-	---},
+	---    end
+	---end
 	---```
-	handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
+	handler = nil, ---@type (fun(data: string, mime: jet.Mime, filepath: string): false | string | nil)?
+	---If a kernel returns an image in multiple formats, this specifies the
+	---order in which they should be handled:
+	---E.g:
+	---* `{ function(m: jet.Mime) return m.subtype == "png" end }` (default):
+	---   PNG formats will be tried first, then any others
+	---* `{ "image/png", "image/svg" }`: Mime types exactly matching
+	---  "image/png" will be tried first, then "image/svg", then any others
+	format_priority = { function(mime) return mime.subtype == "png" end }, ---@type (string | fun(m: jet.Mime): boolean)[]
 }
 
 ---@class jet.Config
@@ -90,7 +106,7 @@ M.defaults = {
 	hooks = require("jet.core.hooks").init_hooks(),
 }
 
-M.jet_nvim_version = "0.2.0"
+M.jet_nvim_version = "0.3.0"
 
 ---@class jet.Config.Data
 M.data = {

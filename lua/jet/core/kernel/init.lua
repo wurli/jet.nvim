@@ -249,7 +249,8 @@ function Kernel:term_open(callback, focus)
 	end)
 end
 
----Set this kernel as the 'current' kernel for its filetype.
+---Set this kernel as the "current" kernel for its filetype.
+---@see |jet-current-kernels|
 function Kernel:set_current() manager:set_current(self) end
 
 ---Connect a Jet repl using nvim's built-in terminal.
@@ -342,7 +343,7 @@ function Kernel:update_output_stream(msg)
 
 	if msg.header.msg_type == "execute_result" then
 		flush()
-		for _, l in ipairs(split(msg.content.data["text/plain"], true)) do
+		for _, l in ipairs(split(msg.content.data["text/plain"] or "", true)) do
 			append(l)
 			flush()
 		end
@@ -492,9 +493,8 @@ end
 
 ---Write an image to the kernel's `image_dir()`.
 ---
----* If the `name` doesn't start with a data prefix, one will be prepended.
----* If the `name` doesn't have an extension, one will be appended based on the
----  MIME type.
+---* If the `name` doesn't start with a timestamp prefix, one will be prepended.
+---* Extension is always `png`
 ---
 ---@param content string
 ---@param mime string | jet.Mime Describes the format of the `content`
@@ -505,38 +505,32 @@ function Kernel:img_save(content, mime, name)
 		mime = assert(require("jet.core.utils.mime").parse(mime), "Failed to parse MIME type: " .. mime)
 	end
 
-	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
-	local extension_pattern = "%.(%w+)$"
-	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
-	local extension = name:match("%.(%w+)$") or mime.subtype
-	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
-
-	local path = string.format("%s/%s_%s.%s", self:img_dir(), timestamp, base_name, extension)
-
 	if mime.type ~= "image" then
-		utils.log_error("MIME type is not an image: %s/%s", mime.type, mime.subtype)
+		utils.log_error("MIME type is not an image: %s", mime)
 		return false
 	end
 
-	local handlers = require("jet.core.config").options.image.handlers
-	local handler = handlers[mime.subtype]
+	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
+	local extension_pattern = "%.(%w+)$"
+	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
+	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
+
+	local path = string.format("%s/%s_%s.png", self:img_dir(), timestamp, base_name)
+
+	local handler = require("jet.core.config").options.image.handler
 
 	if handler then
 		local res = handler(content, mime, path)
-		if res == nil then
-			utils.log_warn("Image handler for MIME subtype '%s' returned nil, assuming success", mime.subtype)
-			res = path
+		if res == false then
+			utils.log_warn("Failed to save image with MIME type %s", mime)
+		elseif type(res) == "string" then
+			return res
 		end
-		return res
 	end
 
 	local supported_types = { png = true }
 	if not supported_types[mime.subtype] then
-		utils.log_error(
-			"Unsupported MIME subtype '%s' (should be one of %s)",
-			mime.subtype,
-			table.concat(vim.list_extend(vim.tbl_keys(supported_types), vim.tbl_keys(handlers)), ", ")
-		)
+		utils.log_error("Unsupported MIME type '%s'", mime)
 		return false
 	end
 
@@ -553,20 +547,40 @@ function Kernel:handle_image_msg(msg)
 		return
 	end
 
-	for mime_text, content in pairs(data) do
+	---@type { mime: jet.Mime, data: string }[]
+	local images = {}
+
+	for mime_text, img_data in pairs(data) do
 		local mime = require("jet.core.utils.mime").parse(mime_text)
 		if mime and mime.type == "image" then
-			local res = self:img_save(content, mime, msg.header.msg_id)
-			if res then
-				self:img_open(vim.fs.basename(res))
-			else
-				utils.log_error(
-					"Failed to save image from kernel '%s' with MIME type '%s/%s'",
-					self.spec.display_name,
-					mime.type,
-					mime.subtype
-				)
+			table.insert(images, { mime = mime, data = img_data })
+		end
+	end
+
+	---@param img { mime: jet.Mime, data: string }
+	local try_save = function(img)
+		local res = self:img_save(img.data, img.mime, msg.header.msg_id)
+		if res then
+			self:img_open(vim.fs.basename(res))
+			return true
+		else
+			return false
+		end
+	end
+
+	for _, fmt in ipairs(cfg.image.format_priority) do
+		for _, img in ipairs(images) do
+			local match = type(fmt) == "string" and fmt == tostring(img.mime)
+				or type(fmt) == "function" and fmt(img.mime)
+			if match and try_save(img) then
+				return
 			end
+		end
+	end
+
+	for _, img in ipairs(images) do
+		if try_save(img) then
+			return
 		end
 	end
 end
