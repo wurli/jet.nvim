@@ -65,13 +65,33 @@ M.parse = function(mime, quiet)
 		params[p.name] = p.value
 	end
 
-	return {
+	local out = {
 		type = parsed.type,
 		tree = parsed.tree,
 		subtype = parsed.subtype,
 		suffix = parsed.suffix,
 		params = params,
 	}
+
+	setmetatable(out, {
+		---@param m jet.Mime
+		__tostring = function(m)
+			local s = m.type .. "/"
+			if m.tree then
+				s = s .. m.tree .. "."
+			end
+			s = s .. m.subtype
+			if m.suffix then
+				s = s .. "+" .. m.suffix
+			end
+			for k, v in pairs(m.params) do
+				s = s .. ";" .. k .. "=" .. v
+			end
+			return s
+		end,
+	})
+
+	return out
 end
 
 return M

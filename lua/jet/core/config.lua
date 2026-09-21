@@ -32,25 +32,35 @@ local ui_defaults = {
 local img_defaults = {
 	---Some kernels might return media types which require special handling.
 	---
-	---Handlers should take image data, process it, and write the resulting
-	---image to `filepath`. Handlers should return `filepath` on a successful
-	---write, or `false` otherwise.
+	---Custom handling should be added via this function. If supplied, it should
+	---return:
 	---
-	---E.g. to handle SVG data using `resvg` you could use the following:
+	---* `nil`: there was no attempt to save the image
+	---* `string`: the filepath of the succesfully saved image
+	---* `false`: the image could not be saved (unlike `nil`, a warning will be shown)
 	---
+	---E.g. to handle SVG images using `resvg`:
 	---``` lua
-	---handlers = {
-	---    svg = function(data, _mime, filepath)
+	---handler = function(data, mime, filepath)
+	---    if mime.type == "svg" and not mime.subtype then
 	---        local res = vim.system(
 	---            { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
 	---            { stdin = data }
 	---        )
 	---            :wait()
 	---        return res.code == 0 and filepath or false
-	---    end,
-	---},
+	---    end
+	---end
 	---```
-	handlers = {}, ---@type table<string, fun(data: string, mime: jet.Mime, filepath: string): string|false>
+	handler = nil, ---@type (fun(data: string, mime: jet.Mime, filepath: string): false | string | nil)?
+	---If a kernel returns an image in multiple formats, this specifies the
+	---order in which they should be handled:
+	---E.g:
+	---* `{ function(m: jet.Mime) return m.type == "png" end }` (default):
+	---   PNG formats will be tried first, then any others
+	---* `{ "image/png", "image/svg" }`: Mime types exactly matching
+	---  "image/png" will be tried first, then "image/svg", then any others
+	format_priority = { function(mime) return mime.type == "png" end }, ---@type (string | fun(m: jet.Mime): boolean)[]
 }
 
 ---@class jet.Config
