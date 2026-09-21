@@ -493,9 +493,8 @@ end
 
 ---Write an image to the kernel's `image_dir()`.
 ---
----* If the `name` doesn't start with a data prefix, one will be prepended.
----* If the `name` doesn't have an extension, one will be appended based on the
----  MIME type.
+---* If the `name` doesn't start with a timestamp prefix, one will be prepended.
+---* Extension is always `png`
 ---
 ---@param content string
 ---@param mime string | jet.Mime Describes the format of the `content`
@@ -506,18 +505,17 @@ function Kernel:img_save(content, mime, name)
 		mime = assert(require("jet.core.utils.mime").parse(mime), "Failed to parse MIME type: " .. mime)
 	end
 
-	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
-	local extension_pattern = "%.(%w+)$"
-	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
-	local extension = name:match("%.(%w+)$") or mime.subtype
-	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
-
-	local path = string.format("%s/%s_%s.%s", self:img_dir(), timestamp, base_name, extension)
-
 	if mime.type ~= "image" then
 		utils.log_error("MIME type is not an image: %s", mime)
 		return false
 	end
+
+	local timestamp_pattern = "^(%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d)_"
+	local extension_pattern = "%.(%w+)$"
+	local timestamp = name:match(timestamp_pattern) or vim.fn.strftime("%Y-%m-%d_%H-%M-%S")
+	local base_name = name:gsub(timestamp_pattern, ""):gsub(extension_pattern, "")
+
+	local path = string.format("%s/%s_%s.png", self:img_dir(), timestamp, base_name)
 
 	local handler = require("jet.core.config").options.image.handler
 

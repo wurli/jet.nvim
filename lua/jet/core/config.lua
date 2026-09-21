@@ -32,17 +32,23 @@ local ui_defaults = {
 local img_defaults = {
 	---Some kernels might return media types which require special handling.
 	---
-	---Custom handling should be added via this function. If supplied, it should
-	---return:
+	---Custom handling should be added via this function.
 	---
+	---Params:
+	---* `data` (string): The image data, probably base64-encoded
+	---* `mime` (jet.Mime): The image media type
+	---* `filepath` (string): The filepath which should be saved to. Always has
+	---  extension `png`.
+	---
+	---Return value:
 	---* `nil`: there was no attempt to save the image
 	---* `string`: the filepath of the succesfully saved image
-	---* `false`: the image could not be saved (unlike `nil`, a warning will be shown)
+	---* `false`: the image could not be saved
 	---
 	---E.g. to handle SVG images using `resvg`:
 	---``` lua
 	---handler = function(data, mime, filepath)
-	---    if mime.type == "svg" and not mime.subtype then
+	---    if mime.subtype == "svg" then
 	---        local res = vim.system(
 	---            { "resvg", "-", filepath, "--dpi", "500", "-z", "4" },
 	---            { stdin = data }
@@ -56,11 +62,11 @@ local img_defaults = {
 	---If a kernel returns an image in multiple formats, this specifies the
 	---order in which they should be handled:
 	---E.g:
-	---* `{ function(m: jet.Mime) return m.type == "png" end }` (default):
+	---* `{ function(m: jet.Mime) return m.subtype == "png" end }` (default):
 	---   PNG formats will be tried first, then any others
 	---* `{ "image/png", "image/svg" }`: Mime types exactly matching
 	---  "image/png" will be tried first, then "image/svg", then any others
-	format_priority = { function(mime) return mime.type == "png" end }, ---@type (string | fun(m: jet.Mime): boolean)[]
+	format_priority = { function(mime) return mime.subtype == "png" end }, ---@type (string | fun(m: jet.Mime): boolean)[]
 }
 
 ---@class jet.Config
