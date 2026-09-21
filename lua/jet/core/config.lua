@@ -100,7 +100,7 @@ M.defaults = {
 	hooks = require("jet.core.hooks").init_hooks(),
 }
 
-M.jet_nvim_version = "0.2.0"
+M.jet_nvim_version = "0.3.0"
 
 ---@class jet.Config.Data
 M.data = {
