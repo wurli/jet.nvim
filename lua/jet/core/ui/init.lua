@@ -83,13 +83,9 @@ end
 
 ---@param k jet.Kernel
 local session_info_line = function(k)
-	assert(k.session_id, "Kernel must have a session_id")
-
 	local next_progress_spinner = make_progress_spinner()
 
 	return line.new({ indent = 2, data = { kernel = k } }, function()
-		assert(k.session_info, "Kernel must have session info")
-
 		local status, status_icon = k:status()
 		local parts = {}
 
@@ -101,8 +97,8 @@ local session_info_line = function(k)
 		end
 
 		local ft_for_which_k_is_current = nil ---@type string?
-		for ft, session_id in pairs(require("jet.core.manager").filetype_current) do
-			if session_id == k.session_id then
+		for ft, id in pairs(require("jet.core.manager").filetype_current) do
+			if id == k:id() then
 				ft_for_which_k_is_current = ft
 				break
 			end
@@ -124,8 +120,10 @@ local session_info_line = function(k)
 			table.insert(parts, { status_icon, "JetIdle" })
 		end
 
-		table.insert(parts, { (k.session_name or k.session_id or "") .. " ", "JetId" })
-		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
+		table.insert(parts, { (k.session_name or k:get_id() or "") .. " ", "JetId" })
+		if k.session_info and k.session_info.created_at then
+			table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
+		end
 
 		return parts
 	end)
@@ -229,8 +227,9 @@ local expand_active = function(k)
 		end
 	end
 
-	if k.session_name and k.session_id then
-		table.insert(out, line.new({ indent = 4 }, { { "session id ", "JetLabel" }, { k.session_id, "JetId" } }))
+	local k_id = k:get_id()
+	if k.session_name and k_id then
+		table.insert(out, line.new({ indent = 4 }, { { "session id ", "JetLabel" }, { k_id, "JetId" } }))
 		table.insert(out, line.new())
 	end
 
@@ -365,8 +364,8 @@ local list_kernel_groups = function(callback)
 		end)
 
 		for _, running in pairs(out) do
-			table.sort(running.connected, function(a, b) return a.session_id < b.session_id end)
-			table.sort(running.external, function(a, b) return a.session_id < b.session_id end)
+			table.sort(running.connected, function(a, b) return a:id() < b:id() end)
+			table.sort(running.external, function(a, b) return a:id() < b:id() end)
 		end
 
 		callback(out)
@@ -511,7 +510,7 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.Kernel
 			local k = l.data.kernel
-			if k.session_id then
+			if k:get_id() then
 				k:close("UI command")
 			end
 		end
@@ -519,7 +518,7 @@ M.show = function()
 
 	vim.keymap.set("n", "r", function()
 		local l = ui.lines[vim.fn.line(".")]
-		if l and l.data and l.data.kernel and l.data.kernel.session_id then
+		if l and l.data and l.data.kernel and l.data.kernel:get_id() then
 			---@type jet.Kernel
 			local k = l.data.kernel
 			vim.ui.input({

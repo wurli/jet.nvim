@@ -2,7 +2,7 @@ local utils = require("jet.core.utils")
 
 ---@class jet.Manager
 ---@field kernels table<string, jet.Kernel>
----@field filetype_current table<string, string> key=filetype, value=session_id
+---@field filetype_current table<string, string> key=filetype, value=connection file path
 local Manager = {
 	kernels = {},
 	filetype_current = {},
@@ -10,8 +10,9 @@ local Manager = {
 
 ---@param k jet.Kernel
 function Manager:insert(k)
-	assert(not self.kernels[k.session_id], "Kernel with session_id " .. k.session_id .. " already exists")
-	self.kernels[k.session_id] = k
+	local id = k:id()
+	assert(not self.kernels[id], "Kernel " .. id .. " is already tracked")
+	self.kernels[id] = k
 end
 
 ---Also activates the kernel LSP and disables any other active Jet LSP for the
@@ -19,15 +20,15 @@ end
 ---
 ---@param k jet.Kernel
 function Manager:set_current(k)
-	assert(k.session_id, "Kernel must have a session_id")
+	local id = k:id()
 	assert(k.filetype, "Kernel must have a filetype")
 
 	local prev_current = self.filetype_current[k.filetype]
 
-	self.kernels[k.session_id] = k
-	self.filetype_current[k.filetype] = k.session_id
+	self.kernels[id] = k
+	self.filetype_current[k.filetype] = id
 
-	if prev_current ~= k.session_id then
+	if prev_current ~= id then
 		local h = require("jet.core.hooks")
 		if prev_current and self.kernels[prev_current] then
 			h.do_currentness_changed(self.kernels[prev_current], false)
@@ -53,6 +54,7 @@ end
 ---
 ---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
+---@field id? string Alias for `session_id`
 ---@field spec_path? string
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field ft? string | boolean alias for `filetype`
@@ -71,6 +73,7 @@ Manager.filter_kernels = function(kernels, filters)
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
 	filters.status = type(filters.status) == "string" and { filters.status } or filters.status
 	filters.filetype = filters.filetype or filters.ft
+	filters.id = filters.id or filters.session_id
 	if filters.filetype == true then
 		filters.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
 	end
@@ -91,7 +94,7 @@ Manager.filter_kernels = function(kernels, filters)
 		end
 
 		-- implies `status` = "connected" or "external"
-		if filters.session_id and k.session_id ~= filters.session_id then
+		if filters.id and k:get_id() ~= filters.id then
 			return false
 		end
 
@@ -105,7 +108,7 @@ Manager.filter_kernels = function(kernels, filters)
 
 		if
 			filters.current
-			and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_current), k.session_id))
+			and not (k:get_id() and vim.tbl_contains(vim.tbl_values(Manager.filetype_current), k:id()))
 		then
 			return false
 		end
@@ -213,11 +216,11 @@ local select_kernel = function(kernels, msg, callback)
 end
 
 ---See `jet/init.lua` for docs.
----@param session_id string
+---@param id string
 ---@return jet.Kernel?
-Manager.get_by_id = function(session_id)
-	assert(type(session_id) == "string", "'session_id' must be a string")
-	return Manager.kernels[session_id]
+Manager.get_by_id = function(id)
+	assert(type(id) == "string", "'id' must be a string")
+	return Manager.kernels[id]
 end
 
 ---See `jet/api.lua` for docs.

@@ -50,7 +50,7 @@ M.list_kernels = function(filters, callback) return manager.list(filters, callba
 ---@see |jet-api.list_kernels()| to get kernels synchronously
 M.get_kernel = function(filters, callback) return manager.get(filters, callback) end
 
----Get a running kernel by its session id
+---Get a running kernel by its id
 ---
 ---This can be useful, e.g. if you want to get the running `Kernel` object
 ---powering the repl:
@@ -60,8 +60,8 @@ M.get_kernel = function(filters, callback) return manager.get(filters, callback)
 ---local kernel = api.get_kernel_by_id(vim.b.jet.session_id)
 ---```
 ---
----@param session_id string
+---@param id string
 ---@return jet.Kernel?
-M.get_kernel_by_id = function(session_id) return manager.get_by_id(session_id) end
+M.get_kernel_by_id = function(id) return manager.get_by_id(id) end
 
 return M
