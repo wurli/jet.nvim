@@ -184,6 +184,59 @@ explicitly:
 require("lualine").setup({ extensions = { "jet" } })
 ```
 
+### JupyterLab
+
+If JupyterLab is running locally, jet.nvim should show JupyterLab kernel
+sessions in the `:Jet` UI without any extra config. If not, try setting
+`$JUPYTER_RUNTIME_DIR` and restarting JupyterLab.
+
+If JupyterLab is running on an SSH-enabled server you can add jet.nvim support
+with a little extra setup. A kernel's connection file lists five ports it
+listens on; to reach them from your machine you need an SSH tunnel per port
+and a local 'proxy' connection file that points at the tunneled ports.
+
+You can do this using Python like so:
+
+``` python
+import json
+import subprocess
+from pathlib import Path
+
+from jupyter_client.connect import tunnel_to_kernel, write_connection_file
+from jupyter_core.paths import jupyter_runtime_dir
+
+sshserver = "user@server"
+remote_runtime_dir = "/home/user/.local/share/jupyter/runtime"
+
+local_runtime_dir = Path(jupyter_runtime_dir())
+
+# Warning: this gets _all_ connection files, and each one costs 5 SSH tunnels.
+# You should probs be more pragmatic and only get the connection files you need.
+remote_connection_files = subprocess.check_output(
+    ["ssh", sshserver, "ls", f"{remote_runtime_dir}/kernel-*.json"],
+    text=True,
+).split()
+
+for remote_path in remote_connection_files:
+    raw = subprocess.check_output(["ssh", sshserver, "cat", remote_path])
+    info = json.loads(raw)
+
+    shell, iopub, stdin, hb, control = tunnel_to_kernel(info, sshserver=sshserver)
+
+    write_connection_file(
+        fname=str(local_runtime_dir / Path(remote_path).name),
+        shell_port=shell,
+        iopub_port=iopub,
+        stdin_port=stdin,
+        hb_port=hb,
+        control_port=control,
+        ip="127.0.0.1",
+        key=info["key"].encode(),
+        signature_scheme=info["signature_scheme"],
+        kernel_name=info.get("kernel_name", ""),
+    )
+```
+
 ## UI
 
 ### Kernel management

@@ -1,8 +1,19 @@
 local utils = require("jet.core.utils")
 
+-- local cb = require("jet.core.engine").list_external("/Users/JACOB.SCOTT1/Repos/jet.nvim/cf/kernel-c8a938c6-61e1-4a3c-baf4-441599b7d039.json")
+-- while true do
+-- 	local res = cb()
+-- 	if res.status == "ready" then
+-- 		vim.print(res.value)
+-- 	end
+-- 	if res.status == "done" then
+-- 		return
+-- 	end
+-- end
+
 ---@class jet.Manager
 ---@field kernels table<string, jet.Kernel>
----@field filetype_current table<string, string> key=filetype, value=session_id
+---@field filetype_current table<string, string> key=filetype, value=connection file path
 local Manager = {
 	kernels = {},
 	filetype_current = {},
@@ -10,8 +21,9 @@ local Manager = {
 
 ---@param k jet.Kernel
 function Manager:insert(k)
-	assert(not self.kernels[k.session_id], "Kernel with session_id " .. k.session_id .. " already exists")
-	self.kernels[k.session_id] = k
+	local id = k:id()
+	assert(not self.kernels[id], "Kernel " .. id .. " is already tracked")
+	self.kernels[id] = k
 end
 
 ---Also activates the kernel LSP and disables any other active Jet LSP for the
@@ -19,15 +31,15 @@ end
 ---
 ---@param k jet.Kernel
 function Manager:set_current(k)
-	assert(k.session_id, "Kernel must have a session_id")
+	local id = k:id()
 	assert(k.filetype, "Kernel must have a filetype")
 
 	local prev_current = self.filetype_current[k.filetype]
 
-	self.kernels[k.session_id] = k
-	self.filetype_current[k.filetype] = k.session_id
+	self.kernels[id] = k
+	self.filetype_current[k.filetype] = id
 
-	if prev_current ~= k.session_id then
+	if prev_current ~= id then
 		local h = require("jet.core.hooks")
 		if prev_current and self.kernels[prev_current] then
 			h.do_currentness_changed(self.kernels[prev_current], false)
@@ -53,6 +65,7 @@ end
 ---
 ---@class jet.api.Filters
 ---@field session_id? string Implies `status` = "connected" or "external"
+---@field id? string Alias for `session_id`
 ---@field spec_path? string
 ---@field filetype? string | boolean `true` gets the filetype at the cursor position
 ---@field ft? string | boolean alias for `filetype`
@@ -71,6 +84,7 @@ Manager.filter_kernels = function(kernels, filters)
 	filters.status = filters.status or { "connecting", "connected", "external", "inactive" }
 	filters.status = type(filters.status) == "string" and { filters.status } or filters.status
 	filters.filetype = filters.filetype or filters.ft
+	filters.id = filters.id or filters.session_id
 	if filters.filetype == true then
 		filters.filetype = require("jet.core.send.pos").get_curr():lang_info().filetype
 	end
@@ -86,12 +100,12 @@ Manager.filter_kernels = function(kernels, filters)
 			return false
 		end
 
-		if filters.display_name and not k.spec.display_name:lower():match(filters.display_name:lower()) then
+		if filters.display_name and k.spec and not k.spec.display_name:lower():match(filters.display_name:lower()) then
 			return false
 		end
 
 		-- implies `status` = "connected" or "external"
-		if filters.session_id and k.session_id ~= filters.session_id then
+		if filters.id and k:get_id() ~= filters.id then
 			return false
 		end
 
@@ -105,7 +119,7 @@ Manager.filter_kernels = function(kernels, filters)
 
 		if
 			filters.current
-			and not (k.session_id and vim.tbl_contains(vim.tbl_values(Manager.filetype_current), k.session_id))
+			and not (k:get_id() and vim.tbl_contains(vim.tbl_values(Manager.filetype_current), k:id()))
 		then
 			return false
 		end
@@ -152,8 +166,23 @@ Manager.list = function(filters, callback)
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
+		---@param external jet.ExternalKernelInfo[]
+		local collect_external = function(external)
+			for _, info in ipairs(external) do
+				if not Manager.kernels[info.connection_file_path] then
+					table.insert(
+						kernels,
+						require("jet.core.kernel").init_external({
+							connection_file_path = info.connection_file_path,
+							kernel_info = info.kernel_info,
+						})
+					)
+				end
+			end
+		end
+
 		---@param sessions jet.SessionInfo[]
-		local collect = function(sessions)
+		local collect_session = function(sessions)
 			for _, session in ipairs(sessions) do
 				-- Don't include sessions that are already connected to Neovim
 				if not Manager.kernels[session.session_id] then
@@ -162,23 +191,41 @@ Manager.list = function(filters, callback)
 			end
 		end
 
-		local cb = require("jet.core.engine").list_sessions()
+		local list_external_cb = require("jet.core.engine").list_external()
+		local list_sessions_cb = require("jet.core.engine").list_sessions()
 
 		if callback then
 			utils.poll(function()
-				local res = cb()
-				if res.value then
-					collect(res.value)
-					callback(Manager.filter_kernels(kernels, filters))
+				local session = list_sessions_cb()
+				local external = list_external_cb()
+				if session.value then
+					collect_session(session.value)
 				end
-				return res.status
+				if external.value then
+					collect_external(external.value)
+				end
+
+				if session.status == "pending" or external.status == "pending" then
+					return "pending"
+				elseif session.status == "ready" or external.status == "ready" then
+					return "ready"
+				else
+					callback(Manager.filter_kernels(kernels, filters))
+					return "done"
+				end
 			end, { interval = 20, alias = "Waiting for list_sessions output" })
 			return
 		else
 			while true do
-				local res = cb()
-				if res.value then
-					collect(res.value)
+				local session = list_sessions_cb()
+				local external = list_external_cb()
+				if session.value then
+					collect_session(session.value)
+				end
+				if external.value then
+					collect_external(external.value)
+				end
+				if session.status == "done" and external.status == "done" then
 					break
 				end
 			end
@@ -203,7 +250,7 @@ local select_kernel = function(kernels, msg, callback)
 		---@param k jet.Kernel
 		format_item = function(k)
 			local _, status_icon = k:status()
-			return string.format("%s  %s  %s", status_icon, k.spec.display_name, utils.path_shorten(k.spec_path))
+			return string.format("%s  %s  %s", status_icon, k:friendly_name(), utils.path_shorten(k.spec_path))
 		end,
 	}, function(choice)
 		if choice then
@@ -213,11 +260,11 @@ local select_kernel = function(kernels, msg, callback)
 end
 
 ---See `jet/init.lua` for docs.
----@param session_id string
+---@param id string
 ---@return jet.Kernel?
-Manager.get_by_id = function(session_id)
-	assert(type(session_id) == "string", "'session_id' must be a string")
-	return Manager.kernels[session_id]
+Manager.get_by_id = function(id)
+	assert(type(id) == "string", "'id' must be a string")
+	return Manager.kernels[id]
 end
 
 ---See `jet/api.lua` for docs.

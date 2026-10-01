@@ -75,21 +75,17 @@ end
 ---@param k jet.Kernel
 local kernel_info_line = function(k)
 	return line.new({ indent = 2, data = { kernel = k } }, {
-		{ k.spec.display_name },
+		{ k:friendly_name() },
 		{ "    " },
-		{ utils.path_shorten(k.spec_path), "JetDim2" },
+		{ utils.path_shorten(k.spec_path or k.connection_file_path), "JetDim2" },
 	})
 end
 
 ---@param k jet.Kernel
 local session_info_line = function(k)
-	assert(k.session_id, "Kernel must have a session_id")
-
 	local next_progress_spinner = make_progress_spinner()
 
 	return line.new({ indent = 2, data = { kernel = k } }, function()
-		assert(k.session_info, "Kernel must have session info")
-
 		local status, status_icon = k:status()
 		local parts = {}
 
@@ -101,8 +97,8 @@ local session_info_line = function(k)
 		end
 
 		local ft_for_which_k_is_current = nil ---@type string?
-		for ft, session_id in pairs(require("jet.core.manager").filetype_current) do
-			if session_id == k.session_id then
+		for ft, id in pairs(require("jet.core.manager").filetype_current) do
+			if id == k:id() then
 				ft_for_which_k_is_current = ft
 				break
 			end
@@ -124,8 +120,10 @@ local session_info_line = function(k)
 			table.insert(parts, { status_icon, "JetIdle" })
 		end
 
-		table.insert(parts, { (k.session_name or k.session_id or "") .. " ", "JetId" })
-		table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
+		table.insert(parts, { (k.session_name or k:get_id() or "") .. " ", "JetId" })
+		if k.session_info and k.session_info.created_at then
+			table.insert(parts, { "(" .. utils.time_since(k.session_info.created_at) .. ") ", "JetDim1" })
+		end
 
 		return parts
 	end)
@@ -191,7 +189,7 @@ local expanded_inactive_kernels = {}
 ---@param k jet.Kernel
 ---@return jet.ui.Line[]
 local expand_inactive = function(k)
-	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path)] then
+	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path or k.connection_file_path)] then
 		return {}
 	end
 	local cmd = k.spec.argv and k.spec.argv[1] or nil
@@ -229,8 +227,9 @@ local expand_active = function(k)
 		end
 	end
 
-	if k.session_name and k.session_id then
-		table.insert(out, line.new({ indent = 4 }, { { "session id ", "JetLabel" }, { k.session_id, "JetId" } }))
+	local k_id = k:get_id()
+	if k.session_name and k_id then
+		table.insert(out, line.new({ indent = 4 }, { { "session id ", "JetLabel" }, { k_id, "JetId" } }))
 		table.insert(out, line.new())
 	end
 
@@ -323,7 +322,8 @@ local list_kernel_groups = function(callback)
 		local kernels_grouped = {}
 
 		for _, k in ipairs(manager.filter_kernels(kernel_list, { status = "inactive" })) do
-			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
+			kernels_grouped[utils.path_normalise(k.spec_path or k.connection_file_path)] =
+				{ kernel = k, external = {}, connected = {} }
 		end
 
 		for group_name, kernels in pairs({
@@ -331,11 +331,11 @@ local list_kernel_groups = function(callback)
 			external = manager.filter_kernels(kernel_list, { status = "external" }),
 		}) do
 			for _, k in ipairs(kernels) do
-				local path = utils.path_normalise(k.spec_path)
+				local path = utils.path_normalise(k.spec_path or k.connection_file_path)
 				kernels_grouped[path] = kernels_grouped[path] or { kernel = k, external = {}, connected = {} }
 				local group = kernels_grouped[path]
 				---@diagnostic disable-next-line: unnecessary-assert
-				assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+				assert(group, "Kernel group not found for kernel: " .. path)
 				---@diagnostic disable-next-line: undefined-field
 				table.insert(group[group_name], k)
 			end
@@ -361,12 +361,20 @@ local list_kernel_groups = function(callback)
 				return a_min_status < b_min_status
 			end
 
-			return a.kernel.spec.display_name < b.kernel.spec.display_name
+			if a.kernel.spec and not b.kernel.spec then
+				return true
+			elseif b.kernel.spec and not a.kernel.spec then
+				return false
+			elseif a.kernel.spec and b.kernel.spec then
+				return a.kernel.spec.display_name < b.kernel.spec.display_name
+			elseif not a.kernel.spec and not b.kernel.spec then
+				return a.kernel.connection_file_path < b.kernel.connection_file_path
+			end
 		end)
 
 		for _, running in pairs(out) do
-			table.sort(running.connected, function(a, b) return a.session_id < b.session_id end)
-			table.sort(running.external, function(a, b) return a.session_id < b.session_id end)
+			table.sort(running.connected, function(a, b) return a:id() < b:id() end)
+			table.sort(running.external, function(a, b) return a:id() < b:id() end)
 		end
 
 		callback(out)
@@ -441,7 +449,9 @@ M.show = function()
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
-	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
+	hooks.on_kernel_close.collapse_ui = function(k)
+		expanded_inactive_kernels[utils.path_normalise(k.spec_path or k.connection_file_path)] = false
+	end
 
 	-- If a kernel block is expanded, some messages may cause the expanded
 	-- block to grow/shrink. In such cases we redraw the whole UI - this is
@@ -511,7 +521,7 @@ M.show = function()
 		if l and l.data and l.data.kernel then
 			---@type jet.Kernel
 			local k = l.data.kernel
-			if k.session_id then
+			if k:get_id() then
 				k:close("UI command")
 			end
 		end
@@ -519,7 +529,7 @@ M.show = function()
 
 	vim.keymap.set("n", "r", function()
 		local l = ui.lines[vim.fn.line(".")]
-		if l and l.data and l.data.kernel and l.data.kernel.session_id then
+		if l and l.data and l.data.kernel and l.data.kernel:get_id() then
 			---@type jet.Kernel
 			local k = l.data.kernel
 			vim.ui.input({
@@ -541,7 +551,7 @@ M.show = function()
 		local k = l and l.data and l.data.kernel --[[@as jet.Kernel]]
 		if k then
 			if k:status() == "inactive" then
-				local path = utils.path_normalise(k.spec_path)
+				local path = utils.path_normalise(k.spec_path or k.connection_file_path)
 				expanded_inactive_kernels[path] = not expanded_inactive_kernels[path]
 			else
 				---@diagnostic disable-next-line: access-invisible

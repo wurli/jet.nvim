@@ -111,6 +111,7 @@ function Pos:lang_info()
 
 	-- Get 'commentstring' from tree-sitter captures' metadata.
 	-- Traverse backwards to prefer narrower captures.
+	---@diagnostic disable-next-line: deprecated
 	local captures = vim.treesitter.get_captures_at_pos(self.buf, self.row, self.col - 1)
 	for i = #captures, 1, -1 do
 		local id, metadata = captures[i].id, captures[i].metadata

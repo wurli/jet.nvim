@@ -13,8 +13,6 @@ Term.__index = Term ---@private
 ---@param opts jet.Kernel.Term.init.Opts
 ---@return jet.Kernel.Term
 function Term.init(opts)
-	assert(opts.kernel.session_id, "Kernel session_id is required")
-
 	local out = buf.init(Term, {
 		name = opts.kernel:friendly_name(),
 		kernel = opts.kernel,
@@ -26,16 +24,7 @@ function Term.init(opts)
 
 	-- buf_call since the buf is not yet attached to a window.
 	vim.api.nvim_buf_call(out.buf, function()
-		out.job_id = vim.fn.jobstart({
-			config.data.binary_path,
-			"attach",
-			out.kernel.session_id,
-			"--banner",
-			"--session-name",
-			"nvim",
-			"--no-graphics",
-			config.options.send.send_by_expr and "--no-indent" or nil,
-		}, {
+		out.job_id = vim.fn.jobstart(opts.kernel:cmd(), {
 			term = true,
 			on_exit = function()
 				-- TODO: perhaps we don't want this - e.g. a kernel crashes
