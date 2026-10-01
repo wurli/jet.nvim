@@ -30,6 +30,14 @@ M.handle_motion = function(callback) return range_get.handle_motion(callback) en
 
 ---Get kernels which match some conditions
 ---
+---Kernels are discovered in a few ways:
+---* Kernels which are connected to the current nvim session (status="current")
+---* Kernels which are avaiable but not running (status="active")
+---* Kernels which are running outside of this session (status="external").
+---  This includes kernels started using Jet, as well as any kernels
+---  discoverable via the `$JUPYTER_RUNTIME_DIR`. Note that apps like
+---  JupyterLab also respect this env var!
+---
 ---@param filters? jet.api.Filters
 ---@param callback? fun(kernels: jet.Kernel[]) If given, the function runs
 ---asynchronously and the resulting table of kernels is passed to the callback.
