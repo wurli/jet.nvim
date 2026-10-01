@@ -52,7 +52,7 @@ T["Kernels started by non-Jet apps can be interacted with"] = function()
 		[[
 			_G.k = require("jet.api").list_kernels({ id = "%s" })[1]
 		]],
-		vim.fs.joinpath(vim.env.JUPYTER_RUNTIME_DIR, cf_name)
+		vim.fs.joinpath(vim.env.JUPYTER_RUNTIME_DIR or "", cf_name)
 	))
 
 	local kernel_id = child.lua_get([[_G.k:id()]])
