@@ -1037,7 +1037,7 @@ end
 ---@param callback? fun(res: jupyter.Msg)
 ---@return string # Message id
 function Kernel:send_lua(code, silent, callback)
-	assert(self.client_id, "Kernel has no client id")
+	assert(self.client_id, "Kernel has no client id, consider using Kernel:start_lua_client() first.")
 	if type(code) == "string" then
 		code = vim.split(code, "[\n\r]")
 	end
