@@ -75,9 +75,9 @@ end
 ---@param k jet.Kernel
 local kernel_info_line = function(k)
 	return line.new({ indent = 2, data = { kernel = k } }, {
-		{ k.spec.display_name },
+		{ k:friendly_name() },
 		{ "    " },
-		{ utils.path_shorten(k.spec_path), "JetDim2" },
+		{ utils.path_shorten(k.spec_path or k.connection_file), "JetDim2" },
 	})
 end
 
@@ -189,7 +189,7 @@ local expanded_inactive_kernels = {}
 ---@param k jet.Kernel
 ---@return jet.ui.Line[]
 local expand_inactive = function(k)
-	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path)] then
+	if not expanded_inactive_kernels[utils.path_normalise(k.spec_path or k.connection_file)] then
 		return {}
 	end
 	local cmd = k.spec.argv and k.spec.argv[1] or nil
@@ -322,7 +322,8 @@ local list_kernel_groups = function(callback)
 		local kernels_grouped = {}
 
 		for _, k in ipairs(manager.filter_kernels(kernel_list, { status = "inactive" })) do
-			kernels_grouped[utils.path_normalise(k.spec_path)] = { kernel = k, external = {}, connected = {} }
+			kernels_grouped[utils.path_normalise(k.spec_path or k.connection_file)] =
+				{ kernel = k, external = {}, connected = {} }
 		end
 
 		for group_name, kernels in pairs({
@@ -330,11 +331,11 @@ local list_kernel_groups = function(callback)
 			external = manager.filter_kernels(kernel_list, { status = "external" }),
 		}) do
 			for _, k in ipairs(kernels) do
-				local path = utils.path_normalise(k.spec_path)
+				local path = utils.path_normalise(k.spec_path or k.connection_file)
 				kernels_grouped[path] = kernels_grouped[path] or { kernel = k, external = {}, connected = {} }
 				local group = kernels_grouped[path]
 				---@diagnostic disable-next-line: unnecessary-assert
-				assert(group, "Kernel group not found for kernel: " .. k.spec_path)
+				assert(group, "Kernel group not found for kernel: " .. path)
 				---@diagnostic disable-next-line: undefined-field
 				table.insert(group[group_name], k)
 			end
@@ -360,7 +361,15 @@ local list_kernel_groups = function(callback)
 				return a_min_status < b_min_status
 			end
 
-			return a.kernel.spec.display_name < b.kernel.spec.display_name
+			if a.kernel.spec and not b.kernel.spec then
+				return true
+			elseif b.kernel.spec and not a.kernel.spec then
+				return false
+			elseif a.kernel.spec and b.kernel.spec then
+				return a.kernel.spec.display_name < b.kernel.spec.display_name
+			elseif not a.kernel.spec and not b.kernel.spec then
+				return a.kernel.connection_file < b.kernel.connection_file
+			end
 		end)
 
 		for _, running in pairs(out) do
@@ -440,7 +449,9 @@ M.show = function()
 
 	local hooks = require("jet.core.config").options.hooks
 	hooks.on_status_changed.update_ui = function() ui:refresh() end
-	hooks.on_kernel_close.collapse_ui = function(k) expanded_inactive_kernels[utils.path_normalise(k.spec_path)] = false end
+	hooks.on_kernel_close.collapse_ui = function(k)
+		expanded_inactive_kernels[utils.path_normalise(k.spec_path or k.connection_file)] = false
+	end
 
 	-- If a kernel block is expanded, some messages may cause the expanded
 	-- block to grow/shrink. In such cases we redraw the whole UI - this is
@@ -540,7 +551,7 @@ M.show = function()
 		local k = l and l.data and l.data.kernel --[[@as jet.Kernel]]
 		if k then
 			if k:status() == "inactive" then
-				local path = utils.path_normalise(k.spec_path)
+				local path = utils.path_normalise(k.spec_path or k.connection_file)
 				expanded_inactive_kernels[path] = not expanded_inactive_kernels[path]
 			else
 				---@diagnostic disable-next-line: access-invisible

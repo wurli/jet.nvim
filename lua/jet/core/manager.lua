@@ -89,7 +89,7 @@ Manager.filter_kernels = function(kernels, filters)
 			return false
 		end
 
-		if filters.display_name and not k.spec.display_name:lower():match(filters.display_name:lower()) then
+		if filters.display_name and k.spec and not k.spec.display_name:lower():match(filters.display_name:lower()) then
 			return false
 		end
 
@@ -155,6 +155,19 @@ Manager.list = function(filters, callback)
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
+		if vim.env.JUPYTER_RUNTIME_DIR then
+			for _, dir in ipairs(vim.split(vim.env.JUPYTER_RUNTIME_DIR, "[;:]")) do
+				for name, type in vim.fs.dir(dir) do
+					if type == "file" and name:match("kernel") and name:match("%.json$") then
+						local cf = vim.fs.joinpath(dir, name)
+						if not Manager.kernels[cf] then
+							table.insert(kernels, require("jet.core.kernel").init_external({ connection_file = cf }))
+						end
+					end
+				end
+			end
+		end
+
 		---@param sessions jet.SessionInfo[]
 		local collect = function(sessions)
 			for _, session in ipairs(sessions) do
@@ -206,7 +219,7 @@ local select_kernel = function(kernels, msg, callback)
 		---@param k jet.Kernel
 		format_item = function(k)
 			local _, status_icon = k:status()
-			return string.format("%s  %s  %s", status_icon, k.spec.display_name, utils.path_shorten(k.spec_path))
+			return string.format("%s  %s  %s", status_icon, k:friendly_name(), utils.path_shorten(k.spec_path))
 		end,
 	}, function(choice)
 		if choice then

@@ -158,14 +158,11 @@ end
 ---@param opts jet.kernel.init_external.Opts
 ---@return jet.Kernel
 function Kernel.init_external(opts)
-	---@diagnostic disable-next-line: unnecessary-assert
-	assert(opts.session_id, "Kernel session ID is not set")
-
-	local kernel_base
+	local base_opts
 
 	if opts.session_id then
 		local view = require("jet.core.engine").show_session(opts.session_id)
-		kernel_base = {
+		base_opts = {
 			session_id = opts.session_id,
 			spec = view.spec,
 			session_info = view.session,
@@ -174,7 +171,7 @@ function Kernel.init_external(opts)
 			owned = false,
 		}
 	elseif opts.connection_file then
-		kernel_base = {
+		base_opts = {
 			connection_file = utils.path_normalise(opts.connection_file),
 			owned = false,
 		}
@@ -182,10 +179,9 @@ function Kernel.init_external(opts)
 		error("Can't connect to external kernel. Please supply either opts.session_id or opts.connection_file.")
 	end
 
-	local out = setmetatable(vim.tbl_extend("keep", init_defaults(), kernel_base), Kernel)
+	local out = setmetatable(vim.tbl_extend("keep", init_defaults(), base_opts), Kernel)
 	out:initialise_wins()
 
-	manager:insert(out)
 	Kernel.try_resolve_filetype(out)
 
 	out:do_kernel_init()
@@ -246,7 +242,7 @@ Kernel.do_win_open                = hooks.do_win_open                ---@private
 function Kernel:id() return self:get_id() or error("Kernel does not have a session id or connection file") end
 
 ---@return string?
-function Kernel:get_id() return self.session_id or self.connection_file and self.connection_file:gsub("/", "-") end
+function Kernel:get_id() return self.session_id or self.connection_file end
 
 ---Get the command which can be used to start/connect to the kernel using the
 ---Jet CLI
@@ -477,7 +473,7 @@ function Kernel:update_execution_state(msg)
 	end
 	local new_state = msg.content and msg.content.execution_state
 	if not vim.tbl_contains({ "idle", "busy", "starting" }, new_state) then
-		utils.log_warn("Kernel '%s' sent unknown execution state: %s", self.spec.display_name, new_state)
+		utils.log_warn("Kernel '%s' sent unknown execution state: %s", self:friendly_name(), new_state)
 		return
 	end
 
@@ -531,7 +527,7 @@ end
 ---@return string
 function Kernel:friendly_name()
 	local session_hash = (self.session_id or ""):match("_([^_]+)$")
-	local name = self.spec.display_name
+	local name = self.spec and self.spec.display_name or "External kernel"
 	if session_hash then
 		name = name .. " (" .. session_hash .. ")"
 	end
@@ -642,7 +638,7 @@ function Kernel:handle_input_request(msg)
 	if not msg.parent_header then
 		utils.log_warn(
 			"Received an input_request message without a parent_header from kernel '%s'",
-			self.spec.display_name
+			self:friendly_name()
 		)
 		return
 	end
@@ -654,7 +650,7 @@ function Kernel:handle_input_request(msg)
 
 	vim.schedule(function()
 		vim.ui.input(
-			{ prompt = string.format("[%s] %s", self.spec.display_name, prompt) },
+			{ prompt = string.format("[%s] %s", self:friendly_name(), prompt) },
 			function(input)
 				require("jet.core.engine").provide_stdin(self.client_id, msg.parent_header.msg_id, input or "")
 			end
@@ -670,14 +666,14 @@ function Kernel:handle_comm_open(msg)
 	end
 
 	if not msg.content then
-		utils.log_warn("Received a comm_open message without content from kernel '%s'", self.spec.display_name)
+		utils.log_warn("Received a comm_open message without content from kernel '%s'", self:friendly_name())
 		return
 	end
 
 	if not msg.content.comm_id or not msg.content.target_name then
 		utils.log_warn(
 			"Received invalid comm_open message from kernel '%s'.\nExpected both `comm_id` and `target_name` in content;\nGot: `%s`",
-			self.spec.display_name,
+			self:friendly_name(),
 			vim.inspect(msg.content)
 		)
 		return
@@ -692,7 +688,7 @@ function Kernel:handle_comm_open(msg)
 		utils.log_warn(
 			"Received a comm_open message for unknown comm '%s' from kernel '%s'; replying with `comm_close`",
 			msg.content.target_name,
-			self.spec.display_name
+			self:friendly_name()
 		)
 		self:comm_close(msg.content.comm_id)
 		return
@@ -753,8 +749,6 @@ function Kernel:start_lua_client(callback)
 		self.session_id = self.session_info.session_id
 
 		assert(self.session_id, "Kernel did not return a session id")
-
-		manager:insert(self)
 	elseif self.session_id then
 		cb, self.session_info = require("jet.core.engine").attach(self.session_id)
 		assert(self.session_info, "Kernel did not return session info")
@@ -765,6 +759,7 @@ function Kernel:start_lua_client(callback)
 		error("Could not start/connect to kernel")
 	end
 
+	manager:insert(self)
 	-- TODO: in future maybe have both 'starting' (=owned) and 'connecting' (=unowned) sentinels
 	self.client_id = STARTING_KERNEL_SENTINEL
 	self:do_status_changed()
@@ -776,11 +771,7 @@ function Kernel:start_lua_client(callback)
 		local ok, res = pcall(cb)
 
 		if not ok then
-			utils.log_error(
-				"Failed to start kernel '%s': %s",
-				self.spec.display_name,
-				vim.split(tostring(res), "\n")[1]
-			)
+			utils.log_error("Failed to start kernel '%s': %s", self:friendly_name(), vim.split(tostring(res), "\n")[1])
 			if self:id() then
 				self:close("Failed to start kernel: " .. tostring(self:id()))
 			end
@@ -790,7 +781,7 @@ function Kernel:start_lua_client(callback)
 		local val = res.value
 
 		if val then
-			utils.log_info("Started kernel '%s' (%s)", self.spec.display_name, self:id())
+			utils.log_info("Started kernel '%s' (%s)", self:friendly_name(), self:id())
 
 			self.client_id = val.client_id
 			self.kernel_info = val.kernel_info
@@ -803,7 +794,7 @@ function Kernel:start_lua_client(callback)
 			self.lsp = lsp.init({
 				port = val.lsp_port,
 				client_id = val.client_id,
-				display_name = self.spec.display_name,
+				display_name = self:friendly_name(),
 				filetype = self.filetype,
 			})
 
@@ -848,7 +839,7 @@ function Kernel:try_resolve_filetype()
 			end
 		else
 			--TODO: advertise autocmd help page as a way to override this!
-			utils.log_warn("Could not resolve filetype for kernel '%s'.", self.spec.display_name, self:id())
+			utils.log_warn("Could not resolve filetype for kernel '%s'.", self:friendly_name(), self:id())
 		end
 	end
 end
@@ -877,12 +868,12 @@ function Kernel:close(reason)
 	if self.owned then
 		self:stop(function(success, failure_msg)
 			if not success then
-				utils.log_error("Failed to stop kernel '%s': %s", self.spec.display_name, failure_msg)
+				utils.log_error("Failed to stop kernel '%s': %s", self:friendly_name(), failure_msg)
 				return
 			end
 			if reason ~= false then
 				reason = reason and string.format(" (%s)", reason) or ""
-				utils.log_info("Stopped kernel '%s'%s", self.spec.display_name, reason)
+				utils.log_info("Stopped kernel '%s'%s", self:friendly_name(), reason)
 			end
 			self:do_kernel_close()
 			self:do_status_changed()
