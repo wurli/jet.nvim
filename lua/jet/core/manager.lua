@@ -1,5 +1,16 @@
 local utils = require("jet.core.utils")
 
+-- local cb = require("jet.core.engine").list_external("/Users/JACOB.SCOTT1/Repos/jet.nvim/cf/kernel-c8a938c6-61e1-4a3c-baf4-441599b7d039.json")
+-- while true do
+-- 	local res = cb()
+-- 	if res.status == "ready" then
+-- 		vim.print(res.value)
+-- 	end
+-- 	if res.status == "done" then
+-- 		return
+-- 	end
+-- end
+
 ---@class jet.Manager
 ---@field kernels table<string, jet.Kernel>
 ---@field filetype_current table<string, string> key=filetype, value=connection file path
@@ -155,21 +166,23 @@ Manager.list = function(filters, callback)
 	end
 
 	if vim.tbl_contains(filters.status, "external") then
-		if vim.env.JUPYTER_RUNTIME_DIR then
-			for _, dir in ipairs(vim.split(vim.env.JUPYTER_RUNTIME_DIR, "[;:]")) do
-				for name, type in vim.fs.dir(dir) do
-					if type == "file" and name:match("kernel") and name:match("%.json$") then
-						local cf = vim.fs.joinpath(dir, name)
-						if not Manager.kernels[cf] then
-							table.insert(kernels, require("jet.core.kernel").init_external({ connection_file = cf }))
-						end
-					end
+		---@param external jet.ExternalKernelInfo[]
+		local collect_external = function(external)
+			for _, info in ipairs(external) do
+				if not Manager.kernels[info.connection_file_path] then
+					table.insert(
+						kernels,
+						require("jet.core.kernel").init_external({
+							connection_file_path = info.connection_file_path,
+							kernel_info = info.kernel_info,
+						})
+					)
 				end
 			end
 		end
 
 		---@param sessions jet.SessionInfo[]
-		local collect = function(sessions)
+		local collect_session = function(sessions)
 			for _, session in ipairs(sessions) do
 				-- Don't include sessions that are already connected to Neovim
 				if not Manager.kernels[session.session_id] then
@@ -178,23 +191,41 @@ Manager.list = function(filters, callback)
 			end
 		end
 
-		local cb = require("jet.core.engine").list_sessions()
+		local list_external_cb = require("jet.core.engine").list_external()
+		local list_sessions_cb = require("jet.core.engine").list_sessions()
 
 		if callback then
 			utils.poll(function()
-				local res = cb()
-				if res.value then
-					collect(res.value)
-					callback(Manager.filter_kernels(kernels, filters))
+				local session = list_sessions_cb()
+				local external = list_external_cb()
+				if session.value then
+					collect_session(session.value)
 				end
-				return res.status
+				if external.value then
+					collect_external(external.value)
+				end
+
+				if session.status == "pending" or external.status == "pending" then
+					return "pending"
+				elseif session.status == "ready" or external.status == "ready" then
+					return "ready"
+				else
+					callback(Manager.filter_kernels(kernels, filters))
+					return "done"
+				end
 			end, { interval = 20, alias = "Waiting for list_sessions output" })
 			return
 		else
 			while true do
-				local res = cb()
-				if res.value then
-					collect(res.value)
+				local session = list_sessions_cb()
+				local external = list_external_cb()
+				if session.value then
+					collect_session(session.value)
+				end
+				if external.value then
+					collect_external(external.value)
+				end
+				if session.status == "done" and external.status == "done" then
 					break
 				end
 			end

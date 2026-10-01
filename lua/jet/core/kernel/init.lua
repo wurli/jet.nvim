@@ -60,7 +60,7 @@ local STARTING_KERNEL_SENTINEL = "<pending>"
 ---The client ID of the current nvim connection to the kernel.
 ---@field client_id? string
 ---A path to the kernel's connection file
----@field connection_file string?
+---@field connection_file_path string?
 ---Information about the kernel's Jet LSP process.
 ---@field lsp jet.Lsp
 ---`true` if the kernel session was started by this nvim session; `false`
@@ -150,7 +150,8 @@ end
 
 ---@class jet.kernel.init_external.Opts
 ---@field session_id? string
----@field connection_file? string
+---@field connection_file_path? string
+---@field kernel_info? jupyter.KernelInfo
 ---@field priority? integer
 
 ---Initialise a connection to a kernel running outside the current nvim session
@@ -167,16 +168,34 @@ function Kernel.init_external(opts)
 			spec = view.spec,
 			session_info = view.session,
 			spec_path = view.session.kernelspec_path,
-			connection_file = utils.path_normalise(view.session.connection_file),
+			connection_file_path = utils.path_normalise(view.session.connection_file),
 			owned = false,
 		}
-	elseif opts.connection_file then
+	elseif opts.connection_file_path then
+		if not opts.kernel_info then
+			local cb = require("jet.core.engine").list_external(opts.connection_file_path)
+			local value = {} --[[@as jet.ExternalKernelInfo[] ]]
+			while true do
+				local res = cb()
+				if res.status == "done" then
+					break
+				elseif res.status == "ready" then
+					value = res.value
+				end
+			end
+			if not (value[1] and value[1].alive) then
+				error(string.format("Kernel at %s is not running", opts.connection_file_path))
+			end
+			opts.kernel_info = value[1].kernel_info
+		end
+
 		base_opts = {
-			connection_file = utils.path_normalise(opts.connection_file),
+			connection_file_path = utils.path_normalise(opts.connection_file_path),
+			kernel_info = opts.kernel_info,
 			owned = false,
 		}
 	else
-		error("Can't connect to external kernel. Please supply either opts.session_id or opts.connection_file.")
+		error("Can't connect to external kernel. Please supply either opts.session_id or opts.connection_file_path.")
 	end
 
 	local out = setmetatable(vim.tbl_extend("keep", init_defaults(), base_opts), Kernel)
@@ -237,12 +256,12 @@ Kernel.do_win_open                = hooks.do_win_open                ---@private
 ---Get a kernel unique identifier for the kernel
 ---
 ---Equal to the `session_id` if present (i.e. for owned kernels), otherwise the
----`connection_file` path is used.
+---`connection_file_path` is used.
 ---@return string
 function Kernel:id() return self:get_id() or error("Kernel does not have a session id or connection file") end
 
 ---@return string?
-function Kernel:get_id() return self.session_id or self.connection_file end
+function Kernel:get_id() return self.session_id or self.connection_file_path end
 
 ---Get the command which can be used to start/connect to the kernel using the
 ---Jet CLI
@@ -252,11 +271,11 @@ function Kernel:cmd()
 	local cmd = { "jet", "attach" }
 	if self.session_id then
 		table.insert(cmd, self.session_id)
-	elseif self.connection_file then
+	elseif self.connection_file_path then
 		table.insert(cmd, "--connection-file")
-		table.insert(cmd, self.connection_file)
+		table.insert(cmd, self.connection_file_path)
 	else
-		error("Kernel must have either `session_id` or `connection_file`")
+		error("Kernel must have either `session_id` or `connection_file_path`")
 	end
 
 	table.insert(cmd, "--banner")
@@ -526,8 +545,12 @@ end
 ---
 ---@return string
 function Kernel:friendly_name()
+	local name = self.spec and self.spec.display_name
+		or self.kernel_info and self.kernel_info.implementation and (self.kernel_info.implementation .. " (external)")
+		or self.kernel_info and self.kernel_info.language_info.name and (self.kernel_info.language_info.name .. " (external)")
+		or "External kernel"
+
 	local session_hash = (self.session_id or ""):match("_([^_]+)$")
-	local name = self.spec and self.spec.display_name or "External kernel"
 	if session_hash then
 		name = name .. " (" .. session_hash .. ")"
 	end
@@ -745,16 +768,16 @@ function Kernel:start_lua_client(callback)
 		cb, self.session_info = require("jet.core.engine").start(self.spec_path, nil)
 
 		assert(self.session_info, "Kernel did not return session info")
-		self.connection_file = self.session_info.connection_file
+		self.connection_file_path = self.session_info.connection_file
 		self.session_id = self.session_info.session_id
 
 		assert(self.session_id, "Kernel did not return a session id")
 	elseif self.session_id then
 		cb, self.session_info = require("jet.core.engine").attach(self.session_id)
 		assert(self.session_info, "Kernel did not return session info")
-		self.connection_file = self.session_info.connection_file
-	elseif self.connection_file then
-		cb, self.session_info = require("jet.core.engine").attach(nil, self.connection_file)
+		self.connection_file_path = self.session_info.connection_file
+	elseif self.connection_file_path then
+		cb, self.session_info = require("jet.core.engine").attach(nil, self.connection_file_path)
 	else
 		error("Could not start/connect to kernel")
 	end
@@ -764,7 +787,7 @@ function Kernel:start_lua_client(callback)
 	self.client_id = STARTING_KERNEL_SENTINEL
 	self:do_status_changed()
 
-	self.augroup = vim.api.nvim_create_augroup("jet-" .. self.connection_file, { clear = true })
+	self.augroup = vim.api.nvim_create_augroup("jet-" .. self.connection_file_path, { clear = true })
 
 	--TODO: stop poll on kernel close
 	utils.poll(function()
