@@ -90,7 +90,7 @@ end
 ---Select the `Range` as a "text-object" (see |omap-info|)
 function Range:textobject()
 	vim.api.nvim_buf_set_mark(0, "<", self.start_row + 1, self.start_col, {})
-	vim.api.nvim_buf_set_mark(0, ">", self.end_row + 1, self.end_col - 1, {})
+	vim.api.nvim_buf_set_mark(0, ">", math.min(self.end_row + 1, vim.api.nvim_buf_line_count(0)), self.end_col - 1, {})
 	vim.cmd("normal! gv")
 end
 
