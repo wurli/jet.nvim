@@ -4,6 +4,7 @@ local hooks = require("jet.core.hooks")
 local win = require("jet.core.kernel.win")
 local lsp = require("jet.core.kernel.lsp")
 local cfg = require("jet.core.config").options
+local cfg_data = require("jet.core.config").data
 
 local STARTING_KERNEL_SENTINEL = "<pending>"
 
@@ -268,7 +269,9 @@ function Kernel:get_id() return self.session_id or self.connection_file_path end
 ---
 ---@return string[]
 function Kernel:cmd()
-	local cmd = { "jet", "attach" }
+	assert(cfg_data.binary_path, 'jet executable not found, please run `require("jet").setup({})`')
+
+	local cmd = { cfg_data.binary_path, "attach" }
 	if self.session_id then
 		table.insert(cmd, self.session_id)
 	elseif self.connection_file_path then
