@@ -110,7 +110,7 @@ M.jet_nvim_version = "0.3.0"
 
 ---@class jet.Config.Data
 M.data = {
-	jet_min_version = "0.0.8",
+	jet_min_version = "0.1.0",
 	binary_path = nil, ---@type string?
 	library_path = nil, ---@type string?
 	jet_nvim_data_dir = vim.fn.stdpath("data") .. "/jet",

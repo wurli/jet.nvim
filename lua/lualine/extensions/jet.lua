@@ -56,8 +56,8 @@ local jet_img = function(k)
 end
 
 local jet_details = function()
-	local session_id = vim.b.jet and vim.b.jet.session_id
-	local k = session_id and require("jet.api").get_kernel_by_id(session_id)
+	local id = vim.b.jet and vim.b.jet.session_id
+	local k = id and require("jet.api").get_kernel_by_id(id)
 
 	if not k then
 		return ""

@@ -30,6 +30,14 @@ M.handle_motion = function(callback) return range_get.handle_motion(callback) en
 
 ---Get kernels which match some conditions
 ---
+---Kernels are discovered in a few ways:
+---* Kernels which are connected to the current nvim session (status="current")
+---* Kernels which are avaiable but not running (status="active")
+---* Kernels which are running outside of this session (status="external").
+---  This includes kernels started using Jet, as well as any kernels
+---  discoverable via the `$JUPYTER_RUNTIME_DIR`. Note that apps like
+---  JupyterLab also respect this env var!
+---
 ---@param filters? jet.api.Filters
 ---@param callback? fun(kernels: jet.Kernel[]) If given, the function runs
 ---asynchronously and the resulting table of kernels is passed to the callback.
@@ -50,7 +58,7 @@ M.list_kernels = function(filters, callback) return manager.list(filters, callba
 ---@see |jet-api.list_kernels()| to get kernels synchronously
 M.get_kernel = function(filters, callback) return manager.get(filters, callback) end
 
----Get a running kernel by its session id
+---Get a running kernel by its id
 ---
 ---This can be useful, e.g. if you want to get the running `Kernel` object
 ---powering the repl:
@@ -60,8 +68,8 @@ M.get_kernel = function(filters, callback) return manager.get(filters, callback)
 ---local kernel = api.get_kernel_by_id(vim.b.jet.session_id)
 ---```
 ---
----@param session_id string
+---@param id string
 ---@return jet.Kernel?
-M.get_kernel_by_id = function(session_id) return manager.get_by_id(session_id) end
+M.get_kernel_by_id = function(id) return manager.get_by_id(id) end
 
 return M

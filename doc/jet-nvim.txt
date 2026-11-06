@@ -325,6 +325,57 @@ explicitly: >lua
     require("lualine").setup({ extensions = { "jet" } })
 <
 
+JUPYTERLAB                                                      *jet-jupyterlab*
+
+If JupyterLab is running locally, jet.nvim should show JupyterLab kernel
+sessions in the `:Jet` UI without any extra config. If not, try setting
+`$JUPYTER_RUNTIME_DIR` and restarting JupyterLab.
+
+If JupyterLab is running on an SSH-enabled server you can add jet.nvim support
+with a little extra setup. A kernel's connection file lists five ports it
+listens on; to reach them from your machine you need an SSH tunnel per port
+and a local 'proxy' connection file that points at the tunneled ports.
+
+You can do this using Python like so: >python
+    import json
+    import subprocess
+    from pathlib import Path
+
+    from jupyter_client.connect import tunnel_to_kernel, write_connection_file
+    from jupyter_core.paths import jupyter_runtime_dir
+
+    sshserver = "user@server"
+    remote_runtime_dir = "/home/user/.local/share/jupyter/runtime"
+
+    local_runtime_dir = Path(jupyter_runtime_dir())
+
+    # Warning: this gets _all_ connection files, and each one costs 5 SSH tunnels.
+    # You should probs be more pragmatic and only get the connection files you need.
+    remote_connection_files = subprocess.check_output(
+        ["ssh", sshserver, "ls", f"{remote_runtime_dir}/kernel-*.json"],
+        text=True,
+    ).split()
+
+    for remote_path in remote_connection_files:
+        raw = subprocess.check_output(["ssh", sshserver, "cat", remote_path])
+        info = json.loads(raw)
+
+        shell, iopub, stdin, hb, control = tunnel_to_kernel(info, sshserver=sshserver)
+
+        write_connection_file(
+            fname=str(local_runtime_dir / Path(remote_path).name),
+            shell_port=shell,
+            iopub_port=iopub,
+            stdin_port=stdin,
+            hb_port=hb,
+            control_port=control,
+            ip="127.0.0.1",
+            key=info["key"].encode(),
+            signature_scheme=info["signature_scheme"],
+            kernel_name=info.get("kernel_name", ""),
+        )
+<
+
 ------------------------------------------------------------------------------
 UI                                                                      *jet-ui*
 
@@ -470,11 +521,11 @@ THE API MODULE                                                     *jet-jet.api*
 api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 
     Parameters: ~
-        • {opts}        (`jet.send.next_expr_boundary.Opts?`) Fields:
-                        • direction (`(1|-1)?`)
-                        • boundary (`("start"|"end"|"any")?`)
-                        • current_ok (`boolean?`)
-        • {p}           (`jet.send.Pos?`)
+        • {opts}      (`jet.send.next_expr_boundary.Opts?`) Fields:
+                      • direction (`(1|-1)?`)
+                      • boundary (`("start"|"end"|"any")?`)
+                      • current_ok (`boolean?`)
+        • {p}         (`jet.send.Pos?`)
 
     Return: ~
         (`jet.send.Pos?`)
@@ -482,7 +533,7 @@ api.next_expr_boundary({opts}, {p})               *jet-api.next_expr_boundary()*
 api.get_expr({p})                                           *jet-api.get_expr()*
 
     Parameters: ~
-        • {p}           (`jet.send.Pos?`)
+        • {p}         (`jet.send.Pos?`)
 
     Return: ~
         (`jet.send.Range?`)
@@ -498,7 +549,7 @@ api.handle_motion({callback})                          *jet-api.handle_motion()*
         )
 <
     Parameters: ~
-        • {callback}    (`fun(code: jet.send.Range, filetype: string?)`)
+        • {callback}  (`fun(code: jet.send.Range, filetype: string?)`)
 
     Return: ~
         (`fun() -> "g@"`) A function that can be used in an operator-pending
@@ -508,13 +559,20 @@ api.list_kernels({filters}, {callback})                 *jet-api.list_kernels()*
 
     Get kernels which match some conditions
 
+    Kernels are discovered in a few ways: * Kernels which are connected to the
+    current nvim session (status="current") * Kernels which are avaiable but
+    not running (status="active") * Kernels which are running outside of this
+    session (status="external"). This includes kernels started using Jet, as
+    well as any kernels discoverable via the `$JUPYTER_RUNTIME_DIR`. Note that
+    apps like JupyterLab also respect this env var!
+
     Parameters: ~
-        • {filters}     (`jet.api.Filters?`)
-        • {callback}    (`(fun(kernels: jet.Kernel[]))?`) If given, the
-                        function runs asynchronously and the resulting table
-                        of kernels is passed to the callback. Otherwise the
-                        function runs synchronously, possibly briefly blocking
-                        nvim, and the kernels are returned.
+        • {filters}   (`jet.api.Filters?`)
+        • {callback}  (`(fun(kernels: jet.Kernel[]))?`) If given, the function
+                      runs asynchronously and the resulting table of kernels
+                      is passed to the callback. Otherwise the function runs
+                      synchronously, possibly briefly blocking nvim, and the
+                      kernels are returned.
 
     Return: ~
         (`jet.Kernel[]?`)
@@ -530,15 +588,15 @@ api.get_kernel({filters}, {callback})                     *jet-api.get_kernel()*
     one.
 
     Parameters: ~
-        • {filters}     (`jet.api.Filters`)
-        • {callback}    (`fun(k: jet.Kernel)`)
+        • {filters}   (`jet.api.Filters`)
+        • {callback}  (`fun(k: jet.Kernel)`)
 
     See: ~
         • |jet-api.list_kernels()| to get kernels synchronously
 
-api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
+api.get_kernel_by_id({id})                          *jet-api.get_kernel_by_id()*
 
-    Get a running kernel by its session id
+    Get a running kernel by its id
 
     This can be useful, e.g. if you want to get the running `Kernel` object
     powering the repl: >lua
@@ -546,7 +604,7 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
         local kernel = api.get_kernel_by_id(vim.b.jet.session_id)
 <
     Parameters: ~
-        • {session_id}  (`string`)
+        • {id}        (`string`)
 
     Return: ~
         (`jet.Kernel?`)
@@ -560,6 +618,7 @@ api.get_kernel_by_id({session_id})                  *jet-api.get_kernel_by_id()*
     Fields: ~
         • {session_id}    (`string?`) Implies `status` = "connected" or
                           "external"
+        • {id}            (`string?`) Alias for `session_id`
         • {spec_path}     (`string?`)
         • {filetype}      (`(boolean|string)?`) `true` gets the filetype at
                           the cursor position
@@ -589,70 +648,80 @@ THE KERNEL CLASS                                          *jet-the-kernel-class*
 <
 
     Fields: ~
-        • {session_name}     (`string?`) Shows up in the `:Jet` UI, but can
-                             also be used, e.g. in statuslines and stuff
-        • {spec}             (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)`)
-                             See
-                             https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
-                             for a primer on kernel specs.
-        • {spec_path}        (`string`) Path to the `kernelspec` file
-        • {kernel_info}      (`jupyter.KernelInfo?`) Kernel info as returned
-                             by the kernel in response to a
-                             `kernel_info_request`
-        • {session_id}       (`string?`) The Jet session identifier.
-        • {session_info}     (`jet.SessionInfo?`) The contents of the Jet
-                             `session.json`, e.g. kernel start time, process
-                             PID, etc.
-        • {client_id}        (`string?`) The client ID of the current nvim
-                             connection to the kernel.
-        • {lsp}              (`jet.Lsp`) Information about the kernel's Jet
-                             LSP process.
-        • {owned}            (`boolean`) `true` if the kernel session was
-                             started by this nvim session; `false` otherwise.
-        • {filetype}         (`string?`) The kernel's filetype. jet.nvim will
-                             try to guess this but may fail. In such cases you
-                             can set it manually, e.g. using |jet.Hooks|.
-        • {last_execution}   (`jet.Kernel.LastExecution?`) Information about
-                             the last executed code.
-        • {execution_state}  (`("busy"|"idle"|"starting")?`) Either "busy",
-                             "idle", or "starting"
-        • {known_comms}      (`table<string,fun(kernel: jet.Kernel, comm_id: string, data: table)>`)
-                             Handlers for "known" comms which the backend may
-                             try to open. Typically should only be touched by
-                             plugins which extend jet.nvim. If the kernel
-                             backend attempts to open a comm not in this list,
-                             jet.nvim just replies with a `comm_close` message
-                             as per the Jupyter spec:
-                             https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
-        • {open_comms}       (`table<string,{ data: table?, name: string }>`)
-                             Open comm channels. Table keys are comm ids. See
-                             https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
-                             for more info.
-        • {output_stream}    (`{ complete_lines: jet.utils.Queue<string>, incomplete_line: string }`)
-                             Latest output from the kernel's `iopub` channel.
-                             By default only holds the last 3 lines, but this
-                             can be configured using `config.ui.stream_lines`.
-        • {hooks}            (`jet.Hooks`) Kernel-specific hooks. Basically
-                             for convenience on top of the 'global' hooks you
-                             can set in |jet.Config|
-        • {priority}         (`integer`) Defaults to 100. `api.get_kernel()`
-                             will try to use this field to select a single
-                             kernel. Typically you would set the priority
-                             using the kernel's init hook (see |jet.Hooks|).
-        • {wins}             (`jet.Kernel.Windows`) Windows used to show
-                             kernel UI. Kernels use 2 windows by default (one
-                             for the repl, one for all other stuff). This
-                             field is extensible!
-                             Fields:
-                             • primary (`jet.Win`)
-                             • secondary (`jet.Win`)
-        • {bufs}             (`jet.Kernel.Buffers`) Buffers used to show
-                             kernel UI. By default includes the repl and a
-                             plots buffer.
-                             Fields:
-                             • term (`jet.Kernel.Term?`)
-                             • img (`jet.Kernel.Img?`)
-        • {subclass}         (`string?`)
+        • {session_name}          (`string?`) Shows up in the `:Jet` UI, but
+                                  can also be used, e.g. in statuslines and
+                                  stuff
+        • {spec}                  (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)`)
+                                  See
+                                  https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernel-specs
+                                  for a primer on kernel specs.
+        • {spec_path}             (`string`) Path to the `kernelspec` file
+        • {kernel_info}           (`jupyter.KernelInfo?`) Kernel info as
+                                  returned by the kernel in response to a
+                                  `kernel_info_request`
+        • {session_id}            (`string?`) The Jet session identifier;
+                                  prefer to access this using `Kernel:id()`
+        • {session_info}          (`jet.SessionInfo?`) The contents of the Jet
+                                  `session.json`, e.g. kernel start time,
+                                  process PID, etc.
+        • {client_id}             (`string?`) The client ID of the current
+                                  nvim connection to the kernel.
+        • {connection_file_path}  (`string?`) A path to the kernel's
+                                  connection file
+        • {lsp}                   (`jet.Lsp`) Information about the kernel's
+                                  Jet LSP process.
+        • {owned}                 (`boolean`) `true` if the kernel session was
+                                  started by this nvim session; `false`
+                                  otherwise.
+        • {filetype}              (`string?`) The kernel's filetype. jet.nvim
+                                  will try to guess this but may fail. In such
+                                  cases you can set it manually, e.g. using
+                                  |jet.Hooks|.
+        • {last_execution}        (`jet.Kernel.LastExecution?`) Information
+                                  about the last executed code.
+        • {execution_state}       (`("busy"|"idle"|"starting")?`) Either
+                                  "busy", "idle", or "starting"
+        • {known_comms}           (`table<string,fun(kernel: jet.Kernel, comm_id: string, data: table)>`)
+                                  Handlers for "known" comms which the backend
+                                  may try to open. Typically should only be
+                                  touched by plugins which extend jet.nvim. If
+                                  the kernel backend attempts to open a comm
+                                  not in this list, jet.nvim just replies with
+                                  a `comm_close` message as per the Jupyter
+                                  spec:
+                                  https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
+        • {open_comms}            (`table<string,{ data: table?, name: string }>`)
+                                  Open comm channels. Table keys are comm ids.
+                                  See
+                                  https://jupyter-client.readthedocs.io/en/latest/messaging.html#custom-messages
+                                  for more info.
+        • {output_stream}         (`{ complete_lines: jet.utils.Queue<string>, incomplete_line: string }`)
+                                  Latest output from the kernel's `iopub`
+                                  channel. By default only holds the last 3
+                                  lines, but this can be configured using
+                                  `config.ui.stream_lines`.
+        • {hooks}                 (`jet.Hooks`) Kernel-specific hooks.
+                                  Basically for convenience on top of the
+                                  'global' hooks you can set in |jet.Config|
+        • {priority}              (`integer`) Defaults to 100.
+                                  `api.get_kernel()` will try to use this
+                                  field to select a single kernel. Typically
+                                  you would set the priority using the
+                                  kernel's init hook (see |jet.Hooks|).
+        • {wins}                  (`jet.Kernel.Windows`) Windows used to show
+                                  kernel UI. Kernels use 2 windows by default
+                                  (one for the repl, one for all other stuff).
+                                  This field is extensible!
+                                  Fields:
+                                  • primary (`jet.Win`)
+                                  • secondary (`jet.Win`)
+        • {bufs}                  (`jet.Kernel.Buffers`) Buffers used to show
+                                  kernel UI. By default includes the repl and
+                                  a plots buffer.
+                                  Fields:
+                                  • term (`jet.Kernel.Term?`)
+                                  • img (`jet.Kernel.Img?`)
+        • {subclass}              (`string?`)
 
 Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
 
@@ -660,12 +729,11 @@ Kernel.init_owned({opts})                              *jet-Kernel.init_owned()*
     process.
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_owned.Opts`) Fields:
-                        • spec_path (`string`)
-                        • session_name (`string?`)
-                        • spec
-                          (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)?`)
-                        • priority (`integer?`)
+        • {opts}      (`jet.kernel.init_owned.Opts`) Fields:
+                      • spec_path (`string`)
+                      • session_name (`string?`)
+                      • spec (`(jupyter.KernelSpec|jet.Kernel.PartialSpec)?`)
+                      • priority (`integer?`)
 
     Return: ~
         (`jet.Kernel`)
@@ -676,12 +744,37 @@ Kernel.init_external({opts})                        *jet-Kernel.init_external()*
     session
 
     Parameters: ~
-        • {opts}        (`jet.kernel.init_external.Opts`) Fields:
-                        • session_id (`string`)
-                        • priority (`integer?`)
+        • {opts}      (`jet.kernel.init_external.Opts`) Fields:
+                      • session_id (`string?`)
+                      • connection_file_path (`string?`)
+                      • kernel_info (`jupyter.KernelInfo?`)
+                      • priority (`integer?`)
 
     Return: ~
         (`jet.Kernel`)
+
+Kernel:id()                                                    *jet-Kernel:id()*
+
+    Get a kernel unique identifier for the kernel
+
+    Equal to the `session_id` if present (i.e. for owned kernels), otherwise
+    the `connection_file_path` is used.
+
+    Return: ~
+        (`string`)
+
+Kernel:get_id()                                            *jet-Kernel:get_id()*
+
+    Return: ~
+        (`string?`)
+
+Kernel:cmd()                                                  *jet-Kernel:cmd()*
+
+    Get the command which can be used to start/connect to the kernel using the
+    Jet CLI
+
+    Return: ~
+        (`string[]`)
 
 Kernel:term_toggle()                                  *jet-Kernel:term_toggle()*
 
@@ -694,8 +787,8 @@ Kernel:term_open({callback}, {focus})                   *jet-Kernel:term_open()*
     be created and opened
 
     Parameters: ~
-        • {callback}    (`(fun(t: jet.Kernel.Term))?`)
-        • {focus}       (`boolean?`)
+        • {callback}  (`(fun(t: jet.Kernel.Term))?`)
+        • {focus}     (`boolean?`)
 
 Kernel:set_current()                                  *jet-Kernel:set_current()*
 
@@ -726,7 +819,7 @@ Kernel:img_open({which})                                 *jet-Kernel:img_open()*
     Open the image display
 
     Parameters: ~
-        • {which}       (`(string|integer)?`)
+        • {which}     (`(string|integer)?`)
 
     Return: ~
         (`integer`) Win number
@@ -749,10 +842,10 @@ Kernel:img_save({content}, {mime}, {name})               *jet-Kernel:img_save()*
     • Extension is always `png`
 
     Parameters: ~
-        • {content}     (`string`)
-        • {mime}        (`(string|jet.Mime)`) Describes the format of the
-                        `content`
-        • {name}        (`string`)
+        • {content}   (`string`)
+        • {mime}      (`(string|jet.Mime)`) Describes the format of the
+                      `content`
+        • {name}      (`string`)
 
     Return: ~
         (`(string|false)`) the path to the saved file, or `false` on failure.
@@ -766,7 +859,7 @@ Kernel:start_lua_client({callback})              *jet-Kernel:start_lua_client()*
     (possibly freshly started) kernel session.
 
     Parameters: ~
-        • {callback}    (`(fun(k: jet.Kernel))?`)
+        • {callback}  (`(fun(k: jet.Kernel))?`)
 
 Kernel:close({reason})                                      *jet-Kernel:close()*
 
@@ -776,7 +869,7 @@ Kernel:close({reason})                                      *jet-Kernel:close()*
     disconnected.
 
     Parameters: ~
-        • {reason}      (`(boolean|string)?`)
+        • {reason}    (`(boolean|string)?`)
 
 Kernel:stop({callback})                                      *jet-Kernel:stop()*
 
@@ -786,7 +879,7 @@ Kernel:stop({callback})                                      *jet-Kernel:stop()*
     any resources on the nvim side.
 
     Parameters: ~
-        • {callback}    (`fun(success: boolean, failure_msg: string?)`)
+        • {callback}  (`fun(success: boolean, failure_msg: string?)`)
 
     See: ~
         • |Kernel:close()|
@@ -796,8 +889,8 @@ Kernel:get_comm({name}, {pattern})                       *jet-Kernel:get_comm()*
     Convenience; find a comm id (from `Kernel.open_comms`) using the comm name
 
     Parameters: ~
-        • {name}        (`string`)
-        • {pattern}     (`boolean?`)
+        • {name}      (`string`)
+        • {pattern}   (`boolean?`)
 
     Return: ~
         (`string?`)
@@ -814,13 +907,13 @@ Kernel:comm_open({name}, {data}, {opts})                *jet-Kernel:comm_open()*
     jet.nvim!
 
     Parameters: ~
-        • {name}        (`string`)
-        • {data}        (`table?`)
-        • {opts}        (`jet.kernel.comm_open.Opts?`) Fields:
-                        • listener (`(fun(res: jupyter.Msg))?`)
-                        • listener_interval (`integer?`): In milliseconds,
-                          default 50ms
-                        • callback (`(fun(msg: jupyter.Msg))?`)
+        • {name}      (`string`)
+        • {data}      (`table?`)
+        • {opts}      (`jet.kernel.comm_open.Opts?`) Fields:
+                      • listener (`(fun(res: jupyter.Msg))?`)
+                      • listener_interval (`integer?`): In milliseconds,
+                        default 50ms
+                      • callback (`(fun(msg: jupyter.Msg))?`)
 
     Return: ~
         (`string`) Comm id
@@ -835,8 +928,8 @@ Kernel:comm_send({comm_id}, {data})                     *jet-Kernel:comm_send()*
     Send a message via a comm channel
 
     Parameters: ~
-        • {comm_id}     (`string`)
-        • {data}        (`table`)
+        • {comm_id}   (`string`)
+        • {data}      (`table`)
 
     Return: ~
         (`string`) Message id
@@ -847,7 +940,7 @@ Kernel:comm_send({comm_id}, {data})                     *jet-Kernel:comm_send()*
 Kernel:comm_close({comm_id})                           *jet-Kernel:comm_close()*
 
     Parameters: ~
-        • {comm_id}     (`string`)
+        • {comm_id}   (`string`)
 
     Return: ~
         (`string`) Message id
@@ -857,9 +950,9 @@ Kernel:send_repl({code}, {tabstop})                     *jet-Kernel:send_repl()*
     Send code to the kernel via the terminal repl
 
     Parameters: ~
-        • {code}        (`(string|string[])`) Code to be sent
-        • {tabstop}     (`integer?`) Optional; number of spaces to use for tab
-                        characters
+        • {code}      (`(string|string[])`) Code to be sent
+        • {tabstop}   (`integer?`) Optional; number of spaces to use for tab
+                      characters
 
 Kernel:send_lua({code}, {silent}, {callback})            *jet-Kernel:send_lua()*
 
@@ -870,9 +963,9 @@ Kernel:send_lua({code}, {silent}, {callback})            *jet-Kernel:send_lua()*
     be sent to the terminal.
 
     Parameters: ~
-        • {code}        (`(string|string[])`)
-        • {silent}      (`boolean`)
-        • {callback}    (`(fun(res: jupyter.Msg))?`)
+        • {code}      (`(string|string[])`)
+        • {silent}    (`boolean`)
+        • {callback}  (`(fun(res: jupyter.Msg))?`)
 
     Return: ~
         (`string`) Message id
