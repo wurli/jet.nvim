@@ -1,12 +1,12 @@
 {
   "argv": [
-    "/Users/jacobscott/Repos/jet.nvim/test-kernels/ark/ark",
+    "/Users/JACOB.SCOTT1/Repos/jet.nvim/test-kernels/ark/ark",
     "--connection_file",
     "{connection_file}",
     "--session-mode",
     "notebook",
     "--log",
-    "/Users/jacobscott/Repos/jet.nvim/test-kernels/ark/ark.log",
+    "/Users/JACOB.SCOTT1/Repos/jet.nvim/test-kernels/ark/ark.log",
     "--",
     "--quiet"
   ],

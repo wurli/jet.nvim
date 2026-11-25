@@ -27,7 +27,7 @@ function Buf.init(class, opts)
 		buf = vim.api.nvim_create_buf(false, true),
 	}, class or Buf)
 
-	vim.b[out.buf].jet = { session_id = out.kernel.session_id }
+	vim.b[out.buf].jet = { session_id = out.kernel:id() }
 	vim.api.nvim_buf_set_name(out.buf, out.name)
 
 	return out

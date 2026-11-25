@@ -13,8 +13,6 @@ Img.__index = Img ---@private
 ---@param opts jet.Kernel.Img.init.Opts
 ---@return jet.Kernel.Img
 function Img.init(opts)
-	assert(opts.kernel.session_id, "Kernel session_id is required")
-
 	local out = buf.init(Img, {
 		name = opts.kernel:friendly_name() .. " - Images",
 		kernel = opts.kernel,

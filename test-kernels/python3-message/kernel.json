@@ -1,6 +1,6 @@
 {
   "argv": [
-    "/Users/jacobscott/Repos/jet.nvim/.jet-dev/venv/bin/python",
+    "/Users/JACOB.SCOTT1/Repos/jet.nvim/.jet-dev/venv/bin/python",
     "-m",
     "ipykernel_launcher",
     "-f",
